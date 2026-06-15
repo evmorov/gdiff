@@ -1,4 +1,5 @@
-(local fennel (require :fennel))
+(local config (require :config))
+(local reviews (require :reviews))
 (local tui (require :tui))
 
 (fn shell-quote [s]
@@ -16,35 +17,6 @@
 (fn trim [s]
   (let [s (or s "")]
     (or (s:match "^%s*(.-)%s*$") "")))
-
-(fn read-file [path]
-  (let [f (io.open path "r")]
-    (when f
-      (let [contents (f:read "*a")]
-        (f:close)
-        contents))))
-
-(fn config-path []
-  (let [xdg (os.getenv "XDG_CONFIG_HOME")
-        home (os.getenv "HOME")]
-    (if (and xdg (> (length xdg) 0))
-        (.. xdg "/gdiff/config.fnl")
-        (.. (or home ".") "/.config/gdiff/config.fnl"))))
-
-(fn load-config []
-  (let [path (config-path)
-        source (read-file path)]
-    (if source
-        (let [(ok result) (pcall fennel.eval source
-                                 {:filename path :allowedGlobals []})]
-          (if ok
-              (or result {})
-              (error (.. "Could not load " path ": " result))))
-        {})))
-
-(fn editor-command [config]
-  (or config.editor (os.getenv "GDIFF_EDITOR") (os.getenv "VISUAL")
-      (os.getenv "EDITOR") "vim"))
 
 (fn command-for-editor [editor path]
   (if (= (type editor) "table")
@@ -288,7 +260,7 @@
 
 (fn run-editor [config entry stty-state]
   (tui.suspend stty-state (fn []
-                            (let [editor (editor-command config)
+                            (let [editor (config.editor-command config)
                                   cmd (command-for-editor editor entry.path)]
                               (os.execute cmd)))))
 
@@ -310,6 +282,11 @@
 (fn set-notice [state action path]
   (set state.notice (.. action ": " path)))
 
+(fn persist-reviewed [state]
+  (when (not (reviews.persist state.review_store state.review_scope
+                              state.entries))
+    (set state.notice "Could not save reviewed marks")))
+
 (fn reviewed-action [entry]
   (if entry.reviewed "Marked reviewed" "Unmarked reviewed"))
 
@@ -317,7 +294,8 @@
   (let [entry (selected-entry state)]
     (when entry
       (set entry.reviewed (not entry.reviewed))
-      (set-notice state (reviewed-action entry) entry.path))))
+      (set-notice state (reviewed-action entry) entry.path)
+      (persist-reviewed state))))
 
 (fn toggle-reviewed-and-advance [state]
   (toggle-reviewed state)
@@ -331,7 +309,8 @@
       (set entry.reviewed review?))
     (set state.notice (if review?
                           "Marked all reviewed"
-                          "Unmarked all reviewed"))))
+                          "Unmarked all reviewed"))
+    (persist-reviewed state)))
 
 (fn jump-top [state]
   (set state.selected 1))
@@ -339,24 +318,14 @@
 (fn jump-bottom [state]
   (set state.selected (length state.entries)))
 
-(fn reviewed-paths [entries]
-  (collect [_ entry (ipairs entries)]
-    (if entry.reviewed
-        (values entry.path true))))
-
-(fn apply-reviewed [entries reviewed]
-  (each [_ entry (ipairs entries)]
-    (when (. reviewed entry.path)
-      (set entry.reviewed true)))
-  entries)
-
 (fn refresh-state [state]
-  (let [reviewed (reviewed-paths state.entries)
+  (let [reviewed (reviews.paths state.entries)
         (entries err) (diff-entries state.revision)]
     (when (not err)
-      (set state.entries (apply-reviewed entries reviewed))
+      (set state.entries (reviews.apply entries reviewed))
       (set state.preview_cache {})
-      (move-selection state 0))))
+      (move-selection state 0)
+      (persist-reviewed state))))
 
 (fn open-selected [state config]
   (let [entry (selected-entry state)]
@@ -394,11 +363,13 @@
           _ true)
         true)))
 
-(fn picker [revision entries config]
+(fn picker [revision entries config review-store review-scope]
   (let [state {:revision revision
                :entries entries
                :selected 1
                :preview_cache {}
+               :review_store review-store
+               :review_scope review-scope
                :pending-key nil}]
     (tui.run-loop state view #(handle-key $1 config $2))))
 
@@ -412,11 +383,14 @@
   config)
 
 (fn run [revision options]
-  (let [config (merge-options (load-config) options)
+  (let [config (merge-options (config.load) options)
         (entries err) (diff-entries revision)]
-    (if err (exit-with-error err)
-        (= (length entries) 0) (print "No changed files.")
-        (picker revision entries config))))
+    (if err (exit-with-error err) (= (length entries) 0)
+        (print "No changed files.")
+        (let [review-store (reviews.load-store)
+              scope (reviews.scope (reviews.repo-root) revision)
+              entries (reviews.apply entries (reviews.marks review-store scope))]
+          (picker revision entries config review-store scope)))))
 
 (fn main [argv]
   (let [(options revision err) (parse-args argv)]

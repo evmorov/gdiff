@@ -2,4 +2,4 @@
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-exec fennel "$script_dir/../src/gdiff.fnl" "$@"
+exec fennel "$script_dir/../src/main.fnl" "$@"

@@ -1,28 +1,5 @@
 (local fennel (require :fennel))
-
-(local ESC "\27")
-(local NL "\r\n")
-
-(local colors {:reset "\27[0m"
-               :dim "\27[2m"
-               :reverse "\27[7m"
-               :added "\27[32m"
-               :modified "\27[33m"
-               :deleted "\27[31m"
-               :renamed "\27[36m"
-               :copied "\27[35m"})
-
-(fn color? []
-  (not (os.getenv "NO_COLOR")))
-
-(fn color [name text]
-  (if (color?)
-      (.. (. colors name) text colors.reset)
-      text))
-
-(fn trim [s]
-  (let [s (or s "")]
-    (or (s:match "^%s*(.-)%s*$") "")))
+(local tui (require :tui))
 
 (fn shell-quote [s]
   (let [escaped (string.gsub (tostring s) "'" "'\\''")]
@@ -35,6 +12,10 @@
               (ok kind code) (f:close)]
           (values output ok kind code))
         (values "" false "open" 1))))
+
+(fn trim [s]
+  (let [s (or s "")]
+    (or (s:match "^%s*(.-)%s*$") "")))
 
 (fn read-file [path]
   (let [f (io.open path "r")]
@@ -159,19 +140,6 @@
         (values (parse-name-status output) nil)
         (values nil (trim output)))))
 
-(fn terminal-size []
-  (let [output (read-command "stty size 2>/dev/null")
-        (rows cols) (output:match "^(%d+)%s+(%d+)")]
-    (values (or (tonumber rows) 24) (or (tonumber cols) 80))))
-
-(fn truncate [s width]
-  (let [s (tostring (or s ""))]
-    (if (<= (length s) width)
-        s
-        (if (> width 1)
-            (.. (s:sub 1 (- width 1)) "...")
-            ""))))
-
 (fn status-color [entry]
   (case entry.kind
     "A" :added
@@ -182,12 +150,12 @@
     _ :reset))
 
 (fn status-text [entry]
-  (color (status-color entry) (.. "[" entry.status "]")))
+  (tui.color (status-color entry) (.. "[" entry.status "]")))
 
 (fn reviewed-text [entry]
   (if entry.reviewed
-      (color :added "[x]")
-      (color :dim "[ ]")))
+      (tui.color :added "[x]")
+      (tui.color :dim "[ ]")))
 
 (fn display-path [entry]
   (if (or (= entry.kind "R") (= entry.kind "C"))
@@ -220,47 +188,32 @@
 (fn row-prefix [selected?]
   (if selected? "> " "  "))
 
-(fn row-text [entry selected? cols]
-  (truncate (.. (row-prefix selected?) (reviewed-text entry) " "
-                (status-text entry) " " (display-path entry)) cols))
+(fn row-text [entry selected?]
+  (.. (row-prefix selected?) (reviewed-text entry) " " (status-text entry) " "
+      (display-path entry)))
 
-(fn write-row [line selected?]
-  (if selected?
-      (io.write (color :reverse line) ESC "[0m" NL)
-      (io.write line NL)))
-
-(fn draw-header [state count cols]
-  (io.write ESC "[2J" ESC "[H")
-  (io.write (header-line state count) NL)
-  (io.write (color :dim (string.rep "-" cols)) NL))
-
-(fn draw-rows [entries selected top bottom cols]
-  (for [i top bottom]
-    (let [entry (. entries i)
-          selected? (= i selected)
-          line (row-text entry selected? cols)]
-      (write-row line selected?))))
-
-(fn draw [state]
+(fn visible-rows [state rows]
   (let [entries state.entries
         selected state.selected
         count (length entries)
-        (rows cols) (terminal-size)
-        (top bottom) (viewport selected count rows)]
-    (draw-header state count cols)
-    (draw-rows entries selected top bottom cols)
-    (io.flush)))
+        (first-row last-row) (viewport selected count rows)]
+    (fcollect [i first-row last-row]
+      (let [entry (. entries i)
+            selected? (= i selected)]
+        {:text (row-text entry selected?) :selected? selected?}))))
 
-(fn escape-key []
-  (let [a (io.read 1)
-        b (io.read 1)]
-    (case (.. (or a "") (or b ""))
-      "[A" :up
-      "[B" :down
-      _ :escape)))
+(fn view [state rows _cols]
+  (let [count (length state.entries)]
+    {:header (header-line state count)
+     :rows (visible-rows state rows)
+     :notice state.notice}))
 
-(fn char-key [c]
-  (case c
+(fn event-key [key]
+  (case key
+    :up :up
+    :down :down
+    :enter :open
+    :quit :quit
     "k" :up
     "j" :down
     "o" :open
@@ -269,45 +222,29 @@
     "r" :refresh
     "y" :copy-path
     "G" :bottom
-    "\r" :open
-    "\n" :open
     "q" :quit
-    "\3" :quit
-    _ c))
+    _ key))
 
-(fn read-key []
-  (let [c (io.read 1)]
-    (if (not c) :quit
-        (= c ESC) (escape-key)
-        (char-key c))))
-
-(fn saved-stty []
-  (trim (read-command "stty -g 2>/dev/null")))
-
-(fn raw-terminal [stty-state]
-  (os.execute "stty raw -echo 2>/dev/null")
-  (io.write ESC "[?1049h" ESC "[?25l")
-  (io.flush)
-  stty-state)
-
-(fn restore-terminal [stty-state]
-  (io.write ESC "[?25h" ESC "[?1049l" ESC "[0m")
-  (io.flush)
-  (when (and stty-state (> (length stty-state) 0))
-    (os.execute (.. "stty " stty-state " 2>/dev/null"))))
+(fn next-key [?pending-key key]
+  (let [key (event-key key)]
+    (if (and (= ?pending-key "g") (= key "g")) (values nil :top)
+        (= key "g") (values "g" nil)
+        (values nil key))))
 
 (fn run-editor [config entry stty-state]
-  (restore-terminal stty-state)
-  (let [editor (editor-command config)
-        cmd (command-for-editor editor entry.path)]
-    (os.execute cmd))
-  (raw-terminal stty-state))
+  (tui.suspend stty-state (fn []
+                            (let [editor (editor-command config)
+                                  cmd (command-for-editor editor entry.path)]
+                              (os.execute cmd)))))
 
 (fn copy-text [text]
   (let [f (io.popen "pbcopy" "w")]
-    (when f
-      (f:write text)
-      (f:close))))
+    (if f
+        (do
+          (f:write text)
+          (let [(ok _kind _code) (f:close)]
+            ok))
+        false)))
 
 (fn move-selection [state delta]
   (let [entries state.entries]
@@ -318,10 +255,17 @@
 (fn selected-entry [state]
   (. state.entries state.selected))
 
+(fn set-notice [state action path]
+  (set state.notice (.. action ": " path)))
+
+(fn reviewed-action [entry]
+  (if entry.reviewed "Marked reviewed" "Unmarked reviewed"))
+
 (fn toggle-reviewed [state]
   (let [entry (selected-entry state)]
     (when entry
-      (set entry.reviewed (not entry.reviewed)))))
+      (set entry.reviewed (not entry.reviewed))
+      (set-notice state (reviewed-action entry) entry.path))))
 
 (fn toggle-reviewed-and-advance [state]
   (toggle-reviewed state)
@@ -351,68 +295,47 @@
       (set state.entries (apply-reviewed entries reviewed))
       (move-selection state 0))))
 
+(fn open-selected [state config]
+  (let [entry (selected-entry state)]
+    (when entry
+      (set-notice state "Opened" entry.path)
+      (run-editor config entry state.stty-state))))
+
 (fn copy-selected-path [state]
   (let [entry (selected-entry state)]
     (when entry
-      (copy-text entry.path))))
+      (if (copy-text entry.path)
+          (set-notice state "Copied" entry.path)
+          (set-notice state "Copy failed" entry.path)))))
 
-(fn handle-key [state config stty-state key]
-  (case key
-    :up (do
-          (move-selection state -1)
-          true)
-    :down (do
-            (move-selection state 1)
-            true)
-    :open (do
-            (let [entry (selected-entry state)]
-              (when entry
-                (run-editor config entry stty-state)))
-            true)
-    :toggle-reviewed (do
-                       (toggle-reviewed state)
-                       true)
-    :toggle-reviewed-and-advance (do
-                                   (toggle-reviewed-and-advance state)
-                                   true)
-    :top (do
-           (jump-top state)
-           true)
-    :bottom (do
-              (jump-bottom state)
-              true)
-    :refresh (do
-               (refresh-state state)
-               true)
-    :copy-path (do
-                 (copy-selected-path state)
-                 true)
-    :quit false
-    _ true))
+(fn keep-going [f]
+  (f)
+  true)
 
-(fn next-key [?pending-key key]
-  (if (and (= ?pending-key "g") (= key "g")) (values nil :top)
-      (= key "g") (values "g" nil)
-      (values nil key)))
-
-(fn picker-loop [state config stty-state]
-  (var running true)
-  (var pending-key nil)
-  (while running
-    (draw state)
-    (let [(next-pending key) (next-key pending-key (read-key))]
-      (set pending-key next-pending)
-      (when key
-        (set running (handle-key state config stty-state key))))))
+(fn handle-key [state config raw-key]
+  (let [(pending-key key) (next-key state.pending-key raw-key)]
+    (set state.pending-key pending-key)
+    (if key
+        (case key
+          :up (keep-going #(move-selection state -1))
+          :down (keep-going #(move-selection state 1))
+          :open (keep-going #(open-selected state config))
+          :toggle-reviewed (keep-going #(toggle-reviewed state))
+          :toggle-reviewed-and-advance (keep-going #(toggle-reviewed-and-advance state))
+          :top (keep-going #(jump-top state))
+          :bottom (keep-going #(jump-bottom state))
+          :refresh (keep-going #(refresh-state state))
+          :copy-path (keep-going #(copy-selected-path state))
+          :quit false
+          _ true)
+        true)))
 
 (fn picker [revision entries config]
-  (let [state {:revision revision :entries entries :selected 1}
-        stty-state (saved-stty)]
-    (raw-terminal stty-state)
-    (let [(ok err) (pcall picker-loop state config stty-state)]
-      (restore-terminal stty-state)
-      (when (not ok)
-        (error err)))))
+  (let [state {:revision revision
+               :entries entries
+               :selected 1
+               :pending-key nil}]
+    (tui.run-loop state view #(handle-key $1 config $2))))
 
 (fn exit-with-error [message]
   (io.stderr:write message "\n")
@@ -441,4 +364,4 @@
                          (os.exit 1))
         (run revision options))))
 
-(main arg)
+{: main}

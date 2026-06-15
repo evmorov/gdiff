@@ -105,7 +105,7 @@
 (fn diff-entries [revision]
   (let [cmd (.. "git diff --name-status --find-renames --find-copies "
                 (shell-quote revision) " 2>&1")
-        (output ok kind code) (read-command cmd)]
+        (output ok _kind _code) (read-command cmd)]
     (if ok
         (values (parse-name-status output) nil)
         (values nil (trim output)))))

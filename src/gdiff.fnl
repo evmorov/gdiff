@@ -54,17 +54,11 @@
   (let [path (config-path)
         source (read-file path)]
     (if source
-        (let [(lua-source compile-opts) (fennel.compileString source
-                                                              {:filename path})]
-          (if lua-source
-              (let [(chunk load-error) (load lua-source (.. "@" path))]
-                (if chunk
-                    (let [(ok result) (pcall chunk)]
-                      (if ok
-                          (or result {})
-                          (error (.. "Could not load " path ": " result))))
-                    (error (.. "Could not load " path ": " load-error))))
-              (error (.. "Could not compile " path ": " compile-opts))))
+        (let [(ok result) (pcall fennel.eval source
+                                 {:filename path :allowedGlobals []})]
+          (if ok
+              (or result {})
+              (error (.. "Could not load " path ": " result))))
         {})))
 
 (fn editor-command [config]
@@ -85,32 +79,28 @@
   (io.stderr:write "Example: gdiff main...HEAD\n"))
 
 (fn split-tabs [line]
-  (let [parts []]
-    (each [part (string.gmatch line "([^\t]+)")]
-      (table.insert parts part))
-    parts))
+  (icollect [part (string.gmatch line "([^\t]+)")]
+    part))
 
-(fn entry [status path old-path]
+(fn entry [status path ?old-path]
   {:status status
    :kind (status:sub 1 1)
    :path path
-   :old_path old-path
+   :old_path ?old-path
    :reviewed false})
 
 (fn parse-name-status [text]
-  (let [entries []]
-    (each [line (string.gmatch (or text "") "[^\r\n]+")]
-      (let [parts (split-tabs line)
-            status (. parts 1)
-            kind (and status (status:sub 1 1))]
-        (case kind
-          "A" (table.insert entries (entry status (. parts 2) nil))
-          "M" (table.insert entries (entry status (. parts 2) nil))
-          "D" (table.insert entries (entry status (. parts 2) nil))
-          "R" (table.insert entries (entry status (. parts 3) (. parts 2)))
-          "C" (table.insert entries (entry status (. parts 3) (. parts 2)))
-          _ nil)))
-    entries))
+  (icollect [line (string.gmatch (or text "") "[^\r\n]+")]
+    (let [parts (split-tabs line)
+          status (. parts 1)
+          kind (and status (status:sub 1 1))]
+      (case kind
+        "A" (entry status (. parts 2))
+        "M" (entry status (. parts 2))
+        "D" (entry status (. parts 2))
+        "R" (entry status (. parts 3) (. parts 2))
+        "C" (entry status (. parts 3) (. parts 2))
+        _ nil))))
 
 (fn diff-entries [revision]
   (let [cmd (.. "git diff --name-status --find-renames --find-copies "
@@ -156,11 +146,8 @@
       entry.path))
 
 (fn reviewed-count [entries]
-  (var count 0)
-  (each [_ entry (ipairs entries)]
-    (when entry.reviewed
-      (set count (+ count 1))))
-  count)
+  (accumulate [count 0 _ entry (ipairs entries)]
+    (if entry.reviewed (+ count 1) count)))
 
 (fn clamp [n low high]
   (math.max low (math.min high n)))

@@ -89,23 +89,28 @@
    :old_path ?old-path
    :reviewed false})
 
+(fn entry-from-name-status-line [line]
+  (let [parts (split-tabs line)
+        status (. parts 1)
+        kind (and status (status:sub 1 1))]
+    (case kind
+      "A" (entry status (. parts 2))
+      "M" (entry status (. parts 2))
+      "D" (entry status (. parts 2))
+      "R" (entry status (. parts 3) (. parts 2))
+      "C" (entry status (. parts 3) (. parts 2))
+      _ nil)))
+
 (fn parse-name-status [text]
   (icollect [line (string.gmatch (or text "") "[^\r\n]+")]
-    (let [parts (split-tabs line)
-          status (. parts 1)
-          kind (and status (status:sub 1 1))]
-      (case kind
-        "A" (entry status (. parts 2))
-        "M" (entry status (. parts 2))
-        "D" (entry status (. parts 2))
-        "R" (entry status (. parts 3) (. parts 2))
-        "C" (entry status (. parts 3) (. parts 2))
-        _ nil))))
+    (entry-from-name-status-line line)))
+
+(fn diff-command [revision]
+  (.. "git diff --name-status --find-renames --find-copies "
+      (shell-quote revision) " 2>&1"))
 
 (fn diff-entries [revision]
-  (let [cmd (.. "git diff --name-status --find-renames --find-copies "
-                (shell-quote revision) " 2>&1")
-        (output ok _kind _code) (read-command cmd)]
+  (let [(output ok _kind _code) (read-command (diff-command revision))]
     (if ok
         (values (parse-name-status output) nil)
         (values nil (trim output)))))
@@ -152,53 +157,80 @@
 (fn clamp [n low high]
   (math.max low (math.min high n)))
 
+(fn plural-s [n]
+  (if (= n 1) "" "s"))
+
+(fn viewport [selected count rows]
+  (let [usable (math.max 1 (- rows 3))
+        top (clamp (- selected (math.floor (/ usable 2))) 1
+                   (math.max 1 (- count usable -1)))
+        bottom (math.min count (+ top usable -1))]
+    (values top bottom)))
+
+(fn header-line [state count]
+  (let [reviewed (reviewed-count state.entries)]
+    (.. "gdiff " state.revision " | " count " file" (plural-s count) " | "
+        reviewed "/" count " reviewed" " | space check | enter/o open | q quit")))
+
+(fn row-prefix [selected?]
+  (if selected? "> " "  "))
+
+(fn row-text [entry selected? cols]
+  (truncate (.. (row-prefix selected?) (reviewed-text entry) " "
+                (status-text entry) " " (display-path entry)) cols))
+
+(fn write-row [line selected?]
+  (if selected?
+      (io.write (color :reverse line) ESC "[0m" NL)
+      (io.write line NL)))
+
+(fn draw-header [state count cols]
+  (io.write ESC "[2J" ESC "[H")
+  (io.write (header-line state count) NL)
+  (io.write (color :dim (string.rep "-" cols)) NL))
+
+(fn draw-rows [entries selected top bottom cols]
+  (for [i top bottom]
+    (let [entry (. entries i)
+          selected? (= i selected)
+          line (row-text entry selected? cols)]
+      (write-row line selected?))))
+
 (fn draw [state]
   (let [entries state.entries
         selected state.selected
         count (length entries)
-        reviewed (reviewed-count entries)
         (rows cols) (terminal-size)
-        usable (math.max 1 (- rows 3))
-        top (clamp (- selected (math.floor (/ usable 2))) 1
-                   (math.max 1 (- count usable -1)))
-        bottom (math.min count (+ top usable -1))]
-    (io.write ESC "[2J" ESC "[H")
-    (io.write (.. "gdiff " state.revision " | " count " file"
-                  (if (= count 1) "" "s") " | " reviewed "/" count " reviewed"
-                  " | space check | enter/o open | q quit" NL))
-    (io.write (color :dim (string.rep "-" cols)) NL)
-    (for [i top bottom]
-      (let [entry (. entries i)
-            prefix (if (= i selected) "> " "  ")
-            line (truncate (.. prefix (reviewed-text entry) " "
-                               (status-text entry) " " (display-path entry))
-                           cols)]
-        (if (= i selected)
-            (io.write (color :reverse line) ESC "[0m" NL)
-            (io.write line NL))))
+        (top bottom) (viewport selected count rows)]
+    (draw-header state count cols)
+    (draw-rows entries selected top bottom cols)
     (io.flush)))
+
+(fn escape-key []
+  (let [a (io.read 1)
+        b (io.read 1)]
+    (case (.. (or a "") (or b ""))
+      "[A" :up
+      "[B" :down
+      _ :escape)))
+
+(fn char-key [c]
+  (case c
+    "k" :up
+    "j" :down
+    "o" :open
+    " " :toggle-reviewed
+    "\r" :open
+    "\n" :open
+    "q" :quit
+    "\3" :quit
+    _ c))
 
 (fn read-key []
   (let [c (io.read 1)]
-    (if (not c)
-        :quit
-        (= c ESC)
-        (let [a (io.read 1)
-              b (io.read 1)]
-          (case (.. (or a "") (or b ""))
-            "[A" :up
-            "[B" :down
-            _ :escape))
-        (case c
-          "k" :up
-          "j" :down
-          "o" :open
-          " " :toggle-reviewed
-          "\r" :open
-          "\n" :open
-          "q" :quit
-          "\3" :quit
-          _ c))))
+    (if (not c) :quit
+        (= c ESC) (escape-key)
+        (char-key c))))
 
 (fn saved-stty []
   (trim (read-command "stty -g 2>/dev/null")))
@@ -222,38 +254,57 @@
     (os.execute cmd))
   (raw-terminal stty-state))
 
+(fn move-selection [state delta]
+  (let [entries state.entries]
+    (set state.selected (clamp (+ state.selected delta) 1 (length entries)))))
+
+(fn toggle-reviewed [state]
+  (let [entry (. state.entries state.selected)]
+    (set entry.reviewed (not entry.reviewed))
+    (move-selection state 1)))
+
+(fn handle-key [state config stty-state key]
+  (case key
+    :up (do
+          (move-selection state -1)
+          true)
+    :down (do
+            (move-selection state 1)
+            true)
+    :open (do
+            (run-editor config (. state.entries state.selected) stty-state)
+            true)
+    :toggle-reviewed (do
+                       (toggle-reviewed state)
+                       true)
+    :quit false
+    _ true))
+
+(fn picker-loop [state config stty-state]
+  (var running true)
+  (while running
+    (draw state)
+    (set running (handle-key state config stty-state (read-key)))))
+
 (fn picker [revision entries config]
   (let [state {:revision revision :entries entries :selected 1}
         stty-state (saved-stty)]
     (raw-terminal stty-state)
-    (let [(ok err) (pcall (fn []
-                            (var running true)
-                            (while running
-                              (draw state)
-                              (case (read-key)
-                                :up (set state.selected
-                                         (clamp (- state.selected 1) 1
-                                                (length entries)))
-                                :down (set state.selected
-                                           (clamp (+ state.selected 1) 1
-                                                  (length entries)))
-                                :open (run-editor config
-                                                  (. entries state.selected)
-                                                  stty-state)
-                                :toggle-reviewed (let [entry (. entries
-                                                                state.selected)]
-                                                   (set entry.reviewed
-                                                        (not entry.reviewed))
-                                                   (set state.selected
-                                                        (clamp (+ state.selected
-                                                                  1)
-                                                               1
-                                                               (length entries))))
-                                :quit (set running false)
-                                _ nil))))]
+    (let [(ok err) (pcall picker-loop state config stty-state)]
       (restore-terminal stty-state)
       (when (not ok)
         (error err)))))
+
+(fn exit-with-error [message]
+  (io.stderr:write message "\n")
+  (os.exit 1))
+
+(fn run [revision]
+  (let [config (load-config)
+        (entries err) (diff-entries revision)]
+    (if err (exit-with-error err)
+        (= (length entries) 0) (print "No changed files.")
+        (picker revision entries config))))
 
 (fn main [argv]
   (let [revision (. argv 1)]
@@ -261,14 +312,6 @@
         (do
           (usage)
           (os.exit 1))
-        (let [config (load-config)
-              (entries err) (diff-entries revision)]
-          (if err
-              (do
-                (io.stderr:write err "\n")
-                (os.exit 1))
-              (if (= (length entries) 0)
-                  (print "No changed files.")
-                  (picker revision entries config)))))))
+        (run revision))))
 
 (main arg)

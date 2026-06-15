@@ -134,6 +134,10 @@
   (.. "git diff --name-status --find-renames --find-copies "
       (shell-quote revision) " 2>&1"))
 
+(fn diff-preview-command [revision entry]
+  (.. "git diff --no-ext-diff --color=never --find-renames --find-copies "
+      (shell-quote revision) " -- " (shell-quote entry.path) " 2>&1"))
+
 (fn diff-entries [revision]
   (let [(output ok _kind _code) (read-command (diff-command revision))]
     (if ok
@@ -161,6 +165,55 @@
   (if (or (= entry.kind "R") (= entry.kind "C"))
       (.. entry.path " <- " entry.old_path)
       entry.path))
+
+(fn preview-key [revision entry]
+  (.. revision "\0" entry.status "\0" (or entry.old_path "") "\0" entry.path))
+
+(fn preview-line-color [line]
+  (let [first (line:sub 1 1)]
+    (if (or (line:match "^diff ") (line:match "^index ")
+            (line:match "^%-%-%- ") (line:match "^%+%+%+ "))
+        :dim
+        (= first "+")
+        :added
+        (= first "-")
+        :deleted
+        (= first "@")
+        :renamed
+        nil)))
+
+(fn color-preview-line [line]
+  (let [line (or line "")
+        color (preview-line-color line)]
+    (if color
+        (tui.color color line)
+        line)))
+
+(fn preview-lines-from-output [output]
+  (let [lines (icollect [line (string.gmatch (or output "") "[^\r\n]+")]
+                (color-preview-line line))]
+    (if (> (length lines) 0)
+        lines
+        [(tui.color :dim "No preview for this file.")])))
+
+(fn selected-entry [state]
+  (. state.entries state.selected))
+
+(fn preview-lines [state]
+  (let [entry (selected-entry state)]
+    (if (not entry)
+        [(tui.color :dim "No file selected.")]
+        (let [key (preview-key state.revision entry)
+              cached (. state.preview_cache key)]
+          (if cached
+              cached
+              (let [(output ok _kind _code) (read-command (diff-preview-command state.revision
+                                                                                entry))
+                    lines (if ok
+                              (preview-lines-from-output output)
+                              [(tui.color :deleted (trim output))])]
+                (tset state.preview_cache key lines)
+                lines))))))
 
 (fn reviewed-count [entries]
   (accumulate [count 0 _ entry (ipairs entries)]
@@ -206,6 +259,7 @@
   (let [count (length state.entries)]
     {:header (header-line state count)
      :rows (visible-rows state rows)
+     :preview (preview-lines state)
      :notice state.notice}))
 
 (fn event-key [key]
@@ -252,9 +306,6 @@
         (set state.selected 1)
         (set state.selected (clamp (+ state.selected delta) 1 (length entries))))))
 
-(fn selected-entry [state]
-  (. state.entries state.selected))
-
 (fn set-notice [state action path]
   (set state.notice (.. action ": " path)))
 
@@ -293,6 +344,7 @@
         (entries err) (diff-entries state.revision)]
     (when (not err)
       (set state.entries (apply-reviewed entries reviewed))
+      (set state.preview_cache {})
       (move-selection state 0))))
 
 (fn open-selected [state config]
@@ -334,6 +386,7 @@
   (let [state {:revision revision
                :entries entries
                :selected 1
+               :preview_cache {}
                :pending-key nil}]
     (tui.run-loop state view #(handle-key $1 config $2))))
 

@@ -19,6 +19,34 @@
       (.. (. colors name) text colors.reset)
       text))
 
+(fn reset-code []
+  (if (color?) colors.reset ""))
+
+(fn ansi-sequence-end [s i]
+  (var j (+ i 2))
+  (var done? false)
+  (while (and (not done?) (<= j (length s)))
+    (let [byte (string.byte s j)]
+      (if (and byte (>= byte 64) (<= byte 126))
+          (set done? true)
+          (set j (+ j 1)))))
+  (if done? j i))
+
+(fn ansi-sequence? [s i]
+  (and (= (s:sub i i) ESC) (= (s:sub (+ i 1) (+ i 1)) "[")))
+
+(fn visible-length [s]
+  (let [s (tostring (or s ""))]
+    (var i 1)
+    (var len 0)
+    (while (<= i (length s))
+      (if (ansi-sequence? s i)
+          (set i (+ (ansi-sequence-end s i) 1))
+          (do
+            (set len (+ len 1))
+            (set i (+ i 1)))))
+    len))
+
 (fn trim [s]
   (let [s (or s "")]
     (or (s:match "^%s*(.-)%s*$") "")))
@@ -38,25 +66,75 @@
 
 (fn truncate [s width]
   (let [s (tostring (or s ""))]
-    (if (<= (length s) width)
+    (if (<= (visible-length s) width)
         s
-        (if (> width 1)
-            (.. (s:sub 1 (- width 1)) "...")
-            ""))))
+        (let [suffix (if (> width 3) "..." "")
+              limit (- width (length suffix))]
+          (var i 1)
+          (var visible 0)
+          (var out "")
+          (while (and (< visible limit) (<= i (length s)))
+            (if (ansi-sequence? s i)
+                (let [last (ansi-sequence-end s i)]
+                  (set out (.. out (s:sub i last)))
+                  (set i (+ last 1)))
+                (do
+                  (set out (.. out (s:sub i i)))
+                  (set visible (+ visible 1))
+                  (set i (+ i 1)))))
+          (.. out suffix (reset-code))))))
 
-(fn write-row [line selected?]
+(fn cursor [row col]
+  (io.write ESC "[" row ";" col "H"))
+
+(fn write-row [line selected? ?newline]
   (if selected?
-      (io.write (color :reverse line) ESC "[0m" NL)
-      (io.write line NL)))
+      (io.write (color :reverse line) ESC "[0m")
+      (io.write line))
+  (when ?newline
+    (io.write NL)))
 
 (fn draw-header [view cols]
   (io.write ESC "[2J" ESC "[H")
-  (io.write view.header NL)
+  (io.write (truncate view.header cols) NL)
   (io.write (color :dim (string.rep "-" cols)) NL))
 
 (fn draw-rows [rows cols]
   (each [_ row (ipairs rows)]
-    (write-row (truncate row.text cols) row.selected?)))
+    (write-row (truncate row.text cols) row.selected? true)))
+
+(fn split-widths [cols]
+  (let [left-cols (math.max 1 (math.floor (/ (- cols 1) 2)))
+        right-cols (math.max 1 (- cols left-cols 1))
+        divider-col (+ left-cols 1)]
+    (values left-cols right-cols divider-col)))
+
+(fn draw-split-row [screen-row
+                    left-row
+                    right-line
+                    left-cols
+                    right-cols
+                    divider-col]
+  (cursor screen-row 1)
+  (when left-row
+    (write-row (truncate left-row.text left-cols) left-row.selected?))
+  (cursor screen-row divider-col)
+  (io.write (color :dim "|"))
+  (cursor screen-row (+ divider-col 1))
+  (when right-line
+    (io.write (truncate right-line right-cols))))
+
+(fn draw-split-rows [rows preview screen-rows cols]
+  (let [(left-cols right-cols divider-col) (split-widths cols)]
+    (for [i 1 screen-rows]
+      (draw-split-row (+ i 2) (. rows i) (. preview i) left-cols right-cols
+                      divider-col))))
+
+(fn draw-content [view rows cols]
+  (let [screen-rows (math.max 1 (- rows 3))]
+    (if view.preview
+        (draw-split-rows view.rows view.preview screen-rows cols)
+        (draw-rows view.rows cols))))
 
 (fn draw-notice [notice rows cols]
   (when notice
@@ -67,7 +145,7 @@
   (let [(rows cols) (terminal-size)]
     (local view (view-fn state rows cols))
     (draw-header view cols)
-    (draw-rows view.rows cols)
+    (draw-content view rows cols)
     (draw-notice view.notice rows cols)
     (io.flush)))
 

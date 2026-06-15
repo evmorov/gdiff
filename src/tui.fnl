@@ -104,7 +104,7 @@
     (write-row (truncate row.text cols) row.selected? true)))
 
 (fn split-widths [cols]
-  (let [left-cols (math.max 1 (math.floor (/ (- cols 1) 2)))
+  (let [left-cols (math.max 1 (math.floor (* (- cols 1) 0.4)))
         right-cols (math.max 1 (- cols left-cols 1))
         divider-col (+ left-cols 1)]
     (values left-cols right-cols divider-col)))

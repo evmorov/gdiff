@@ -37,6 +37,9 @@
     (if (and ok (> (length filter) 0))
         filter)))
 
+(fn preview-context []
+  {:diff-filter (diff-filter)})
+
 (fn preview-command [revision entry color]
   (.. "git diff --no-ext-diff --color=" color " --find-renames --find-copies "
       (sys.shell-quote revision) " -- " (sys.shell-quote entry.path)))
@@ -54,8 +57,8 @@
         (values (parse-name-status output) nil)
         (values nil (sys.trim output)))))
 
-(fn preview-output [revision entry]
-  (let [filter (diff-filter)]
+(fn preview-output [context revision entry]
+  (let [filter context.diff-filter]
     (if filter
         (let [(output ok _kind _code) (sys.read-command (filtered-preview-command revision
                                                                                   entry
@@ -75,4 +78,4 @@
         (sys.trim output)
         (or (os.getenv "PWD") "."))))
 
-{: diff-entries : preview-output : repo-root}
+{: diff-entries : preview-context : preview-output : repo-root}

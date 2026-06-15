@@ -14,6 +14,25 @@
         (table.concat parts " "))
       (.. editor " " (sys.shell-quote path))))
 
+(fn editor-program [editor]
+  (let [program (if (= (type editor) "table")
+                    (. editor 1)
+                    (string.match (tostring editor) "^%s*(%S+)"))]
+    (or (and program (program:match "([^/]+)$")) "")))
+
+(fn gui-editor? [editor]
+  (let [program (editor-program editor)]
+    (or (= program "idea") (= program "code") (= program "cursor")
+        (= program "subl") (= program "mate") (= program "open"))))
+
+(fn detached-editor? [config editor]
+  (if (not (= config.detached nil))
+      config.detached
+      (gui-editor? editor)))
+
+(fn run-detached [cmd]
+  (os.execute (.. cmd " >/dev/null 2>&1 &")))
+
 (fn usage []
   (io.stderr:write "Usage: gdiff [--editor <command>] <branch-or-revision-range>\n")
   (io.stderr:write "Example: gdiff --editor nvim main...HEAD\n"))
@@ -130,7 +149,8 @@
               cached (. state.preview_cache key)]
           (if cached
               cached
-              (let [(output ok filtered?) (git.preview-output state.revision
+              (let [(output ok filtered?) (git.preview-output state.preview_context
+                                                              state.revision
                                                               entry)
                     lines (if ok
                               (preview-lines-from-output output filtered?)
@@ -247,10 +267,11 @@
         (values nil key))))
 
 (fn run-editor [config entry stty-state]
-  (tui.suspend stty-state (fn []
-                            (let [editor (config-store.editor-command config)
-                                  cmd (command-for-editor editor entry.path)]
-                              (os.execute cmd)))))
+  (let [editor (config-store.editor-command config)
+        cmd (command-for-editor editor entry.path)]
+    (if (detached-editor? config editor)
+        (run-detached cmd)
+        (tui.suspend stty-state #(os.execute cmd)))))
 
 (fn copy-text [text]
   (let [f (io.popen "pbcopy" "w")]
@@ -376,6 +397,7 @@
                :preview_scroll 0
                :preview_rows 1
                :preview_cache {}
+               :preview_context (git.preview-context)
                :review_store review-store
                :review_scope review-scope
                :sync (sync.new-state)

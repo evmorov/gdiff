@@ -256,7 +256,12 @@
                                 :toggle-reviewed (let [entry (. entries
                                                                 state.selected)]
                                                    (set entry.reviewed
-                                                        (not entry.reviewed)))
+                                                        (not entry.reviewed))
+                                                   (set state.selected
+                                                        (clamp (+ state.selected
+                                                                  1)
+                                                               1
+                                                               (length entries))))
                                 :quit (set running false)
                                 _ nil))))]
       (restore-terminal stty-state)

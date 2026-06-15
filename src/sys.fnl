@@ -30,9 +30,26 @@
           true)
         false)))
 
+(fn remove-file [path]
+  (os.remove path))
+
+(fn background-command [cmd]
+  (os.execute (.. cmd " >/dev/null 2>&1 &")))
+
+(fn temp-path []
+  (os.tmpname))
+
 (fn ensure-dir [path]
   (let [(ok _kind _code) (os.execute (.. "mkdir -p " (shell-quote path)
                                          " 2>/dev/null"))]
     ok))
 
-{: ensure-dir : read-command : read-file : shell-quote : trim : write-file}
+{: background-command
+ : ensure-dir
+ : read-command
+ : read-file
+ : remove-file
+ : shell-quote
+ : temp-path
+ : trim
+ : write-file}

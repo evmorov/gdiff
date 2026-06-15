@@ -1,6 +1,7 @@
 (local config-store (require :config))
 (local git (require :git))
 (local reviews (require :reviews))
+(local sync (require :sync))
 (local sys (require :sys))
 (local tui (require :tui))
 
@@ -215,6 +216,7 @@
     {:header (header-line state count)
      :rows (visible-rows state rows)
      :preview (visible-preview-lines state rows)
+     :warning (sync.warning state.sync)
      :notice state.notice}))
 
 (fn event-key [key]
@@ -223,6 +225,7 @@
     :down :down
     :enter :open
     :quit :quit
+    :tick :tick
     "k" :up
     "j" :down
     "o" :open
@@ -319,7 +322,8 @@
       (set state.preview_cache {})
       (reset-preview-scroll state)
       (move-selection state 0)
-      (persist-reviewed state))))
+      (persist-reviewed state)
+      (sync.start state.sync))))
 
 (fn open-selected [state config]
   (let [entry (selected-entry state)]
@@ -353,10 +357,12 @@
     :bottom (continue-after #(jump-bottom state))
     :refresh (continue-after #(refresh-state state))
     :copy-path (continue-after #(copy-selected-path state))
+    :tick (continue-after #nil)
     :quit false
     _ true))
 
 (fn handle-key [state config raw-key]
+  (sync.update state.sync)
   (let [(pending-key key) (next-key state.pending-key raw-key)]
     (set state.pending-key pending-key)
     (if key
@@ -372,7 +378,9 @@
                :preview_cache {}
                :review_store review-store
                :review_scope review-scope
+               :sync (sync.new-state)
                :pending-key nil}]
+    (sync.start state.sync)
     (tui.run-loop state view #(handle-key $1 config $2))))
 
 (fn exit-with-error [message]

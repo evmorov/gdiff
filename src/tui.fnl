@@ -141,12 +141,22 @@
     (io.write ESC "[" rows ";1H")
     (io.write (color :notice (truncate notice cols)))))
 
+(fn draw-warning [warning rows cols]
+  (when warning
+    (io.write ESC "[" rows ";1H")
+    (io.write colors.deleted (truncate warning cols) colors.reset)))
+
+(fn draw-footer [view rows cols]
+  (if view.warning
+      (draw-warning view.warning rows cols)
+      (draw-notice view.notice rows cols)))
+
 (fn draw [view-fn state]
   (let [(rows cols) (terminal-size)]
     (local view (view-fn state rows cols))
     (draw-header view cols)
     (draw-content view rows cols)
-    (draw-notice view.notice rows cols)
+    (draw-footer view rows cols)
     (io.flush)))
 
 (fn escape-key []
@@ -159,7 +169,7 @@
 
 (fn read-key []
   (let [c (io.read 1)]
-    (if (not c) :quit
+    (if (not c) :tick
         (= c ESC) (escape-key)
         (= c "\r") :enter
         (= c "\n") :enter
@@ -170,7 +180,7 @@
   (trim (read-command "stty -g 2>/dev/null")))
 
 (fn raw-terminal [stty-state]
-  (os.execute "stty raw -echo 2>/dev/null")
+  (os.execute "stty raw -echo min 0 time 10 2>/dev/null")
   (io.write ESC "[?1049h" ESC "[?25l")
   (io.flush)
   stty-state)

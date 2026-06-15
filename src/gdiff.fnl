@@ -215,7 +215,7 @@
   (let [reviewed (reviewed-count state.entries)]
     (.. "gdiff " state.revision " | " count " file" (plural-s count) " | "
         reviewed "/" count " reviewed"
-        " | space check | a check+next | enter/o open | q quit")))
+        " | r refresh | space check | a check+next | enter/o open | q quit")))
 
 (fn row-prefix [selected?]
   (if selected? "> " "  "))
@@ -266,6 +266,7 @@
     "o" :open
     " " :toggle-reviewed
     "a" :toggle-reviewed-and-advance
+    "r" :refresh
     "G" :bottom
     "\r" :open
     "\n" :open
@@ -303,11 +304,17 @@
 
 (fn move-selection [state delta]
   (let [entries state.entries]
-    (set state.selected (clamp (+ state.selected delta) 1 (length entries)))))
+    (if (= (length entries) 0)
+        (set state.selected 1)
+        (set state.selected (clamp (+ state.selected delta) 1 (length entries))))))
+
+(fn selected-entry [state]
+  (. state.entries state.selected))
 
 (fn toggle-reviewed [state]
-  (let [entry (. state.entries state.selected)]
-    (set entry.reviewed (not entry.reviewed))))
+  (let [entry (selected-entry state)]
+    (when entry
+      (set entry.reviewed (not entry.reviewed)))))
 
 (fn toggle-reviewed-and-advance [state]
   (toggle-reviewed state)
@@ -319,6 +326,24 @@
 (fn jump-bottom [state]
   (set state.selected (length state.entries)))
 
+(fn reviewed-paths [entries]
+  (collect [_ entry (ipairs entries)]
+    (if entry.reviewed
+        (values entry.path true))))
+
+(fn apply-reviewed [entries reviewed]
+  (each [_ entry (ipairs entries)]
+    (when (. reviewed entry.path)
+      (set entry.reviewed true)))
+  entries)
+
+(fn refresh-state [state]
+  (let [reviewed (reviewed-paths state.entries)
+        (entries err) (diff-entries state.revision)]
+    (when (not err)
+      (set state.entries (apply-reviewed entries reviewed))
+      (move-selection state 0))))
+
 (fn handle-key [state config stty-state key]
   (case key
     :up (do
@@ -328,7 +353,9 @@
             (move-selection state 1)
             true)
     :open (do
-            (run-editor config (. state.entries state.selected) stty-state)
+            (let [entry (selected-entry state)]
+              (when entry
+                (run-editor config entry stty-state)))
             true)
     :toggle-reviewed (do
                        (toggle-reviewed state)
@@ -342,6 +369,9 @@
     :bottom (do
               (jump-bottom state)
               true)
+    :refresh (do
+               (refresh-state state)
+               true)
     :quit false
     _ true))
 

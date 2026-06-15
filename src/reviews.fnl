@@ -1,36 +1,5 @@
 (local fennel (require :fennel))
-
-(fn shell-quote [s]
-  (let [escaped (string.gsub (tostring s) "'" "'\\''")]
-    (.. "'" escaped "'")))
-
-(fn read-command [cmd]
-  (let [f (io.popen cmd "r")]
-    (if f
-        (let [output (f:read "*a")
-              (ok kind code) (f:close)]
-          (values output ok kind code))
-        (values "" false "open" 1))))
-
-(fn trim [s]
-  (let [s (or s "")]
-    (or (s:match "^%s*(.-)%s*$") "")))
-
-(fn read-file [path]
-  (let [f (io.open path "r")]
-    (when f
-      (let [contents (f:read "*a")]
-        (f:close)
-        contents))))
-
-(fn write-file [path contents]
-  (let [f (io.open path "w")]
-    (if f
-        (do
-          (f:write contents)
-          (f:close)
-          true)
-        false)))
+(local sys (require :sys))
 
 (fn state-dir []
   (let [xdg (os.getenv "XDG_STATE_HOME")
@@ -56,7 +25,7 @@
 
 (fn load-store []
   (let [path (state-path)
-        source (read-file path)]
+        source (sys.read-file path)]
     (if source
         (let [(ok result) (pcall fennel.eval source
                                  {:filename path :allowedGlobals []})]
@@ -65,20 +34,9 @@
               (empty-store)))
         (empty-store))))
 
-(fn ensure-dir [path]
-  (let [(ok _kind _code) (os.execute (.. "mkdir -p " (shell-quote path)
-                                         " 2>/dev/null"))]
-    ok))
-
 (fn save-store [store]
-  (and (ensure-dir (state-dir))
-       (write-file (state-path) (fennel.view (normalize-store store)))))
-
-(fn repo-root []
-  (let [(output ok _kind _code) (read-command "git rev-parse --show-toplevel 2>/dev/null")]
-    (if ok
-        (trim output)
-        (or (os.getenv "PWD") "."))))
+  (and (sys.ensure-dir (state-dir))
+       (sys.write-file (state-path) (fennel.view (normalize-store store)))))
 
 (fn scope [root revision]
   (.. root "\31" revision))
@@ -110,11 +68,4 @@
       (set entry.reviewed true)))
   entries)
 
-{: apply
- : load-store
- : marks
- : paths
- : persist
- : repo-root
- : scope
- : state-path}
+{: apply : load-store : marks : paths : persist : scope : state-path}

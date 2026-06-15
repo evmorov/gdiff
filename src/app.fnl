@@ -1,31 +1,17 @@
-(local config (require :config))
+(local config-store (require :config))
+(local git (require :git))
 (local reviews (require :reviews))
+(local sys (require :sys))
 (local tui (require :tui))
-
-(fn shell-quote [s]
-  (let [escaped (string.gsub (tostring s) "'" "'\\''")]
-    (.. "'" escaped "'")))
-
-(fn read-command [cmd]
-  (let [f (io.popen cmd "r")]
-    (if f
-        (let [output (f:read "*a")
-              (ok kind code) (f:close)]
-          (values output ok kind code))
-        (values "" false "open" 1))))
-
-(fn trim [s]
-  (let [s (or s "")]
-    (or (s:match "^%s*(.-)%s*$") "")))
 
 (fn command-for-editor [editor path]
   (if (= (type editor) "table")
       (let [parts []]
         (each [_ part (ipairs editor)]
-          (table.insert parts (shell-quote part)))
-        (table.insert parts (shell-quote path))
+          (table.insert parts (sys.shell-quote part)))
+        (table.insert parts (sys.shell-quote path))
         (table.concat parts " "))
-      (.. editor " " (shell-quote path))))
+      (.. editor " " (sys.shell-quote path))))
 
 (fn usage []
   (io.stderr:write "Usage: gdiff [--editor <command>] <branch-or-revision-range>\n")
@@ -75,47 +61,6 @@
               (set i (+ i 1))))))
     (values options revision err)))
 
-(fn split-tabs [line]
-  (icollect [part (string.gmatch line "([^\t]+)")]
-    part))
-
-(fn entry [status path ?old-path]
-  {:status status
-   :kind (status:sub 1 1)
-   :path path
-   :old_path ?old-path
-   :reviewed false})
-
-(fn entry-from-name-status-line [line]
-  (let [parts (split-tabs line)
-        status (. parts 1)
-        kind (and status (status:sub 1 1))]
-    (case kind
-      "A" (entry status (. parts 2))
-      "M" (entry status (. parts 2))
-      "D" (entry status (. parts 2))
-      "R" (entry status (. parts 3) (. parts 2))
-      "C" (entry status (. parts 3) (. parts 2))
-      _ nil)))
-
-(fn parse-name-status [text]
-  (icollect [line (string.gmatch (or text "") "[^\r\n]+")]
-    (entry-from-name-status-line line)))
-
-(fn diff-command [revision]
-  (.. "git diff --name-status --find-renames --find-copies "
-      (shell-quote revision) " 2>&1"))
-
-(fn diff-preview-command [revision entry]
-  (.. "git diff --no-ext-diff --color=never --find-renames --find-copies "
-      (shell-quote revision) " -- " (shell-quote entry.path) " 2>&1"))
-
-(fn diff-entries [revision]
-  (let [(output ok _kind _code) (read-command (diff-command revision))]
-    (if ok
-        (values (parse-name-status output) nil)
-        (values nil (trim output)))))
-
 (fn status-color [entry]
   (case entry.kind
     "A" :added
@@ -161,15 +106,20 @@
         (tui.color color line)
         line)))
 
-(fn preview-lines-from-output [output]
+(fn preview-lines-from-output [output filtered?]
   (let [lines (icollect [line (string.gmatch (or output "") "[^\r\n]+")]
-                (color-preview-line line))]
+                (if filtered?
+                    line
+                    (color-preview-line line)))]
     (if (> (length lines) 0)
         lines
         [(tui.color :dim "No preview for this file.")])))
 
 (fn selected-entry [state]
   (. state.entries state.selected))
+
+(fn clamp [n low high]
+  (math.max low (math.min high n)))
 
 (fn preview-lines [state]
   (let [entry (selected-entry state)]
@@ -179,20 +129,53 @@
               cached (. state.preview_cache key)]
           (if cached
               cached
-              (let [(output ok _kind _code) (read-command (diff-preview-command state.revision
-                                                                                entry))
+              (let [(output ok filtered?) (git.preview-output state.revision
+                                                              entry)
                     lines (if ok
-                              (preview-lines-from-output output)
-                              [(tui.color :deleted (trim output))])]
+                              (preview-lines-from-output output filtered?)
+                              [(tui.color :deleted (sys.trim output))])]
                 (tset state.preview_cache key lines)
                 lines))))))
+
+(fn preview-row-count [state]
+  (or state.preview_rows 1))
+
+(fn preview-page-step [state]
+  (math.max 1 (math.floor (/ (preview-row-count state) 2))))
+
+(fn max-preview-scroll [state]
+  (math.max 0 (- (length (preview-lines state)) (preview-row-count state))))
+
+(fn set-preview-scroll [state scroll]
+  (set state.preview_scroll (clamp scroll 0 (max-preview-scroll state))))
+
+(fn reset-preview-scroll [state]
+  (set state.preview_scroll 0))
+
+(fn scroll-preview [state delta]
+  (set-preview-scroll state (+ (or state.preview_scroll 0) delta)))
+
+(fn scroll-preview-page-down [state]
+  (scroll-preview state (preview-page-step state)))
+
+(fn scroll-preview-page-up [state]
+  (scroll-preview state (- (preview-page-step state))))
+
+(fn visible-preview-lines [state rows]
+  (let [usable (math.max 1 (- rows 3))
+        lines (preview-lines state)]
+    (set state.preview_rows usable)
+    (set-preview-scroll state (or state.preview_scroll 0))
+    (let [first (+ state.preview_scroll 1)
+          last (math.min (length lines) (+ state.preview_scroll usable))]
+      (if (> first last)
+          []
+          (fcollect [i first last]
+            (. lines i))))))
 
 (fn reviewed-count [entries]
   (accumulate [count 0 _ entry (ipairs entries)]
     (if entry.reviewed (+ count 1) count)))
-
-(fn clamp [n low high]
-  (math.max low (math.min high n)))
 
 (fn plural-s [n]
   (if (= n 1) "" "s"))
@@ -208,7 +191,7 @@
   (let [reviewed (reviewed-count state.entries)]
     (.. "gdiff " state.revision " | " count " file" (plural-s count) " | "
         reviewed "/" count " reviewed"
-        " | r refresh | y copy | space check | a check+next | A all/none | enter/o open | q quit")))
+        " | C-d/C-u preview | r refresh | y copy | space check | a check+next | A all/none | enter/o open | q quit")))
 
 (fn row-prefix [selected?]
   (if selected? "> " "  "))
@@ -231,7 +214,7 @@
   (let [count (length state.entries)]
     {:header (header-line state count)
      :rows (visible-rows state rows)
-     :preview (preview-lines state)
+     :preview (visible-preview-lines state rows)
      :notice state.notice}))
 
 (fn event-key [key]
@@ -246,6 +229,8 @@
     " " :toggle-reviewed
     "a" :toggle-reviewed-and-advance
     "A" :toggle-all-reviewed
+    "\4" :preview-down
+    "\21" :preview-up
     "r" :refresh
     "y" :copy-path
     "G" :bottom
@@ -260,7 +245,7 @@
 
 (fn run-editor [config entry stty-state]
   (tui.suspend stty-state (fn []
-                            (let [editor (config.editor-command config)
+                            (let [editor (config-store.editor-command config)
                                   cmd (command-for-editor editor entry.path)]
                               (os.execute cmd)))))
 
@@ -274,10 +259,13 @@
         false)))
 
 (fn move-selection [state delta]
-  (let [entries state.entries]
+  (let [entries state.entries
+        before state.selected]
     (if (= (length entries) 0)
         (set state.selected 1)
-        (set state.selected (clamp (+ state.selected delta) 1 (length entries))))))
+        (set state.selected (clamp (+ state.selected delta) 1 (length entries))))
+    (when (not (= before state.selected))
+      (reset-preview-scroll state))))
 
 (fn set-notice [state action path]
   (set state.notice (.. action ": " path)))
@@ -313,17 +301,23 @@
     (persist-reviewed state)))
 
 (fn jump-top [state]
-  (set state.selected 1))
+  (when (not (= state.selected 1))
+    (set state.selected 1)
+    (reset-preview-scroll state)))
 
 (fn jump-bottom [state]
-  (set state.selected (length state.entries)))
+  (let [last (length state.entries)]
+    (when (not (= state.selected last))
+      (set state.selected last)
+      (reset-preview-scroll state))))
 
 (fn refresh-state [state]
   (let [reviewed (reviews.paths state.entries)
-        (entries err) (diff-entries state.revision)]
+        (entries err) (git.diff-entries state.revision)]
     (when (not err)
       (set state.entries (reviews.apply entries reviewed))
       (set state.preview_cache {})
+      (reset-preview-scroll state)
       (move-selection state 0)
       (persist-reviewed state))))
 
@@ -340,33 +334,41 @@
           (set-notice state "Copied" entry.path)
           (set-notice state "Copy failed" entry.path)))))
 
-(fn keep-going [f]
+(fn continue-after [f]
   (f)
   true)
+
+(fn handle-action [state config key]
+  (case key
+    :up (continue-after #(move-selection state -1))
+    :down (continue-after #(move-selection state 1))
+    :open (continue-after #(open-selected state config))
+    :toggle-reviewed (continue-after #(toggle-reviewed state))
+    :toggle-reviewed-and-advance
+    (continue-after #(toggle-reviewed-and-advance state))
+    :toggle-all-reviewed (continue-after #(toggle-all-reviewed state))
+    :preview-down (continue-after #(scroll-preview-page-down state))
+    :preview-up (continue-after #(scroll-preview-page-up state))
+    :top (continue-after #(jump-top state))
+    :bottom (continue-after #(jump-bottom state))
+    :refresh (continue-after #(refresh-state state))
+    :copy-path (continue-after #(copy-selected-path state))
+    :quit false
+    _ true))
 
 (fn handle-key [state config raw-key]
   (let [(pending-key key) (next-key state.pending-key raw-key)]
     (set state.pending-key pending-key)
     (if key
-        (case key
-          :up (keep-going #(move-selection state -1))
-          :down (keep-going #(move-selection state 1))
-          :open (keep-going #(open-selected state config))
-          :toggle-reviewed (keep-going #(toggle-reviewed state))
-          :toggle-reviewed-and-advance (keep-going #(toggle-reviewed-and-advance state))
-          :toggle-all-reviewed (keep-going #(toggle-all-reviewed state))
-          :top (keep-going #(jump-top state))
-          :bottom (keep-going #(jump-bottom state))
-          :refresh (keep-going #(refresh-state state))
-          :copy-path (keep-going #(copy-selected-path state))
-          :quit false
-          _ true)
+        (handle-action state config key)
         true)))
 
 (fn picker [revision entries config review-store review-scope]
   (let [state {:revision revision
                :entries entries
                :selected 1
+               :preview_scroll 0
+               :preview_rows 1
                :preview_cache {}
                :review_store review-store
                :review_scope review-scope
@@ -383,12 +385,12 @@
   config)
 
 (fn run [revision options]
-  (let [config (merge-options (config.load) options)
-        (entries err) (diff-entries revision)]
+  (let [config (merge-options (config-store.load) options)
+        (entries err) (git.diff-entries revision)]
     (if err (exit-with-error err) (= (length entries) 0)
         (print "No changed files.")
         (let [review-store (reviews.load-store)
-              scope (reviews.scope (reviews.repo-root) revision)
+              scope (reviews.scope (git.repo-root) revision)
               entries (reviews.apply entries (reviews.marks review-store scope))]
           (picker revision entries config review-store scope)))))
 

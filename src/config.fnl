@@ -1,11 +1,5 @@
 (local fennel (require :fennel))
-
-(fn read-file [path]
-  (let [f (io.open path "r")]
-    (when f
-      (let [contents (f:read "*a")]
-        (f:close)
-        contents))))
+(local sys (require :sys))
 
 (fn path []
   (let [xdg (os.getenv "XDG_CONFIG_HOME")
@@ -16,7 +10,7 @@
 
 (fn load []
   (let [path (path)
-        source (read-file path)]
+        source (sys.read-file path)]
     (if source
         (let [(ok result) (pcall fennel.eval source
                                  {:filename path :allowedGlobals []})]

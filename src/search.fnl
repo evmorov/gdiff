@@ -55,8 +55,10 @@
              (.. "/" search.query " | " count " match" (if (= count 1) "" "es")
                  " | enter finish | esc clear")
              (and (> (length search.query) 0)
-                  (.. "Search: " search.index "/" count " " search.query
-                      " | n/N next/prev | q clear"))))))
+                  (if (= count 0)
+                      (.. "No matches for '" search.query "'")
+                      (.. "Search: " search.index "/" count " " search.query
+                          " | n/N next/prev | q clear")))))))
 
 (fn apply-match [state found]
   (when found

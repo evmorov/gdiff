@@ -236,7 +236,7 @@
   (let [reviewed (reviewed-count state.entries)]
     (.. "gdiff " state.revision " | " count " file" (plural-s count) " | "
         reviewed "/" count " reviewed"
-        " | r refresh | y copy | space check | a check+next | enter/o open | q quit")))
+        " | r refresh | y copy | space check | a check+next | A all/none | enter/o open | q quit")))
 
 (fn row-prefix [selected?]
   (if selected? "> " "  "))
@@ -273,6 +273,7 @@
     "o" :open
     " " :toggle-reviewed
     "a" :toggle-reviewed-and-advance
+    "A" :toggle-all-reviewed
     "r" :refresh
     "y" :copy-path
     "G" :bottom
@@ -321,6 +322,16 @@
 (fn toggle-reviewed-and-advance [state]
   (toggle-reviewed state)
   (move-selection state 1))
+
+(fn toggle-all-reviewed [state]
+  (let [entries state.entries
+        reviewed (reviewed-count entries)
+        review? (< reviewed (length entries))]
+    (each [_ entry (ipairs entries)]
+      (set entry.reviewed review?))
+    (set state.notice (if review?
+                          "Marked all reviewed"
+                          "Unmarked all reviewed"))))
 
 (fn jump-top [state]
   (set state.selected 1))
@@ -374,6 +385,7 @@
           :open (keep-going #(open-selected state config))
           :toggle-reviewed (keep-going #(toggle-reviewed state))
           :toggle-reviewed-and-advance (keep-going #(toggle-reviewed-and-advance state))
+          :toggle-all-reviewed (keep-going #(toggle-all-reviewed state))
           :top (keep-going #(jump-top state))
           :bottom (keep-going #(jump-bottom state))
           :refresh (keep-going #(refresh-state state))

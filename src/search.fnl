@@ -53,7 +53,7 @@
     (set state.notice
          (if search.active?
              (.. "/" search.query " | " count " match" (if (= count 1) "" "es")
-                 " | enter finish | q clear")
+                 " | enter finish | esc clear")
              (and (> (length search.query) 0)
                   (.. "Search: " search.index "/" count " " search.query
                       " | n/N next/prev | q clear"))))))
@@ -125,9 +125,9 @@
     :enter (do
              (finish state)
              true)
-    "q" (do
-          (clear state)
-          true)
+    :escape (do
+              (clear state)
+              true)
     "\127" (do
              (backspace state)
              true)
@@ -158,7 +158,7 @@
     (if search.active?
         (let [count (length search.matches)]
           (.. "/" search.query " | " count " match" (if (= count 1) "" "es")
-              " | enter finish | q clear"))
+              " | enter finish | esc clear"))
         nil)))
 
 {: active?

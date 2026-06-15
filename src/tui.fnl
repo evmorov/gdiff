@@ -10,8 +10,8 @@
                :renamed "\27[36m"
                :copied "\27[35m"
                :notice "\27[90m"
-               :search "\27[1;4m"
-               :search-end "\27[22;24m"})
+               :search "\27[30;43m"
+               :search-end "\27[39;49m"})
 
 (fn color? []
   (not (os.getenv "NO_COLOR")))
@@ -229,10 +229,13 @@
       "[B" :down
       _ :escape)))
 
-(fn read-key []
+(fn search-input? [state]
+  (and state state.search state.search.active?))
+
+(fn read-key [state]
   (let [c (io.read 1)]
     (if (not c) :tick
-        (= c ESC) (escape-key)
+        (= c ESC) (if (search-input? state) :escape (escape-key))
         (= c "\r") :enter
         (= c "\n") :enter
         (= c "\3") :quit
@@ -266,7 +269,7 @@
                             (var running true)
                             (while running
                               (draw view state)
-                              (set running (handle-key state (read-key))))))]
+                              (set running (handle-key state (read-key state))))))]
       (restore-terminal stty-state)
       (when (not ok)
         (error err)))))

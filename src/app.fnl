@@ -108,9 +108,8 @@
   (if selected? "> " "  "))
 
 (fn row-text [state entry selected?]
-  (search.highlight state
-                    (.. (row-prefix selected?) (reviewed-text entry) " "
-                        (status-text entry) " " (display-path entry))))
+  (.. (row-prefix selected?) (reviewed-text entry) " " (status-text entry) " "
+      (search.highlight state (display-path entry))))
 
 (fn visible-rows [state rows]
   (let [entries state.entries

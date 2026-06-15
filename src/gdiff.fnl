@@ -75,8 +75,52 @@
       (.. editor " " (shell-quote path))))
 
 (fn usage []
-  (io.stderr:write "Usage: gdiff <branch-or-revision-range>\n")
-  (io.stderr:write "Example: gdiff main...HEAD\n"))
+  (io.stderr:write "Usage: gdiff [--editor <command>] <branch-or-revision-range>\n")
+  (io.stderr:write "Example: gdiff --editor nvim main...HEAD\n"))
+
+(fn next-arg [argv i option]
+  (let [value (. argv (+ i 1))]
+    (if value
+        (values value (+ i 2) nil)
+        (values nil i (.. option " needs a value")))))
+
+(fn parse-editor-option [arg]
+  (arg:match "^%-%-editor=(.+)$"))
+
+(fn parse-revision [revision arg]
+  (if revision
+      (values revision (.. "Unexpected extra argument: " arg))
+      (values arg nil)))
+
+(fn parse-args [argv]
+  (let [options {}]
+    (var revision nil)
+    (var err nil)
+    (var i 1)
+    (while (and (not err) (<= i (length argv)))
+      (let [arg (. argv i)
+            editor (parse-editor-option arg)]
+        (if editor
+            (do
+              (set options.editor editor)
+              (set i (+ i 1)))
+            (or (= arg "--editor") (= arg "-e"))
+            (let [(value next-i next-err) (next-arg argv i arg)]
+              (set options.editor value)
+              (set i next-i)
+              (set err next-err))
+            (= arg "--")
+            (let [(value next-i next-err) (next-arg argv i "--")]
+              (set revision value)
+              (set i next-i)
+              (set err next-err))
+            (and (= (arg:sub 1 1) "-") (not (= arg "-")))
+            (set err (.. "Unknown option: " arg))
+            (let [(next-revision next-err) (parse-revision revision arg)]
+              (set revision next-revision)
+              (set err next-err)
+              (set i (+ i 1))))))
+    (values options revision err)))
 
 (fn split-tabs [line]
   (icollect [part (string.gmatch line "([^\t]+)")]
@@ -299,19 +343,27 @@
   (io.stderr:write message "\n")
   (os.exit 1))
 
-(fn run [revision]
-  (let [config (load-config)
+(fn merge-options [config options]
+  (when options.editor
+    (set config.editor options.editor))
+  config)
+
+(fn run [revision options]
+  (let [config (merge-options (load-config) options)
         (entries err) (diff-entries revision)]
     (if err (exit-with-error err)
         (= (length entries) 0) (print "No changed files.")
         (picker revision entries config))))
 
 (fn main [argv]
-  (let [revision (. argv 1)]
-    (if (not revision)
-        (do
-          (usage)
-          (os.exit 1))
-        (run revision))))
+  (let [(options revision err) (parse-args argv)]
+    (if err (do
+              (io.stderr:write err "\n")
+              (usage)
+              (os.exit 1))
+        (not revision) (do
+                         (usage)
+                         (os.exit 1))
+        (run revision options))))
 
 (main arg)

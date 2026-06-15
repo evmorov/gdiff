@@ -6,6 +6,13 @@ A tiny Fennel TUI for opening files changed by a Git revision range.
 bin/gdiff main...HEAD
 ```
 
+Use a different editor for one run:
+
+```sh
+bin/gdiff --editor nvim main...HEAD
+bin/gdiff -e "idea --wait" main...HEAD
+```
+
 Keys:
 
 - `j` / down arrow: next file
@@ -40,3 +47,6 @@ Or a list, which is safer when the executable path contains spaces:
 
 If there is no config, `gdiff` uses `GDIFF_EDITOR`, then `VISUAL`, then
 `EDITOR`, then `vim`.
+
+An inline `--editor` / `-e` option overrides the config and environment for
+that run.

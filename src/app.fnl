@@ -1,37 +1,11 @@
+(local clipboard (require :clipboard))
 (local config-store (require :config))
+(local editor (require :editor))
 (local git (require :git))
+(local preview (require :preview))
 (local reviews (require :reviews))
 (local sync (require :sync))
-(local sys (require :sys))
 (local tui (require :tui))
-
-(fn command-for-editor [editor path]
-  (if (= (type editor) "table")
-      (let [parts []]
-        (each [_ part (ipairs editor)]
-          (table.insert parts (sys.shell-quote part)))
-        (table.insert parts (sys.shell-quote path))
-        (table.concat parts " "))
-      (.. editor " " (sys.shell-quote path))))
-
-(fn editor-program [editor]
-  (let [program (if (= (type editor) "table")
-                    (. editor 1)
-                    (string.match (tostring editor) "^%s*(%S+)"))]
-    (or (and program (program:match "([^/]+)$")) "")))
-
-(fn gui-editor? [editor]
-  (let [program (editor-program editor)]
-    (or (= program "idea") (= program "code") (= program "cursor")
-        (= program "subl") (= program "mate") (= program "open"))))
-
-(fn detached-editor? [config editor]
-  (if (not (= config.detached nil))
-      config.detached
-      (gui-editor? editor)))
-
-(fn run-detached [cmd]
-  (os.execute (.. cmd " >/dev/null 2>&1 &")))
 
 (fn usage []
   (io.stderr:write "Usage: gdiff [--editor <command>] <branch-or-revision-range>\n")
@@ -103,96 +77,11 @@
       (.. entry.path " <- " entry.old_path)
       entry.path))
 
-(fn preview-key [revision entry]
-  (.. revision "\0" entry.status "\0" (or entry.old_path "") "\0" entry.path))
-
-(fn preview-line-color [line]
-  (let [first (line:sub 1 1)]
-    (if (or (line:match "^diff ") (line:match "^index ")
-            (line:match "^%-%-%- ") (line:match "^%+%+%+ "))
-        :dim
-        (= first "+")
-        :added
-        (= first "-")
-        :deleted
-        (= first "@")
-        :renamed
-        nil)))
-
-(fn color-preview-line [line]
-  (let [line (or line "")
-        color (preview-line-color line)]
-    (if color
-        (tui.color color line)
-        line)))
-
-(fn preview-lines-from-output [output filtered?]
-  (let [lines (icollect [line (string.gmatch (or output "") "[^\r\n]+")]
-                (if filtered?
-                    line
-                    (color-preview-line line)))]
-    (if (> (length lines) 0)
-        lines
-        [(tui.color :dim "No preview for this file.")])))
-
 (fn selected-entry [state]
   (. state.entries state.selected))
 
 (fn clamp [n low high]
   (math.max low (math.min high n)))
-
-(fn preview-lines [state]
-  (let [entry (selected-entry state)]
-    (if (not entry)
-        [(tui.color :dim "No file selected.")]
-        (let [key (preview-key state.revision entry)
-              cached (. state.preview_cache key)]
-          (if cached
-              cached
-              (let [(output ok filtered?) (git.preview-output state.preview_context
-                                                              state.revision
-                                                              entry)
-                    lines (if ok
-                              (preview-lines-from-output output filtered?)
-                              [(tui.color :deleted (sys.trim output))])]
-                (tset state.preview_cache key lines)
-                lines))))))
-
-(fn preview-row-count [state]
-  (or state.preview_rows 1))
-
-(fn preview-page-step [state]
-  (math.max 1 (math.floor (/ (preview-row-count state) 2))))
-
-(fn max-preview-scroll [state]
-  (math.max 0 (- (length (preview-lines state)) (preview-row-count state))))
-
-(fn set-preview-scroll [state scroll]
-  (set state.preview_scroll (clamp scroll 0 (max-preview-scroll state))))
-
-(fn reset-preview-scroll [state]
-  (set state.preview_scroll 0))
-
-(fn scroll-preview [state delta]
-  (set-preview-scroll state (+ (or state.preview_scroll 0) delta)))
-
-(fn scroll-preview-page-down [state]
-  (scroll-preview state (preview-page-step state)))
-
-(fn scroll-preview-page-up [state]
-  (scroll-preview state (- (preview-page-step state))))
-
-(fn visible-preview-lines [state rows]
-  (let [usable (math.max 1 (- rows 3))
-        lines (preview-lines state)]
-    (set state.preview_rows usable)
-    (set-preview-scroll state (or state.preview_scroll 0))
-    (let [first (+ state.preview_scroll 1)
-          last (math.min (length lines) (+ state.preview_scroll usable))]
-      (if (> first last)
-          []
-          (fcollect [i first last]
-            (. lines i))))))
 
 (fn reviewed-count [entries]
   (accumulate [count 0 _ entry (ipairs entries)]
@@ -235,7 +124,7 @@
   (let [count (length state.entries)]
     {:header (header-line state count)
      :rows (visible-rows state rows)
-     :preview (visible-preview-lines state rows)
+     :preview (preview.visible-lines state (selected-entry state) rows)
      :warning (sync.warning state.sync)
      :notice state.notice}))
 
@@ -266,22 +155,6 @@
         (= key "g") (values "g" nil)
         (values nil key))))
 
-(fn run-editor [config entry stty-state]
-  (let [editor (config-store.editor-command config)
-        cmd (command-for-editor editor entry.path)]
-    (if (detached-editor? config editor)
-        (run-detached cmd)
-        (tui.suspend stty-state #(os.execute cmd)))))
-
-(fn copy-text [text]
-  (let [f (io.popen "pbcopy" "w")]
-    (if f
-        (do
-          (f:write text)
-          (let [(ok _kind _code) (f:close)]
-            ok))
-        false)))
-
 (fn move-selection [state delta]
   (let [entries state.entries
         before state.selected]
@@ -289,7 +162,7 @@
         (set state.selected 1)
         (set state.selected (clamp (+ state.selected delta) 1 (length entries))))
     (when (not (= before state.selected))
-      (reset-preview-scroll state))))
+      (preview.reset-scroll state))))
 
 (fn set-notice [state action path]
   (set state.notice (.. action ": " path)))
@@ -327,13 +200,13 @@
 (fn jump-top [state]
   (when (not (= state.selected 1))
     (set state.selected 1)
-    (reset-preview-scroll state)))
+    (preview.reset-scroll state)))
 
 (fn jump-bottom [state]
   (let [last (length state.entries)]
     (when (not (= state.selected last))
       (set state.selected last)
-      (reset-preview-scroll state))))
+      (preview.reset-scroll state))))
 
 (fn refresh-state [state]
   (let [reviewed (reviews.paths state.entries)
@@ -341,7 +214,7 @@
     (when (not err)
       (set state.entries (reviews.apply entries reviewed))
       (set state.preview_cache {})
-      (reset-preview-scroll state)
+      (preview.reset-scroll state)
       (move-selection state 0)
       (persist-reviewed state)
       (sync.start state.sync))))
@@ -350,12 +223,12 @@
   (let [entry (selected-entry state)]
     (when entry
       (set-notice state "Opened" entry.path)
-      (run-editor config entry state.stty-state))))
+      (editor.run config entry state.stty-state))))
 
 (fn copy-selected-path [state]
   (let [entry (selected-entry state)]
     (when entry
-      (if (copy-text entry.path)
+      (if (clipboard.copy entry.path)
           (set-notice state "Copied" entry.path)
           (set-notice state "Copy failed" entry.path)))))
 
@@ -372,8 +245,10 @@
     :toggle-reviewed-and-advance
     (continue-after #(toggle-reviewed-and-advance state))
     :toggle-all-reviewed (continue-after #(toggle-all-reviewed state))
-    :preview-down (continue-after #(scroll-preview-page-down state))
-    :preview-up (continue-after #(scroll-preview-page-up state))
+    :preview-down
+    (continue-after #(preview.scroll-page-down state (selected-entry state)))
+    :preview-up
+    (continue-after #(preview.scroll-page-up state (selected-entry state)))
     :top (continue-after #(jump-top state))
     :bottom (continue-after #(jump-bottom state))
     :refresh (continue-after #(refresh-state state))

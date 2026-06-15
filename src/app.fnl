@@ -100,8 +100,8 @@
 
 (fn header-line [state count]
   (let [reviewed (reviewed-count state.entries)]
-    (.. "gdiff " state.revision " | " count " file" (plural-s count) " | "
-        reviewed "/" count " reviewed"
+    (.. "gdiff " state.revision_label " | " count " file" (plural-s count)
+        " | " reviewed "/" count " reviewed"
         " | / search | C-d/C-u preview | r refresh | y copy | space check | a check+next | A all/none | enter/o open | Ctrl-C quit")))
 
 (fn row-prefix [selected?]
@@ -280,6 +280,7 @@
 
 (fn picker [revision entries config review-store review-scope]
   (let [state {:revision revision
+               :revision_label (git.comparison-label revision)
                :entries entries
                :selected 1
                :preview_scroll 0

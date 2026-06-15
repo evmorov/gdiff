@@ -40,6 +40,20 @@
 (fn preview-context []
   {:diff-filter (diff-filter)})
 
+(fn current-branch []
+  (let [(output ok _kind _code) (sys.read-command "git branch --show-current 2>/dev/null")
+        branch (sys.trim output)]
+    (if (and ok (> (length branch) 0))
+        branch
+        "HEAD")))
+
+(fn comparison-label [revision]
+  (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
+    (if left
+        (.. (if (> (length left) 0) left (current-branch)) "..."
+            (if (> (length right) 0) right (current-branch)))
+        (.. revision "..." (current-branch)))))
+
 (fn preview-command [revision entry color]
   (.. "git diff --no-ext-diff --color=" color " --find-renames --find-copies "
       (sys.shell-quote revision) " -- " (sys.shell-quote entry.path)))
@@ -78,4 +92,8 @@
         (sys.trim output)
         (or (os.getenv "PWD") "."))))
 
-{: diff-entries : preview-context : preview-output : repo-root}
+{: comparison-label
+ : diff-entries
+ : preview-context
+ : preview-output
+ : repo-root}

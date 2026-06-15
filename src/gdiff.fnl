@@ -215,7 +215,7 @@
   (let [reviewed (reviewed-count state.entries)]
     (.. "gdiff " state.revision " | " count " file" (plural-s count) " | "
         reviewed "/" count " reviewed"
-        " | r refresh | space check | a check+next | enter/o open | q quit")))
+        " | r refresh | y copy | space check | a check+next | enter/o open | q quit")))
 
 (fn row-prefix [selected?]
   (if selected? "> " "  "))
@@ -267,6 +267,7 @@
     " " :toggle-reviewed
     "a" :toggle-reviewed-and-advance
     "r" :refresh
+    "y" :copy-path
     "G" :bottom
     "\r" :open
     "\n" :open
@@ -301,6 +302,12 @@
         cmd (command-for-editor editor entry.path)]
     (os.execute cmd))
   (raw-terminal stty-state))
+
+(fn copy-text [text]
+  (let [f (io.popen "pbcopy" "w")]
+    (when f
+      (f:write text)
+      (f:close))))
 
 (fn move-selection [state delta]
   (let [entries state.entries]
@@ -344,6 +351,11 @@
       (set state.entries (apply-reviewed entries reviewed))
       (move-selection state 0))))
 
+(fn copy-selected-path [state]
+  (let [entry (selected-entry state)]
+    (when entry
+      (copy-text entry.path))))
+
 (fn handle-key [state config stty-state key]
   (case key
     :up (do
@@ -372,6 +384,9 @@
     :refresh (do
                (refresh-state state)
                true)
+    :copy-path (do
+                 (copy-selected-path state)
+                 true)
     :quit false
     _ true))
 

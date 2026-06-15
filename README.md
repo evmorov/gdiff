@@ -20,6 +20,7 @@ Keys:
 - `gg`: jump to first file
 - `G`: jump to last file
 - `r`: refresh changed files without losing reviewed marks
+- `y`: copy selected file path
 - `space`: mark selected file as reviewed, or unmark it, without moving
 - `a`: mark selected file as reviewed, or unmark it, then move down
 - `enter` / `o`: open selected file

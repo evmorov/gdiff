@@ -9,7 +9,9 @@
                :deleted "\27[31m"
                :renamed "\27[36m"
                :copied "\27[35m"
-               :notice "\27[90m"})
+               :notice "\27[90m"
+               :search "\27[1;4m"
+               :search-end "\27[22;24m"})
 
 (fn color? []
   (not (os.getenv "NO_COLOR")))
@@ -21,6 +23,12 @@
 
 (fn reset-code []
   (if (color?) colors.reset ""))
+
+(fn search-code []
+  colors.search)
+
+(fn search-end-code []
+  colors.search-end)
 
 (fn ansi-sequence-end [s i]
   (var j (+ i 2))
@@ -46,6 +54,60 @@
             (set len (+ len 1))
             (set i (+ i 1)))))
     len))
+
+(fn strip-ansi [s]
+  (let [s (tostring (or s ""))]
+    (var i 1)
+    (var out "")
+    (while (<= i (length s))
+      (if (ansi-sequence? s i)
+          (set i (+ (ansi-sequence-end s i) 1))
+          (do
+            (set out (.. out (s:sub i i)))
+            (set i (+ i 1)))))
+    out))
+
+(fn match-ranges [plain query]
+  (let [ranges []]
+    (when (> (length query) 0)
+      (var start 1)
+      (var searching? true)
+      (while searching?
+        (let [(first last) (plain:find query start true)]
+          (if first
+              (do
+                (table.insert ranges {:first first :last last})
+                (set start (+ last 1)))
+              (set searching? false)))))
+    ranges))
+
+(fn highlight-matches [s query]
+  (let [s (tostring (or s ""))
+        ranges (match-ranges (strip-ansi s) (or query ""))]
+    (if (= (length ranges) 0)
+        s
+        (let [start-code (search-code)
+              end-code (search-end-code)]
+          (var out "")
+          (var i 1)
+          (var visible 1)
+          (var range-index 1)
+          (while (<= i (length s))
+            (let [range (. ranges range-index)]
+              (when (and range (= visible range.first))
+                (set out (.. out start-code)))
+              (if (ansi-sequence? s i)
+                  (let [last (ansi-sequence-end s i)]
+                    (set out (.. out (s:sub i last)))
+                    (set i (+ last 1)))
+                  (do
+                    (set out (.. out (s:sub i i)))
+                    (when (and range (= visible range.last))
+                      (set out (.. out end-code))
+                      (set range-index (+ range-index 1)))
+                    (set visible (+ visible 1))
+                    (set i (+ i 1))))))
+          out))))
 
 (fn trim [s]
   (let [s (or s "")]
@@ -147,8 +209,8 @@
     (io.write colors.deleted (truncate warning cols) colors.reset)))
 
 (fn draw-footer [view rows cols]
-  (if view.warning
-      (draw-warning view.warning rows cols)
+  (if view.prompt (draw-notice view.prompt rows cols)
+      view.warning (draw-warning view.warning rows cols)
       (draw-notice view.notice rows cols)))
 
 (fn draw [view-fn state]
@@ -209,4 +271,12 @@
       (when (not ok)
         (error err)))))
 
-{: color : draw : read-key : run-loop : suspend : terminal-size : truncate}
+{: color
+ : draw
+ : highlight-matches
+ : read-key
+ : run-loop
+ : strip-ansi
+ : suspend
+ : terminal-size
+ : truncate}

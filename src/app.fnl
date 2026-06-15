@@ -4,6 +4,7 @@
 (local git (require :git))
 (local preview (require :preview))
 (local reviews (require :reviews))
+(local search (require :search))
 (local sync (require :sync))
 (local tui (require :tui))
 
@@ -101,14 +102,15 @@
   (let [reviewed (reviewed-count state.entries)]
     (.. "gdiff " state.revision " | " count " file" (plural-s count) " | "
         reviewed "/" count " reviewed"
-        " | C-d/C-u preview | r refresh | y copy | space check | a check+next | A all/none | enter/o open | q quit")))
+        " | / search | C-d/C-u preview | r refresh | y copy | space check | a check+next | A all/none | enter/o open | Ctrl-C quit")))
 
 (fn row-prefix [selected?]
   (if selected? "> " "  "))
 
-(fn row-text [entry selected?]
-  (.. (row-prefix selected?) (reviewed-text entry) " " (status-text entry) " "
-      (display-path entry)))
+(fn row-text [state entry selected?]
+  (search.highlight state
+                    (.. (row-prefix selected?) (reviewed-text entry) " "
+                        (status-text entry) " " (display-path entry))))
 
 (fn visible-rows [state rows]
   (let [entries state.entries
@@ -118,13 +120,14 @@
     (fcollect [i first-row last-row]
       (let [entry (. entries i)
             selected? (= i selected)]
-        {:text (row-text entry selected?) :selected? selected?}))))
+        {:text (row-text state entry selected?) :selected? selected?}))))
 
 (fn view [state rows _cols]
   (let [count (length state.entries)]
     {:header (header-line state count)
      :rows (visible-rows state rows)
      :preview (preview.visible-lines state (selected-entry state) rows)
+     :prompt (search.status state)
      :warning (sync.warning state.sync)
      :notice state.notice}))
 
@@ -143,10 +146,13 @@
     "A" :toggle-all-reviewed
     "\4" :preview-down
     "\21" :preview-up
+    "/" :search
+    "n" :search-next
+    "N" :search-previous
     "r" :refresh
     "y" :copy-path
     "G" :bottom
-    "q" :quit
+    "q" :clear-search
     _ key))
 
 (fn next-key [?pending-key key]
@@ -249,6 +255,10 @@
     (continue-after #(preview.scroll-page-down state (selected-entry state)))
     :preview-up
     (continue-after #(preview.scroll-page-up state (selected-entry state)))
+    :search (continue-after #(search.start state))
+    :search-next (continue-after #(search.next state))
+    :search-previous (continue-after #(search.previous state))
+    :clear-search (continue-after #(search.clear state))
     :top (continue-after #(jump-top state))
     :bottom (continue-after #(jump-bottom state))
     :refresh (continue-after #(refresh-state state))
@@ -259,11 +269,15 @@
 
 (fn handle-key [state config raw-key]
   (sync.update state.sync)
-  (let [(pending-key key) (next-key state.pending-key raw-key)]
-    (set state.pending-key pending-key)
-    (if key
-        (handle-action state config key)
-        true)))
+  (if (= raw-key :quit)
+      false
+      (search.active? state)
+      (search.handle-input state raw-key)
+      (let [(pending-key key) (next-key state.pending-key raw-key)]
+        (set state.pending-key pending-key)
+        (if key
+            (handle-action state config key)
+            true))))
 
 (fn picker [revision entries config review-store review-scope]
   (let [state {:revision revision
@@ -275,6 +289,7 @@
                :preview_context (git.preview-context)
                :review_store review-store
                :review_scope review-scope
+               :search (search.new-state)
                :sync (sync.new-state)
                :pending-key nil}]
     (sync.start state.sync)

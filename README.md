@@ -17,7 +17,10 @@ Keys:
 
 - `j` / down arrow: next file
 - `k` / up arrow: previous file
-- `space`: mark selected file as reviewed, or unmark it
+- `gg`: jump to first file
+- `G`: jump to last file
+- `space`: mark selected file as reviewed, or unmark it, without moving
+- `a`: mark selected file as reviewed, or unmark it, then move down
 - `enter` / `o`: open selected file
 - `q`: quit
 

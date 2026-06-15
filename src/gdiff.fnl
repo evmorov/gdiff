@@ -214,7 +214,8 @@
 (fn header-line [state count]
   (let [reviewed (reviewed-count state.entries)]
     (.. "gdiff " state.revision " | " count " file" (plural-s count) " | "
-        reviewed "/" count " reviewed" " | space check | enter/o open | q quit")))
+        reviewed "/" count " reviewed"
+        " | space check | a check+next | enter/o open | q quit")))
 
 (fn row-prefix [selected?]
   (if selected? "> " "  "))
@@ -264,6 +265,8 @@
     "j" :down
     "o" :open
     " " :toggle-reviewed
+    "a" :toggle-reviewed-and-advance
+    "G" :bottom
     "\r" :open
     "\n" :open
     "q" :quit
@@ -304,8 +307,17 @@
 
 (fn toggle-reviewed [state]
   (let [entry (. state.entries state.selected)]
-    (set entry.reviewed (not entry.reviewed))
-    (move-selection state 1)))
+    (set entry.reviewed (not entry.reviewed))))
+
+(fn toggle-reviewed-and-advance [state]
+  (toggle-reviewed state)
+  (move-selection state 1))
+
+(fn jump-top [state]
+  (set state.selected 1))
+
+(fn jump-bottom [state]
+  (set state.selected (length state.entries)))
 
 (fn handle-key [state config stty-state key]
   (case key
@@ -321,14 +333,32 @@
     :toggle-reviewed (do
                        (toggle-reviewed state)
                        true)
+    :toggle-reviewed-and-advance (do
+                                   (toggle-reviewed-and-advance state)
+                                   true)
+    :top (do
+           (jump-top state)
+           true)
+    :bottom (do
+              (jump-bottom state)
+              true)
     :quit false
     _ true))
 
+(fn next-key [?pending-key key]
+  (if (and (= ?pending-key "g") (= key "g")) (values nil :top)
+      (= key "g") (values "g" nil)
+      (values nil key)))
+
 (fn picker-loop [state config stty-state]
   (var running true)
+  (var pending-key nil)
   (while running
     (draw state)
-    (set running (handle-key state config stty-state (read-key)))))
+    (let [(next-pending key) (next-key pending-key (read-key))]
+      (set pending-key next-pending)
+      (when key
+        (set running (handle-key state config stty-state key))))))
 
 (fn picker [revision entries config]
   (let [state {:revision revision :entries entries :selected 1}

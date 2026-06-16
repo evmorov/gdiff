@@ -31,6 +31,9 @@
    :key-index {}
    :index-key {}})
 
+(fn active? [state]
+  (and state state.dir))
+
 (fn cleanup [state]
   (when state.dir
     (sys.remove-dir state.dir))
@@ -144,4 +147,4 @@
           (set checks (+ checks 1))))))
   (finish-if-complete state))
 
-{: import-entry : new-state : start : update : worker-command}
+{: active? : import-entry : new-state : start : update : worker-command}

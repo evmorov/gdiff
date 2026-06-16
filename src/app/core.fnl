@@ -52,4 +52,10 @@
                 (os.exit 1))
               (run revision options src-dir))))))
 
-{: handle-key : main : new-state : view}
+{:finish-background-sync-if-complete app-update.finish-background-sync-if-complete
+ :handle-key handle-key
+ :main main
+ :new-state new-state
+ :start-background-sync app-update.start-background-sync
+ :update app-update.update
+ :view view}

@@ -107,7 +107,19 @@
   (preview.lines state (selected-entry state))
   state)
 
+(fn background-work-pending? [state]
+  (or (sync.syncing? state.sync) (preview-warm.active? state.preview_warm)))
+
+(fn start-background-sync [state]
+  (set state.background_syncing? true))
+
+(fn finish-background-sync-if-complete [state]
+  (when (and state.background_syncing? (not (background-work-pending? state)))
+    (set state.background_syncing? false)
+    (set state.sync.synced_at (os.time))))
+
 (fn apply-refresh [state entries reviewed]
+  (start-background-sync state)
   (set state.entries (reviews.apply entries reviewed))
   (preview.reset-scroll state)
   (move-selection state 0)
@@ -143,7 +155,9 @@
         :clear-search search.clear
         :top jump-top
         :bottom jump-bottom
-        :refresh commands.refresh
+        :refresh #(do
+                    (start-background-sync $1)
+                    (commands.refresh))
         :copy-path copy-selected-path
         :open-pr commands.open-linked-pr
         :split-left #(move-split $1 -0.05)
@@ -224,6 +238,7 @@
    :review_scope review-scope
    :search (search.new-state)
    :sync (sync.new-state revision)
+   :background_syncing? false
    :pending-key nil})
 
 (fn handle-key [state config raw-key]
@@ -232,19 +247,23 @@
     (preview-warm.update state.preview_warm state.preview_cache))
   (let [(_ command) (update state config (read-msg state raw-key))]
     (run-command state config command))
+  (finish-background-sync-if-complete state)
   (not state.quit?))
 
 (fn start [state]
+  (start-background-sync state)
   (cache-selected-preview state)
   (run-command state {}
                (commands.batch (commands.warm-preview-cache)
                                (commands.sync-start))))
 
 {: cache-selected-preview
+ : finish-background-sync-if-complete
  : handle-key
  : init
  :new-state init
  : read-msg
  : run-command
+ : start-background-sync
  : start
  : update}

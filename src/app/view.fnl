@@ -64,13 +64,40 @@
                "Ctrl-C quit"]]
     (table.concat items separator)))
 
+(fn synced-minutes [synced-at]
+  (math.max 0 (math.floor (/ (- (os.time) synced-at) 60))))
+
+(fn synced-label [minutes]
+  (.. "Synced: " minutes "m ago"))
+
+(fn syncing-label [minutes]
+  (let [normal (synced-label minutes)
+        syncing "Synced: ..."]
+    (.. syncing
+        (string.rep " " (math.max 0 (- (length normal) (length syncing)))))))
+
+(fn syncing? [state]
+  (or state.background_syncing? (and state.sync (sync.syncing? state.sync))
+      (preview-warm.active? state.preview_warm)))
+
+(fn synced-text [state]
+  (let [synced-at (and state.sync state.sync.synced_at)]
+    (when synced-at
+      (let [minutes (synced-minutes synced-at)]
+        (if (syncing? state)
+            (syncing-label minutes)
+            (synced-label minutes))))))
+
 (fn footer-summary [state count]
   (let [reviewed (reviewed-count state.entries)
         separator (.. " " (tui.color state.theme :muted symbols.line.separator)
-                      " ")]
-    (table.concat [(.. reviewed "/" count " reviewed")
-                   (.. count " file" (plural-s count))]
-                  separator)))
+                      " ")
+        items [(.. reviewed "/" count " reviewed")
+               (.. count " file" (plural-s count))]
+        synced (synced-text state)]
+    (when synced
+      (table.insert items synced))
+    (table.concat items separator)))
 
 (fn row-prefix [state selected?]
   (if selected? (tui.color state.theme :selected-marker "> ") "  "))

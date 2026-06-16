@@ -1,4 +1,5 @@
 (local ansi (require :tui.ansi))
+(local context (require :tui.context))
 (local draw (require :tui.draw))
 (local nodes (require :tui.nodes))
 (local runtime (require :tui.runtime))
@@ -6,6 +7,8 @@
 (local theme (require :tui.theme))
 
 {:color theme.color
+ :context context.new
+ :context-body-rows context.body-rows
  :default-theme theme.default
  :draw draw.draw
  :footer nodes.footer

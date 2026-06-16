@@ -22,6 +22,12 @@
 (fn test-empty-footer-is-nil []
   (faith.= nil (tui.footer :notice nil)))
 
+(fn test-render-context-carries-terminal-shape []
+  (let [ctx (tui.context 10 80)]
+    (faith.= 10 ctx.rows)
+    (faith.= 80 ctx.cols)
+    (faith.= 7 (tui.context-body-rows ctx))))
+
 (fn test-parses-terminal-background-response []
   (faith.= {:r 0 :g 17 :b 255}
            (colors.parse-background-response "\27]11;rgb:0000/1111/ffff\7")))
@@ -63,6 +69,7 @@
 
 {: test-empty-footer-is-nil
  : test-parses-terminal-background-response
+ : test-render-context-carries-terminal-shape
  : test-screen-builds-declarative-view-tree
  : test-search-match-does-not-guess-background
  : test-search-match-uses-derived-background

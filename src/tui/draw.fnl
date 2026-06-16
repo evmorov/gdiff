@@ -1,25 +1,26 @@
 (local ansi (require :tui.ansi))
+(local context (require :tui.context))
 (local nodes (require :tui.nodes))
 (local terminal (require :tui.terminal))
-(local theme-store (require :tui.theme))
+(local theme (require :tui.theme))
 
-(fn write-row [theme line selected? width ?newline]
-  (io.write (if selected? (theme-store.selected-row theme line width) line))
+(fn write-row [ctx line selected? width ?newline]
+  (io.write (if selected? (theme.selected-row ctx.theme line width) line))
   (when ?newline
     (io.write ansi.nl)))
 
-(fn draw-header [theme view cols]
+(fn draw-header [ctx view]
   (io.write ansi.esc "[2J" ansi.esc "[H")
-  (io.write (ansi.truncate view.header cols) ansi.nl)
-  (io.write (theme-store.color theme :muted (string.rep "-" cols)) ansi.nl))
+  (io.write (ansi.truncate view.header ctx.cols) ansi.nl)
+  (io.write (theme.color ctx.theme :muted (string.rep "-" ctx.cols)) ansi.nl))
 
-(fn draw-rows [theme rows cols]
+(fn draw-rows [ctx rows width]
   (each [_ row (ipairs rows)]
-    (write-row theme (ansi.truncate row.text cols) row.selected? cols true)))
+    (write-row ctx (ansi.truncate row.text width) row.selected? width true)))
 
-(fn draw-lines [lines cols]
+(fn draw-lines [lines width]
   (each [_ line (ipairs lines)]
-    (io.write (ansi.truncate line cols) ansi.nl)))
+    (io.write (ansi.truncate line width) ansi.nl)))
 
 (fn split-widths [cols ?ratio]
   (let [ratio (or ?ratio 0.4)
@@ -29,7 +30,7 @@
     (values left-cols right-cols divider-col)))
 
 (fn draw-split-row [screen-row
-                    theme
+                    ctx
                     left-row
                     right-line
                     left-cols
@@ -37,10 +38,10 @@
                     divider-col]
   (terminal.cursor screen-row 1)
   (when left-row
-    (write-row theme (ansi.truncate left-row.text left-cols) left-row.selected?
+    (write-row ctx (ansi.truncate left-row.text left-cols) left-row.selected?
                left-cols))
   (terminal.cursor screen-row divider-col)
-  (io.write (theme-store.color theme :muted "|"))
+  (io.write (theme.color ctx.theme :muted "|"))
   (terminal.cursor screen-row (+ divider-col 1))
   (when right-line
     (io.write (ansi.truncate right-line right-cols))))
@@ -57,54 +58,53 @@
                    view.split_ratio)
       (nodes.list view.rows)))
 
-(fn draw-split-rows [theme node screen-rows cols]
-  (let [(left-cols right-cols divider-col) (split-widths cols node.ratio)
+(fn draw-split-rows [ctx node]
+  (let [(left-cols right-cols divider-col) (split-widths ctx.cols node.ratio)
         rows (list-rows node.left)
         preview (line-rows node.right)]
-    (for [i 1 screen-rows]
-      (draw-split-row (+ i 2) theme (. rows i) (. preview i) left-cols
-                      right-cols divider-col))))
+    (for [i 1 (context.body-rows ctx)]
+      (draw-split-row (+ i 2) ctx (. rows i) (. preview i) left-cols right-cols
+                      divider-col))))
 
-(fn draw-content [theme view rows cols]
-  (let [screen-rows (math.max 1 (- rows 3))
-        body (or view.body (legacy-body view))]
+(fn draw-content [ctx view]
+  (let [body (or view.body (legacy-body view))]
     (case body.type
-      :split (draw-split-rows theme body screen-rows cols)
-      :list (draw-rows theme (list-rows body) cols)
-      :lines (draw-lines (line-rows body) cols)
+      :split (draw-split-rows ctx body)
+      :list (draw-rows ctx (list-rows body) ctx.cols)
+      :lines (draw-lines (line-rows body) ctx.cols)
       _ nil)))
 
-(fn draw-notice [theme notice rows cols]
+(fn draw-notice [ctx notice]
   (when notice
-    (io.write ansi.esc "[" rows ";1H")
-    (io.write (theme-store.color theme :notice (ansi.truncate notice cols)))))
+    (io.write ansi.esc "[" ctx.rows ";1H")
+    (io.write (theme.color ctx.theme :notice (ansi.truncate notice ctx.cols)))))
 
-(fn draw-warning [theme warning rows cols]
+(fn draw-warning [ctx warning]
   (when warning
-    (io.write ansi.esc "[" rows ";1H")
-    (io.write (theme-store.color theme :warning (ansi.truncate warning cols)))))
+    (io.write ansi.esc "[" ctx.rows ";1H")
+    (io.write (theme.color ctx.theme :warning (ansi.truncate warning ctx.cols)))))
 
 (fn legacy-footer [view]
   (if view.prompt (nodes.footer :notice view.prompt)
       view.warning (nodes.footer :warning view.warning)
       (nodes.footer :notice view.notice)))
 
-(fn draw-footer [theme view rows cols]
+(fn draw-footer [ctx view]
   (let [footer-node (or view.footer (legacy-footer view))]
     (when footer-node
       (case footer-node.type
-        :warning (draw-warning theme footer-node.text rows cols)
-        :notice (draw-notice theme footer-node.text rows cols)
-        :prompt (draw-notice theme footer-node.text rows cols)
+        :warning (draw-warning ctx footer-node.text)
+        :notice (draw-notice ctx footer-node.text)
+        :prompt (draw-notice ctx footer-node.text)
         _ nil))))
 
 (fn draw [view-fn state]
   (let [(rows cols) (terminal.terminal-size)
-        theme (or state.theme theme-store.default)]
-    (let [view (view-fn state rows cols)]
-      (draw-header theme view cols)
-      (draw-content theme view rows cols)
-      (draw-footer theme view rows cols)
+        ctx (context.new rows cols state.theme)]
+    (let [view (view-fn state ctx.rows ctx.cols)]
+      (draw-header ctx view)
+      (draw-content ctx view)
+      (draw-footer ctx view)
       (io.flush))))
 
 {: draw : split-widths}

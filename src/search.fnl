@@ -72,6 +72,26 @@
         (apply-match state (. search.matches index))))
     (set-status state)))
 
+(fn next-index-from-selection [state matches]
+  (var index 1)
+  (var found? false)
+  (each [i found (ipairs matches)]
+    (when (and (not found?) (> found.entry state.selected))
+      (set index i)
+      (set found? true)))
+  index)
+
+(fn previous-index-from-selection [state matches]
+  (let [count (length matches)]
+    (var index count)
+    (var found? false)
+    (for [i count 1 -1]
+      (let [found (. matches i)]
+        (when (and found (not found?) (< found.entry state.selected))
+          (set index i)
+          (set found? true))))
+    index))
+
 (fn rebuild [state]
   (let [search (search state)
         matches (collect-matches state search.query)]
@@ -140,11 +160,11 @@
 
 (fn next [state]
   (let [search (search state)]
-    (jump-to state (+ search.index 1))))
+    (jump-to state (next-index-from-selection state search.matches))))
 
 (fn previous [state]
   (let [search (search state)]
-    (jump-to state (- search.index 1))))
+    (jump-to state (previous-index-from-selection state search.matches))))
 
 (fn highlight [state text]
   (if (has-query? state)

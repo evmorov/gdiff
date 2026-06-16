@@ -38,37 +38,43 @@
 (fn resolve-head-script []
   (shell-lines "if [ \"$label\" = HEAD ]; then"
                "branch=$(git branch --show-current 2>/dev/null);"
-               "if [ -z \"$branch\" ]; then printf 'detached\tHEAD\n'; exit 0; fi;"
+               "if [ -z \"$branch\" ]; then printf '%s\\t%s\\n' detached HEAD; exit 0; fi;"
                "label=\"$branch\";" "fi;"))
 
 (fn require-local-branch-script []
   (shell-lines "if ! git show-ref --verify --quiet \"refs/heads/$label\"; then"
-               "printf 'skip\t%s\n' \"$label\"; exit 0;" "fi;"))
+               "printf '%s\\t%s\\n' skip \"$label\"; exit 0;" "fi;"))
 
 (fn load-upstream-script []
   (shell-lines "upstream=$(git rev-parse --abbrev-ref \"$label@{upstream}\" 2>/dev/null);"
-               "if [ -z \"$upstream\" ]; then printf 'no-upstream\t%s\n' \"$label\"; exit 0; fi;"))
+               "if [ -z \"$upstream\" ]; then"
+               "printf '%s\\t%s\\n' no-upstream \"$label\"; exit 0; fi;"))
 
 (fn load-ahead-behind-script []
   (shell-lines "counts=$(git rev-list --left-right --count \"$upstream...$label\" 2>/dev/null);"
-               "if [ -z \"$counts\" ]; then printf 'error\t%s\n' \"$label\"; exit 0; fi;"
+               "if [ -z \"$counts\" ]; then printf '%s\\t%s\\n' error \"$label\"; exit 0; fi;"
                "set -- $counts;"))
 
 (fn print-branch-status-script []
-  "printf 'branch\t%s\t%s\t%s\t%s\n' \"$label\" \"$upstream\" \"$2\" \"$1\";")
+  "printf '%s\\t%s\\t%s\\t%s\\t%s\\n' branch \"$label\" \"$upstream\" \"$2\" \"$1\";")
 
 (fn target-status-command [target]
   (shell-block (assign-label target) (resolve-head-script)
                (require-local-branch-script) (load-upstream-script)
                (load-ahead-behind-script) (print-branch-status-script)))
 
+(fn fetch-command []
+  (shell-lines "GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=true SSH_ASKPASS=true"
+               "GIT_SSH_COMMAND='ssh -o BatchMode=yes'"
+               "nice -n 20 git fetch --quiet --prune </dev/null >/dev/null 2>&1"))
+
 (fn branch-status-command [path targets]
-  (let [tmp (.. path ".tmp")]
-    (.. "( nice -n 20 git fetch --quiet --prune 2>/dev/null; "
-        (table.concat (icollect [_ target (ipairs targets)]
-                        (target-status-command target))
-                      " ") " ) > " (sys.shell-quote tmp) " && mv "
-        (sys.shell-quote tmp) " " (sys.shell-quote path))))
+  (let [tmp (.. path ".tmp")
+        commands (icollect [_ target (ipairs targets)]
+                   (target-status-command target))]
+    (table.insert commands 1 (fetch-command))
+    (.. "( " (table.concat commands "; ") " ) > " (sys.shell-quote tmp)
+        " && mv " (sys.shell-quote tmp) " " (sys.shell-quote path))))
 
 (fn spawn-branch-status [path targets]
   (sys.remove-file path)
@@ -182,6 +188,8 @@
 {: new-state
  : request
  : start
+ : branch-status-command
+ : fetch-command
  : target-status-command
  : targets-for-revision
  : update

@@ -36,8 +36,11 @@
 (fn remove-dir [path]
   (os.execute (.. "rm -rf " (shell-quote path) " 2>/dev/null")))
 
+(fn background-shell-command [cmd]
+  (.. "( " cmd " ) </dev/null >/dev/null 2>&1 &"))
+
 (fn background-command [cmd]
-  (os.execute (.. cmd " >/dev/null 2>&1 &")))
+  (os.execute (background-shell-command cmd)))
 
 (fn temp-path []
   (os.tmpname))
@@ -48,6 +51,7 @@
     ok))
 
 {: background-command
+ : background-shell-command
  : ensure-dir
  : read-command
  : read-file

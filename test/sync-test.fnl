@@ -32,7 +32,33 @@
     (faith.match "refs/heads/%$label" command)
     (faith.match "%$label@{upstream}" command)
     (faith.match "rev%-list %-%-left%-right %-%-count" command)
-    (faith.match "printf 'branch" command)))
+    (faith.match "printf '%%s\\t%%s\\t%%s\\t%%s\\t%%s\\n' branch" command)
+    (faith.= nil (command:find "\n" 1 true))
+    (faith.= nil (command:find "\t" 1 true))))
+
+(fn test-fetch-command-is-quiet-and-noninteractive []
+  (let [command (sync.fetch-command)]
+    (faith.match "GIT_TERMINAL_PROMPT=0" command)
+    (faith.match "GIT_ASKPASS=true" command)
+    (faith.match "BatchMode=yes" command)
+    (faith.match "git fetch %-%-quiet %-%-prune" command)
+    (faith.match "</dev/null >/dev/null 2>&1" command)))
+
+(fn test-branch-status-command-separates-target-subshells []
+  (let [command (sync.branch-status-command "/tmp/gdiff-sync-status"
+                                            ["main" "proxysql"])]
+    (faith.match "%)%; %(" command)
+    (faith.= nil (command:find ") (" 1 true))
+    (faith.= nil (command:find "\n" 1 true))
+    (faith.= nil (command:find "\t" 1 true))))
+
+(fn test-background-branch-status-command-is-shell-parseable []
+  (let [command (sync.branch-status-command "/tmp/gdiff-sync-status"
+                                            ["main" "proxysql"])
+        background (sys.background-shell-command command)
+        (ok _kind _code) (os.execute (.. "sh -n -c "
+                                         (sys.shell-quote background)))]
+    (faith.is ok)))
 
 (fn test-warns-when-branch-is-behind-upstream []
   (t.reset-workdir)
@@ -60,7 +86,10 @@
              (sync.warning state))))
 
 {: test-clean-branch-has-no-warning
+ : test-background-branch-status-command-is-shell-parseable
+ : test-branch-status-command-separates-target-subshells
  : test-combines-revision-side-warnings
+ : test-fetch-command-is-quiet-and-noninteractive
  : test-keeps-old-current-branch-status-parser
  : test-range-revision-checks-both-sides
  : test-single-revision-checks-current-branch

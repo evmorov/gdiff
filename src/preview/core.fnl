@@ -50,6 +50,21 @@
               (tset state.preview_cache key lines)
               lines)))))
 
+(fn warming? [state]
+  (and state.preview_warm state.preview_warm.dir))
+
+(fn loading-lines []
+  [(tui.color :dim "Loading preview...")])
+
+(fn nonblocking-lines [state entry]
+  (if (not entry)
+      [(tui.color :dim "No file selected.")]
+      (let [key (preview-key.for-entry state.revision entry)
+            cached (. state.preview_cache key)]
+        (if cached cached
+            (warming? state) (loading-lines)
+            (lines state entry)))))
+
 (fn row-count [state]
   (or state.preview_rows 1))
 
@@ -61,6 +76,10 @@
 
 (fn set-scroll [state entry scroll]
   (set state.preview_scroll (clamp scroll 0 (max-scroll state entry))))
+
+(fn set-scroll-for-lines [state lines scroll]
+  (let [max-scroll (math.max 0 (- (length lines) (row-count state)))]
+    (set state.preview_scroll (clamp scroll 0 max-scroll))))
 
 (fn reset-scroll [state]
   (set state.preview_scroll 0))
@@ -74,11 +93,13 @@
 (fn scroll-page-up [state entry]
   (scroll state entry (- (page-step state))))
 
-(fn visible-lines [state entry rows]
+(fn visible-lines [state entry rows ?opts]
   (let [usable (math.max 1 (- rows 3))
-        lines (lines state entry)]
+        lines (if (and ?opts ?opts.nonblocking?)
+                  (nonblocking-lines state entry)
+                  (lines state entry))]
     (set state.preview_rows usable)
-    (set-scroll state entry (or state.preview_scroll 0))
+    (set-scroll-for-lines state lines (or state.preview_scroll 0))
     (let [first (+ state.preview_scroll 1)
           last (math.min (length lines) (+ state.preview_scroll usable))]
       (if (> first last)
@@ -86,4 +107,9 @@
           (fcollect [i first last]
             (. lines i))))))
 
-{: lines : reset-scroll : scroll-page-down : scroll-page-up : visible-lines}
+{: lines
+ : nonblocking-lines
+ : reset-scroll
+ : scroll-page-down
+ : scroll-page-up
+ : visible-lines}

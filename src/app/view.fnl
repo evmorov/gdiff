@@ -83,11 +83,13 @@
         (tui.footer :notice state.notice))))
 
 (fn view [state rows _cols]
-  (preview-warm.update state.preview_warm state.preview_cache)
   (let [count (length state.entries)
+        selected-entry (selected-entry state)
+        _ (preview-warm.import-entry state.preview_warm state.preview_cache
+                                     state.revision selected-entry)
         left (tui.list (visible-rows state rows))
-        right (tui.lines (preview.visible-lines state (selected-entry state)
-                                                rows))
+        right (tui.lines (preview.visible-lines state selected-entry rows
+                                                {:nonblocking? true}))
         body (tui.split left right state.split_ratio)]
     (tui.screen (header-line state count) body (footer state))))
 

@@ -1,6 +1,10 @@
 (local app (require :app.core))
 (local faith (require :faith))
+(local fennel (require :fennel))
+(local preview-key (require :preview.key))
 (local reviews (require :storage.reviews))
+(local sys (require :platform.core))
+(local t (require :test-helper))
 (local tui (require :tui.core))
 
 (fn entry [status path ?old-path]
@@ -58,7 +62,33 @@
     (faith.= false state.sync.running?)
     (faith.almost= 0.45 state.split_ratio 0.0001)))
 
+(fn test-view-imports-only-selected-ready-preview-during-cursor-redraw []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (let [selected (entry "M" "a.rb")
+        warmed (entry "M" "b.rb")
+        state (state [selected warmed])
+        selected-key (preview-key.for-entry "HEAD" selected)
+        warmed-key (preview-key.for-entry "HEAD" warmed)]
+    (faith.is (sys.write-file "warm/1.fnl" (fennel.view ["selected"])))
+    (faith.is (sys.write-file "warm/2.fnl" (fennel.view ["warmed"])))
+    (set state.preview_warm
+         {:dir "warm"
+          :count 2
+          :remaining 2
+          :scan-index 1
+          :imported {}
+          :key-index {selected-key 1 warmed-key 2}
+          :index-key {1 selected-key 2 warmed-key}})
+    (let [view (app.view state 10 100)]
+      (faith.= "selected" (t.text view.body.right.lines)))
+    (faith.= ["selected"] (. state.preview_cache selected-key))
+    (faith.= nil (. state.preview_cache warmed-key))
+    (app.handle-key state {} :tick)
+    (faith.= ["warmed"] (. state.preview_cache warmed-key))))
+
 {: test-a-toggles-all-reviewed-and-A-does-nothing
  : test-search-next-is-relative-to-current-cursor
  : test-split-key-does-not-start-due-sync
+ : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

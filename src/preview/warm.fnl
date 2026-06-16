@@ -113,6 +113,19 @@
       (mark-imported state index)
       true)))
 
+(fn finish-if-complete [state]
+  (when (and state.dir (<= (remaining state) 0))
+    (cleanup state)))
+
+(fn import-entry [state cache revision entry]
+  (when (and state.dir entry)
+    (let [key (preview-key.for-entry revision entry)
+          index (. state.key-index key)]
+      (when index
+        (let [imported? (import-output state cache index)]
+          (finish-if-complete state)
+          imported?)))))
+
 (fn update [state cache]
   (when state.dir
     (when (not state.imported)
@@ -129,7 +142,6 @@
               (set imports (+ imports 1))))
           (advance-scan-index state)
           (set checks (+ checks 1))))))
-  (when (and state.dir (<= (remaining state) 0))
-    (cleanup state)))
+  (finish-if-complete state))
 
-{: new-state : start : update : worker-command}
+{: import-entry : new-state : start : update : worker-command}

@@ -1,7 +1,9 @@
 (local faith (require :faith))
 (local git (require :git.core))
 (local preview (require :preview.core))
+(local preview-key (require :preview.key))
 (local t (require :test-helper))
+(local update (require :app.update))
 
 (fn setup-repo []
   (t.init-repo)
@@ -29,4 +31,51 @@
     (t.write-file "app.rb" "changed after cache\n")
     (faith.= lines (preview.visible-lines state (. entries 1) 20))))
 
-{: test-visible-lines-renders-and-caches-real-git-preview}
+(fn test-visible-lines-can-be-nonblocking-while-warming []
+  (let [entry {:status "M" :kind "M" :path "missing.rb" :reviewed false}
+        state {:preview_cache {}
+               :preview_context {}
+               :preview_rows 1
+               :preview_scroll 0
+               :preview_warm {:dir "warm"}
+               :revision "HEAD"}
+        lines (preview.visible-lines state entry 20 {:nonblocking? true})]
+    (faith.= "Loading preview..." (t.text lines))
+    (faith.= 0 (t.count-pairs state.preview_cache))))
+
+(fn test-startup-can-cache-selected-preview-before-rendering []
+  (setup-repo)
+  (let [(entries err) (git.diff-entries "HEAD")
+        state (update.init "HEAD" entries {:version 1 :reviews {}} "scope"
+                           "src")
+        key (preview-key.for-entry "HEAD" (. entries 1))]
+    (faith.= nil err)
+    (faith.= 0 (t.count-pairs state.preview_cache))
+    (update.cache-selected-preview state)
+    (faith.= 1 (t.count-pairs state.preview_cache))
+    (faith.match "%+after" (t.text (. state.preview_cache key)))))
+
+(fn test-refresh-loaded-keeps-cache-and-caches-selected-preview []
+  (setup-repo)
+  (let [(entries err) (git.diff-entries "HEAD")
+        state (update.init "HEAD" entries {:version 1 :reviews {}} "scope"
+                           "src")
+        old-key (preview-key.for-entry "HEAD"
+                                       {:status "M"
+                                        :kind "M"
+                                        :path "old.rb"
+                                        :reviewed false})
+        key (preview-key.for-entry "HEAD" (. entries 1))]
+    (faith.= nil err)
+    (tset state.preview_cache old-key ["old preview"])
+    (faith.= 1 (t.count-pairs state.preview_cache))
+    (update.update state {} {:type :refresh-loaded
+                             :entries entries
+                             :reviewed {}})
+    (faith.= ["old preview"] (. state.preview_cache old-key))
+    (faith.match "%+after" (t.text (. state.preview_cache key)))))
+
+{: test-visible-lines-can-be-nonblocking-while-warming
+ : test-refresh-loaded-keeps-cache-and-caches-selected-preview
+ : test-startup-can-cache-selected-preview-before-rendering
+ : test-visible-lines-renders-and-caches-real-git-preview}

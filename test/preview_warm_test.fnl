@@ -65,6 +65,23 @@
     (faith.= ["first"] (. cache first-key))
     (faith.= nil state.dir)))
 
+(fn test-import-entry-checks-only-the-requested-ready-preview []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (let [first (entry "M" "a.rb")
+        second (entry "M" "b.rb")
+        first-key (preview-key.for-entry "HEAD" first)
+        second-key (preview-key.for-entry "HEAD" second)
+        state (warm-state [first second])
+        cache {}]
+    (write-output "warm" 2 ["second"])
+    (faith.= nil (preview-warm.import-entry state cache "HEAD" first))
+    (faith.= nil (. cache second-key))
+    (faith.is (preview-warm.import-entry state cache "HEAD" second))
+    (faith.= ["second"] (. cache second-key))
+    (faith.= nil (. cache first-key))
+    (faith.= 1 state.remaining)))
+
 (fn test-update-imports-ready-previews-in-small-batches []
   (t.reset-workdir)
   (t.mkdir "warm")
@@ -104,6 +121,7 @@
                  command)))
 
 {: test-fennel-command-builds-standard-subprocess-environment
+ : test-import-entry-checks-only-the-requested-ready-preview
  : test-update-imports-all-previews-and-cleans-temp-dir
  : test-update-imports-ready-previews-in-small-batches
  : test-update-imports-ready-previews-out-of-order

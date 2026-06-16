@@ -101,11 +101,15 @@
   (let [last (length state.entries)]
     (set-selection state last)))
 
+(fn cache-selected-preview [state]
+  (preview.lines state (selected-entry state))
+  state)
+
 (fn apply-refresh [state entries reviewed]
   (set state.entries (reviews.apply entries reviewed))
-  (set state.preview_cache {})
   (preview.reset-scroll state)
   (move-selection state 0)
+  (cache-selected-preview state)
   (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed)
                   (commands.sync-start)))
 
@@ -213,14 +217,23 @@
 
 (fn handle-key [state config raw-key]
   (when (= raw-key :tick)
-    (sync.update state.sync))
+    (sync.update state.sync)
+    (preview-warm.update state.preview_warm state.preview_cache))
   (let [(_ command) (update state config (read-msg state raw-key))]
     (run-command state config command))
   (not state.quit?))
 
 (fn start [state]
+  (cache-selected-preview state)
   (run-command state {}
                (commands.batch (commands.warm-preview-cache)
                                (commands.sync-start))))
 
-{: handle-key : init :new-state init : read-msg : run-command : start : update}
+{: cache-selected-preview
+ : handle-key
+ : init
+ :new-state init
+ : read-msg
+ : run-command
+ : start
+ : update}

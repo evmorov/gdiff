@@ -68,12 +68,15 @@
   (let [state (finish-with-output "branch\tfeature\torigin/feature\t0\t0\n")]
     (faith.= nil (sync.warning state))))
 
+(fn test-branch-ahead-of-upstream-has-no-warning []
+  (let [state (finish-with-output "branch\tfeature\torigin/feature\t2\t0\n")]
+    (faith.= nil (sync.warning state))))
+
 (fn test-combines-revision-side-warnings []
   (let [state (finish-with-output (.. "branch\tmain\torigin/main\t0\t1\n"
                                       "branch\tfeature\torigin/feature\t2\t0\n")
                                   "main...feature")]
-    (faith.= (.. "Branch not in sync: main vs origin/main (+0/-1); "
-                 "Branch not in sync: feature vs origin/feature (+2/-0)")
+    (faith.= "Branch not in sync: main vs origin/main (+0/-1)"
              (sync.warning state))))
 
 (fn test-keeps-old-current-branch-status-parser []
@@ -85,6 +88,7 @@
 
 {: test-clean-branch-has-no-warning
  : test-background-branch-status-command-is-shell-parseable
+ : test-branch-ahead-of-upstream-has-no-warning
  : test-branch-status-command-separates-target-subshells
  : test-combines-revision-side-warnings
  : test-fetch-command-is-quiet-and-noninteractive

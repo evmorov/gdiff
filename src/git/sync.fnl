@@ -128,7 +128,7 @@
       "Detached HEAD: branch sync unavailable"
       (not status.upstream)
       (.. "No upstream for " status.branch)
-      (or (< 0 status.ahead) (< 0 status.behind))
+      (< 0 status.behind)
       (.. "Branch not in sync: " status.branch " vs " status.upstream " (+"
           status.ahead "/-" status.behind ")")
       nil))

@@ -75,6 +75,27 @@
 (fn comparison-label [revision]
   (comparison-revision revision))
 
+(fn comparison-right [revision ?current-branch]
+  (let [current-branch (or ?current-branch (current-branch))
+        (_left right) (revision:match "^(.-)%.%.%.(.*)$")]
+    (if (and right (> (length right) 0) (not (= right "HEAD")))
+        right
+        current-branch)))
+
+(fn linked-pr-url-command [branch]
+  (.. "gh pr view " (sys.shell-quote branch)
+      " --json url --jq .url 2>/dev/null"))
+
+(fn linked-pr-url [revision]
+  (let [branch (comparison-right revision)]
+    (if (= branch "HEAD")
+        (values nil "No branch to check for a linked PR")
+        (let [(output ok _kind _code) (sys.read-command (linked-pr-url-command branch))
+              url (sys.trim output)]
+          (if (and ok (> (length url) 0))
+              (values url nil)
+              (values nil (.. "No linked PR for " branch)))))))
+
 (fn preview-command [revision entry color]
   (.. "git diff --no-ext-diff --color=" color " --find-renames --find-copies "
       (sys.shell-quote revision) " -- " (sys.shell-quote entry.path)))
@@ -115,9 +136,12 @@
 
 {: comparison-label
  : comparison-revision
+ : comparison-right
  : current-branch
  : default-revision
  : diff-entries
+ : linked-pr-url
+ : linked-pr-url-command
  : preview-context
  : preview-output
  : repo-root}

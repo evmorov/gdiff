@@ -13,7 +13,8 @@
 
 (fn test-read-msg-turns-raw-key-into-message-data []
   (let [state (state [(entry "M" "a.rb")])]
-    (faith.= {:type :toggle-all-reviewed} (update.read-msg state "a"))))
+    (faith.= {:type :toggle-all-reviewed} (update.read-msg state "a"))
+    (faith.= {:type :open-pr} (update.read-msg state "p"))))
 
 (fn test-read-msg-keeps-pending-g-in-state []
   (let [state (state [(entry "M" "a.rb")])]
@@ -63,7 +64,21 @@
     (update.run-command state {} command)
     (faith.= "Copied: a.rb" state.notice)))
 
+(fn test-open-pr-finished-updates-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (update.update state {}
+                   {:type :open-pr-finished
+                    :ok? true
+                    :url "https://example.com/pull/1"})
+    (faith.= "Opened PR: https://example.com/pull/1" state.notice)
+    (update.update state {}
+                   {:type :open-pr-finished
+                    :ok? false
+                    :error "No linked PR for feature"})
+    (faith.= "No linked PR for feature" state.notice)))
+
 {: test-command-dispatches-back-through-update
+ : test-open-pr-finished-updates-notice
  : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data
  : test-split-keys-move-divider-by-five-percent

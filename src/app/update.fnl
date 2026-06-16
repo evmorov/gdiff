@@ -42,6 +42,7 @@
     "N" :search-previous
     "r" :refresh
     "y" :copy-path
+    "p" :open-pr
     "<" :split-left
     ">" :split-right
     "G" :bottom
@@ -144,6 +145,7 @@
         :bottom jump-bottom
         :refresh commands.refresh
         :copy-path copy-selected-path
+        :open-pr commands.open-linked-pr
         :split-left #(move-split $1 -0.05)
         :split-right #(move-split $1 0.05)})
 
@@ -170,6 +172,12 @@
                                                         "Copy failed")
                                                     msg.path)
                                         commands.none)
+                  :open-pr-finished (do
+                                      (set state.notice
+                                           (if msg.ok?
+                                               (.. "Opened PR: " msg.url)
+                                               (or msg.error "No linked PR")))
+                                      commands.none)
                   :refresh-loaded (apply-refresh state msg.entries msg.reviewed)
                   _ (do
                       (set state.pending-key msg.pending-key)

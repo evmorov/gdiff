@@ -65,8 +65,22 @@
   (faith.= "current...feature" (git.comparison-revision "...feature" "current"))
   (faith.= "main...current" (git.comparison-revision "main..." "current")))
 
+(fn test-comparison-right-selects_pr_branch []
+  (faith.= "feature" (git.comparison-right "main...feature" "current"))
+  (faith.= "current" (git.comparison-right "main...HEAD" "current"))
+  (faith.= "current" (git.comparison-right "main..." "current"))
+  (faith.= "current" (git.comparison-right "main" "current")))
+
+(fn test-linked-pr-url-command-quotes-branch []
+  (let [command (git.linked-pr-url-command "feature branch")]
+    (faith.match "gh pr view 'feature branch'" command)
+    (faith.match "%-%-json url %-%-jq %.url" command)
+    (faith.match "2>/dev/null" command)))
+
 {: test-default-revision-falls-back-to-master
  : test-default-revision-prefers-main
+ : test-comparison-right-selects_pr_branch
  : test-comparison-revision-expands-single-revision
  : test-comparison-revision-keeps-explicit-range
- : test-diff-entries-reports-working-tree-changes}
+ : test-diff-entries-reports-working-tree-changes
+ : test-linked-pr-url-command-quotes-branch}

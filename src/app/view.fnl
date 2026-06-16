@@ -48,6 +48,7 @@
                             " | C-d/C-u preview"
                             " | r refresh"
                             " | y copy"
+                            " | p PR"
                             " | space check"
                             " | a all/none"
                             " | enter/o open"

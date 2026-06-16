@@ -1,3 +1,4 @@
+(local browser (require :platform.browser))
 (local clipboard (require :platform.clipboard))
 (local editor (require :platform.editor))
 (local git (require :git.core))
@@ -48,6 +49,17 @@
   [dispatch _get-state]
   (dispatch {:type :copy-path-finished :path path :ok? (clipboard.copy path)}))
 
+(defcommand open-linked-pr
+  []
+  [dispatch get-state]
+  (let [state (get-state)
+        (url err) (git.linked-pr-url state.revision)]
+    (if url
+        (do
+          (browser.open url)
+          (dispatch {:type :open-pr-finished :url url :ok? true}))
+        (dispatch {:type :open-pr-finished :error err :ok? false}))))
+
 (defcommand refresh
   []
   [dispatch get-state]
@@ -61,6 +73,7 @@
  : copy-path
  : none
  : open-editor
+ : open-linked-pr
  : persist-reviewed
  : refresh
  : sync-start

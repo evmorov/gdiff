@@ -41,6 +41,7 @@ Keys:
 - `G`: jump to last file
 - `r`: refresh changed files without losing reviewed marks
 - `y`: copy selected file path
+- `p`: open the linked PR in a browser, if one exists
 - `<` / `>`: move the split left or right
 - `space`: mark selected file as reviewed, or unmark it, without moving
 - `a`: mark all files as reviewed, or unmark them all

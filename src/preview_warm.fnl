@@ -1,8 +1,6 @@
 (local fennel (require :fennel))
+(local preview-key (require :preview_key))
 (local sys (require :sys))
-
-(fn key [revision entry]
-  (.. revision "\0" entry.status "\0" (or entry.old_path "") "\0" entry.path))
 
 (fn make-dir []
   (let [path (sys.temp-path)]
@@ -24,6 +22,15 @@
 (fn new-state []
   {:dir nil :next-index 1 :count 0 :key-index {} :index-key {}})
 
+(fn cleanup [state]
+  (when state.dir
+    (sys.remove-dir state.dir))
+  (set state.dir nil)
+  (set state.next-index 1)
+  (set state.count 0)
+  (set state.key-index {})
+  (set state.index-key {}))
+
 (fn write-manifest [path revision entries]
   (sys.write-file path (fennel.view {:revision revision :entries entries})))
 
@@ -31,12 +38,13 @@
   (let [indexes {}
         keys {}]
     (each [i entry (ipairs entries)]
-      (let [entry-key (key revision entry)]
+      (let [entry-key (preview-key.for-entry revision entry)]
         (tset indexes entry-key i)
         (tset keys i entry-key)))
     (values indexes keys)))
 
 (fn start [state src-dir revision entries]
+  (cleanup state)
   (let [dir (make-dir)]
     (when dir
       (let [manifest (manifest-path dir)]
@@ -70,6 +78,8 @@
                   (tset cache key lines)))
               (sys.remove-file path)
               (set state.next-index (+ state.next-index 1)))
-            (set keep-going? false))))))
+            (set keep-going? false)))))
+  (when (and state.dir (> state.next-index state.count))
+    (cleanup state)))
 
 {: new-state : start : update}

@@ -1,12 +1,10 @@
 (local git (require :git))
+(local preview-key (require :preview_key))
 (local sys (require :sys))
 (local tui (require :tui))
 
 (fn clamp [n low high]
   (math.max low (math.min high n)))
-
-(fn key [revision entry]
-  (.. revision "\0" entry.status "\0" (or entry.old_path "") "\0" entry.path))
 
 (fn line-color [line]
   (let [first (line:sub 1 1)]
@@ -40,7 +38,7 @@
 (fn lines [state entry]
   (if (not entry)
       [(tui.color :dim "No file selected.")]
-      (let [key (key state.revision entry)
+      (let [key (preview-key.for-entry state.revision entry)
             cached (. state.preview_cache key)]
         (if cached
             cached

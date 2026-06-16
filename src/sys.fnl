@@ -33,6 +33,9 @@
 (fn remove-file [path]
   (os.remove path))
 
+(fn remove-dir [path]
+  (os.execute (.. "rm -rf " (shell-quote path) " 2>/dev/null")))
+
 (fn background-command [cmd]
   (os.execute (.. cmd " >/dev/null 2>&1 &")))
 
@@ -48,6 +51,7 @@
  : ensure-dir
  : read-command
  : read-file
+ : remove-dir
  : remove-file
  : shell-quote
  : temp-path

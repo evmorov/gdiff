@@ -1,12 +1,24 @@
 (local ansi (require :tui.ansi))
 (local context (require :tui.context))
 (local draw (require :tui.draw))
+(local body (require :tui.components.body))
+(local chrome (require :tui.components.chrome))
+(local lines-view (require :tui.components.lines))
+(local list-view (require :tui.components.list))
 (local nodes (require :tui.nodes))
+(local row-view (require :tui.components.row))
 (local runtime (require :tui.runtime))
+(local split-view (require :tui.components.split))
 (local terminal (require :tui.terminal))
 (local theme (require :tui.theme))
 
 {:color theme.color
+ :components {:body body
+              :chrome chrome
+              :lines lines-view
+              :list list-view
+              :row row-view
+              :split split-view}
  :context context.new
  :context-body-rows context.body-rows
  :default-theme theme.default

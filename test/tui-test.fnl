@@ -28,6 +28,18 @@
     (faith.= 80 ctx.cols)
     (faith.= 7 (tui.context-body-rows ctx))))
 
+(fn test-components-are-exposed-for-extension []
+  (faith.= :table (type tui.components))
+  (faith.= :function (type tui.components.split.draw))
+  (faith.= :function (type tui.components.list.draw))
+  (faith.= :function (type tui.components.lines.draw)))
+
+(fn test-split-component-calculates_widths []
+  (let [(left right divider) (tui.components.split.widths 101 0.4)]
+    (faith.= 40 left)
+    (faith.= 60 right)
+    (faith.= 41 divider)))
+
 (fn test-parses-terminal-background-response []
   (faith.= {:r 0 :g 17 :b 255}
            (colors.parse-background-response "\27]11;rgb:0000/1111/ffff\7")))
@@ -68,9 +80,11 @@
     (faith.= nil (style:find "48;" 1 true))))
 
 {: test-empty-footer-is-nil
+ : test-components-are-exposed-for-extension
  : test-parses-terminal-background-response
  : test-render-context-carries-terminal-shape
  : test-screen-builds-declarative-view-tree
+ : test-split-component-calculates_widths
  : test-search-match-does-not-guess-background
  : test-search-match-uses-derived-background
  : test-selected-row-does-not-guess-without-background

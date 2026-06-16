@@ -56,6 +56,17 @@
     (faith.= nil err)
     (faith.= "master" revision)))
 
+(fn test-comparison-revision-expands-single-revision []
+  (faith.= "main...feature" (git.comparison-revision "main" "feature")))
+
+(fn test-comparison-revision-keeps-explicit-range []
+  (faith.= "main...feature"
+           (git.comparison-revision "main...feature" "current"))
+  (faith.= "current...feature" (git.comparison-revision "...feature" "current"))
+  (faith.= "main...current" (git.comparison-revision "main..." "current")))
+
 {: test-default-revision-falls-back-to-master
  : test-default-revision-prefers-main
+ : test-comparison-revision-expands-single-revision
+ : test-comparison-revision-keeps-explicit-range
  : test-diff-entries-reports-working-tree-changes}

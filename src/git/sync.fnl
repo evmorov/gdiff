@@ -15,10 +15,7 @@
     (fn add-side [side]
       (add-target targets seen (if (> (length side) 0) side current-branch)))
 
-    (let [(triple-left triple-right) (revision:match "^(.-)%.%.%.(.*)$")
-          (double-left double-right) (revision:match "^(.-)%.%.(.*)$")
-          left (or triple-left double-left)
-          right (or triple-right double-right)]
+    (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
       (if left
           (do
             (add-side left)

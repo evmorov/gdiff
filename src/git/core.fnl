@@ -64,12 +64,16 @@
         branch
         "HEAD")))
 
-(fn comparison-label [revision]
+(fn comparison-revision [revision ?current-branch]
   (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
     (if left
-        (.. (if (> (length left) 0) left (current-branch)) "..."
-            (if (> (length right) 0) right (current-branch)))
-        (.. revision "..." (current-branch)))))
+        (.. (if (> (length left) 0) left (or ?current-branch (current-branch)))
+            "..." (if (> (length right) 0) right
+                     (or ?current-branch (current-branch))))
+        (.. revision "..." (or ?current-branch (current-branch))))))
+
+(fn comparison-label [revision]
+  (comparison-revision revision))
 
 (fn preview-command [revision entry color]
   (.. "git diff --no-ext-diff --color=" color " --find-renames --find-copies "
@@ -110,6 +114,7 @@
         (or (os.getenv "PWD") "."))))
 
 {: comparison-label
+ : comparison-revision
  : current-branch
  : default-revision
  : diff-entries

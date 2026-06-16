@@ -28,7 +28,8 @@
   config)
 
 (fn run [revision options src-dir]
-  (let [config (merge-options (config-store.load) options)
+  (let [revision (git.comparison-revision revision)
+        config (merge-options (config-store.load) options)
         (entries err) (git.diff-entries revision)]
     (if err (exit-with-error err) (= (length entries) 0)
         (print "No changed files.")

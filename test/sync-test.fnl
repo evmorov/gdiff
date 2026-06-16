@@ -17,8 +17,6 @@
 (fn test-range-revision-checks-both-sides []
   (faith.= ["main" "feature"]
            (sync.targets-for-revision "main...feature" "current"))
-  (faith.= ["main" "feature"]
-           (sync.targets-for-revision "main..feature" "current"))
   (faith.= ["current" "feature"]
            (sync.targets-for-revision "...feature" "current"))
   (faith.= ["main" "current"] (sync.targets-for-revision "main..." "current"))

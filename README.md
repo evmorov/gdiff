@@ -3,7 +3,7 @@
 A tiny Fennel TUI for opening files changed by a Git revision range.
 
 ```sh
-bin/gdiff main...HEAD
+bin/gdiff main HEAD
 ```
 
 Run tests with:
@@ -29,8 +29,8 @@ Architecture:
 Use a different editor for one run:
 
 ```sh
-bin/gdiff --editor nvim main...HEAD
-bin/gdiff -e "idea --wait" main...HEAD
+bin/gdiff --editor nvim main HEAD
+bin/gdiff -e "idea --wait" main HEAD
 ```
 
 Keys:

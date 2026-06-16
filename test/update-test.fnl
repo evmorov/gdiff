@@ -13,13 +13,21 @@
 
 (fn test-read-msg-turns-raw-key-into-message-data []
   (let [state (state [(entry "M" "a.rb")])]
-    (faith.= {:type :key :action :toggle-all-reviewed}
-             (update.read-msg state "a"))))
+    (faith.= {:type :toggle-all-reviewed} (update.read-msg state "a"))))
+
+(fn test-read-msg-keeps-pending-g-in-state []
+  (let [state (state [(entry "M" "a.rb")])]
+    (faith.= {:type :pending-key :pending-key "g"} (update.read-msg state "g"))
+    (faith.= nil state.pending-key)
+    (update.update state {} (update.read-msg state "g"))
+    (faith.= "g" state.pending-key)
+    (faith.= {:type :top} (update.read-msg state "g"))
+    (update.update state {} (update.read-msg state "g"))
+    (faith.= nil state.pending-key)))
 
 (fn test-update-returns-command-for-review-persistence []
   (let [state (state [(entry "M" "a.rb")])
-        (_ command) (update.update state {}
-                                   {:type :key :action :toggle-all-reviewed})]
+        (_ command) (update.update state {} {:type :toggle-all-reviewed})]
     (faith.= {"a.rb" true} (reviews.paths state.entries))
     (faith.= "Marked all reviewed" state.notice)
     (faith.= :function (type command))))
@@ -32,5 +40,6 @@
     (faith.= "Copied: a.rb" state.notice)))
 
 {: test-command-dispatches-back-through-update
+ : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data
  : test-update-returns-command-for-review-persistence}

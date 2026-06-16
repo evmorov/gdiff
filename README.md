@@ -15,6 +15,17 @@ bin/test
 Tests use the vendored [Faith](https://git.sr.ht/~technomancy/faith) runner and
 the installed `fennel` command.
 
+Architecture:
+
+- `src/args.fnl` parses CLI arguments.
+- `src/update.fnl` owns app state transitions: raw keys become messages, and
+  `update` returns the state plus an optional command.
+- `src/commands.fnl` owns side-effect commands. Commands receive `dispatch` and
+  `get-state`, do I/O, then dispatch result messages back through `update`.
+- `src/view.fnl` renders the current state for the TUI.
+- `src/app.fnl` wires Git data, config, state, update, view, and the terminal
+  loop together.
+
 Use a different editor for one run:
 
 ```sh

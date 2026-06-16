@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_dir="$(cd -- "$script_dir/.." && pwd)"
+test_repo="$(mktemp -d)"
+
+export GDIFF_TEST_ROOT="$test_repo"
+export HOME="$test_repo/home"
+export XDG_CONFIG_HOME="$test_repo/config"
+export XDG_STATE_HOME="$test_repo/state"
+
+mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_STATE_HOME"
+
+cleanup() {
+  rm -rf "$test_repo"
+}
+
+trap cleanup EXIT
+
+cd "$test_repo"
+fennel \
+  --add-fennel-path "$repo_dir/src/?.fnl;$repo_dir/test/?.fnl" \
+  "$repo_dir/test/run.fnl"

@@ -332,4 +332,4 @@
                 (os.exit 1))
               (run revision options src-dir))))))
 
-{: main}
+{: handle-key :main main :new-state new-state :view view}

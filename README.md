@@ -6,6 +6,15 @@ A tiny Fennel TUI for opening files changed by a Git revision range.
 bin/gdiff main...HEAD
 ```
 
+Run tests with:
+
+```sh
+bin/test
+```
+
+Tests use the vendored [Faith](https://git.sr.ht/~technomancy/faith) runner and
+the installed `fennel` command.
+
 Use a different editor for one run:
 
 ```sh

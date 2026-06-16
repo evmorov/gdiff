@@ -40,6 +40,22 @@
     (faith.= "Marked all reviewed" state.notice)
     (faith.= :function (type command))))
 
+(fn test-split-keys-move-divider-by-five-percent []
+  (let [state (state [(entry "M" "a.rb")])]
+    (update.update state {} (update.read-msg state "<"))
+    (faith.almost= 0.35 state.split_ratio 0.0001)
+    (update.update state {} (update.read-msg state ">"))
+    (faith.almost= 0.4 state.split_ratio 0.0001)))
+
+(fn test-split-ratio-is-clamped []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.split_ratio 0.1)
+    (update.update state {} (update.read-msg state "<"))
+    (faith.= 0.1 state.split_ratio)
+    (set state.split_ratio 0.9)
+    (update.update state {} (update.read-msg state ">"))
+    (faith.= 0.9 state.split_ratio)))
+
 (fn test-command-dispatches-back-through-update []
   (let [state (state [(entry "M" "a.rb")])
         command (fn [dispatch _get-state]
@@ -50,5 +66,7 @@
 {: test-command-dispatches-back-through-update
  : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data
+ : test-split-keys-move-divider-by-five-percent
+ : test-split-ratio-is-clamped
  : test-unknown-key-clears-pending-g
  : test-update-returns-command-for-review-persistence}

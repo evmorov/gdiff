@@ -41,6 +41,8 @@
     "N" :search-previous
     "r" :refresh
     "y" :copy-path
+    "<" :split-left
+    ">" :split-right
     "G" :bottom
     "q" :clear-search
     _ key))
@@ -118,23 +120,27 @@
     (when entry
       (commands.copy-path entry.path))))
 
-(local action-handlers {:up #(move-selection $1 -1)
-                        :down #(move-selection $1 1)
-                        :open open-selected
-                        :toggle-reviewed toggle-reviewed
-                        :toggle-all-reviewed toggle-all-reviewed
-                        :preview-down #(preview.scroll-page-down $1
-                                                                 (selected-entry $1))
-                        :preview-up #(preview.scroll-page-up $1
-                                                             (selected-entry $1))
-                        :search search.start
-                        :search-next search.next
-                        :search-previous search.previous
-                        :clear-search search.clear
-                        :top jump-top
-                        :bottom jump-bottom
-                        :refresh #(commands.refresh)
-                        :copy-path copy-selected-path})
+(fn move-split [state delta]
+  (set state.split_ratio (clamp (+ (or state.split_ratio 0.4) delta) 0.1 0.9)))
+
+(local action-handlers
+       {:up #(move-selection $1 -1)
+        :down #(move-selection $1 1)
+        :open open-selected
+        :toggle-reviewed toggle-reviewed
+        :toggle-all-reviewed toggle-all-reviewed
+        :preview-down #(preview.scroll-page-down $1 (selected-entry $1))
+        :preview-up #(preview.scroll-page-up $1 (selected-entry $1))
+        :search search.start
+        :search-next search.next
+        :search-previous search.previous
+        :clear-search search.clear
+        :top jump-top
+        :bottom jump-bottom
+        :refresh #(commands.refresh)
+        :copy-path copy-selected-path
+        :split-left #(move-split $1 -0.05)
+        :split-right #(move-split $1 0.05)})
 
 (fn update [state config msg]
   (let [msg-type (and (= (type msg) :table) msg.type)
@@ -195,6 +201,7 @@
    :selected 1
    :preview_scroll 0
    :preview_rows 1
+   :split_ratio 0.4
    :preview_cache {}
    :preview_context (git.preview-context)
    :preview_warm (preview-warm.new-state)

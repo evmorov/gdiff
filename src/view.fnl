@@ -71,6 +71,7 @@
     {:header (header-line state count)
      :rows (visible-rows state rows)
      :preview (preview.visible-lines state (selected-entry state) rows)
+     :split_ratio state.split_ratio
      :prompt (search.status state)
      :warning (sync.warning state.sync)
      :notice state.notice}))

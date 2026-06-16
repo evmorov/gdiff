@@ -165,8 +165,9 @@
   (each [_ row (ipairs rows)]
     (write-row (truncate row.text cols) row.selected? true)))
 
-(fn split-widths [cols]
-  (let [left-cols (math.max 1 (math.floor (* (- cols 1) 0.4)))
+(fn split-widths [cols ?ratio]
+  (let [ratio (or ?ratio 0.4)
+        left-cols (math.max 1 (math.floor (* (- cols 1) ratio)))
         right-cols (math.max 1 (- cols left-cols 1))
         divider-col (+ left-cols 1)]
     (values left-cols right-cols divider-col)))
@@ -186,16 +187,16 @@
   (when right-line
     (io.write (truncate right-line right-cols))))
 
-(fn draw-split-rows [rows preview screen-rows cols]
-  (let [(left-cols right-cols divider-col) (split-widths cols)]
+(fn draw-split-rows [view screen-rows cols]
+  (let [(left-cols right-cols divider-col) (split-widths cols view.split_ratio)]
     (for [i 1 screen-rows]
-      (draw-split-row (+ i 2) (. rows i) (. preview i) left-cols right-cols
-                      divider-col))))
+      (draw-split-row (+ i 2) (. view.rows i) (. view.preview i) left-cols
+                      right-cols divider-col))))
 
 (fn draw-content [view rows cols]
   (let [screen-rows (math.max 1 (- rows 3))]
     (if view.preview
-        (draw-split-rows view.rows view.preview screen-rows cols)
+        (draw-split-rows view screen-rows cols)
         (draw-rows view.rows cols))))
 
 (fn draw-notice [notice rows cols]

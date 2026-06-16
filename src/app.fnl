@@ -99,7 +99,7 @@
   (let [reviewed (reviewed-count state.entries)]
     (.. "gdiff " state.revision_label " | " count " file" (plural-s count)
         " | " reviewed "/" count " reviewed"
-        " | / search | C-d/C-u preview | r refresh | y copy | space check | a check+next | A all/none | enter/o open | Ctrl-C quit")))
+        " | / search | C-d/C-u preview | r refresh | y copy | space check | a all/none | enter/o open | Ctrl-C quit")))
 
 (fn row-prefix [selected?]
   (if selected? "> " "  "))
@@ -138,8 +138,7 @@
     "j" :down
     "o" :open
     " " :toggle-reviewed
-    "a" :toggle-reviewed-and-advance
-    "A" :toggle-all-reviewed
+    "a" :toggle-all-reviewed
     "\4" :preview-down
     "\21" :preview-up
     "/" :search
@@ -183,10 +182,6 @@
       (set entry.reviewed (not entry.reviewed))
       (set-notice state (reviewed-action entry) entry.path)
       (persist-reviewed state))))
-
-(fn toggle-reviewed-and-advance [state]
-  (toggle-reviewed state)
-  (move-selection state 1))
 
 (fn toggle-all-reviewed [state]
   (let [entries state.entries
@@ -244,8 +239,6 @@
     :down (continue-after #(move-selection state 1))
     :open (continue-after #(open-selected state config))
     :toggle-reviewed (continue-after #(toggle-reviewed state))
-    :toggle-reviewed-and-advance
-    (continue-after #(toggle-reviewed-and-advance state))
     :toggle-all-reviewed (continue-after #(toggle-all-reviewed state))
     :preview-down
     (continue-after #(preview.scroll-page-down state (selected-entry state)))

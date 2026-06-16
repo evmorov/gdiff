@@ -22,7 +22,7 @@ Keys:
 - `r`: refresh changed files without losing reviewed marks
 - `y`: copy selected file path
 - `space`: mark selected file as reviewed, or unmark it, without moving
-- `a`: mark selected file as reviewed, or unmark it, then move down
+- `a`: mark all files as reviewed, or unmark them all
 - `enter` / `o`: open selected file
 - `q`: quit
 

@@ -1,4 +1,5 @@
 (local fennel (require :fennel))
+(local fennel-command (require :platform.fennel))
 (local preview-key (require :preview.key))
 (local sys (require :platform.core))
 
@@ -19,11 +20,7 @@
 (local max-imports-per-update 8)
 
 (fn worker-command [src-dir manifest dir start step]
-  (.. "fennel --add-fennel-path " (sys.shell-quote (.. src-dir "/?.fnl")) " "
-      "--add-macro-path "
-      (sys.shell-quote (.. src-dir "/?.fnlm;" src-dir "/?.fnl")) " "
-      (sys.shell-quote (.. src-dir "/preview/worker.fnl")) " "
-      (sys.shell-quote manifest) " " (sys.shell-quote dir) " " start " " step))
+  (fennel-command.command src-dir :preview/worker.fnl [manifest dir start step]))
 
 (fn new-state []
   {:dir nil

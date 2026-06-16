@@ -1,5 +1,6 @@
 (local faith (require :faith))
 (local fennel (require :fennel))
+(local fennel-command (require :platform.fennel))
 (local preview-key (require :preview.key))
 (local preview-warm (require :preview.warm))
 (local sys (require :platform.core))
@@ -92,7 +93,18 @@
                  command)
     (faith.match "'/app/src/preview/worker%.fnl'" command)))
 
-{: test-update-imports-all-previews-and-cleans-temp-dir
+(fn test-fennel-command-builds-standard-subprocess-environment []
+  (let [command (fennel-command.command "/app/src" :preview/worker.fnl
+                                        ["manifest.fnl" "warm" 1 4])]
+    (faith.match "^fennel " command)
+    (faith.match "%-%-add%-fennel%-path '/app/src/%?%.fnl'" command)
+    (faith.match "%-%-add%-macro%-path '/app/src/%?%.fnlm;/app/src/%?%.fnl'"
+                 command)
+    (faith.match "'/app/src/preview/worker%.fnl' 'manifest%.fnl' 'warm' '1' '4'"
+                 command)))
+
+{: test-fennel-command-builds-standard-subprocess-environment
+ : test-update-imports-all-previews-and-cleans-temp-dir
  : test-update-imports-ready-previews-in-small-batches
  : test-update-imports-ready-previews-out-of-order
  : test-worker-command-loads-runtime-and-macro-paths}

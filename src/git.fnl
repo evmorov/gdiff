@@ -19,8 +19,8 @@
       "A" (entry status (. parts 2))
       "M" (entry status (. parts 2))
       "D" (entry status (. parts 2))
-      "R" (entry status (. parts 3) (. parts 2))
-      "C" (entry status (. parts 3) (. parts 2))
+      "R" (entry "R" (. parts 3) (. parts 2))
+      "C" (entry "R" (. parts 3) (. parts 2))
       _ nil)))
 
 (fn parse-name-status [text]

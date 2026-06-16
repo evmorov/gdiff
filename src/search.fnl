@@ -1,3 +1,4 @@
+(local entry-view (require :entry))
 (local preview (require :preview))
 (local tui (require :tui))
 
@@ -16,17 +17,12 @@
 (fn has-query? [state]
   (> (length (query state)) 0))
 
-(fn path-text [entry]
-  (if (or (= entry.kind "R") (= entry.kind "C"))
-      (.. entry.path " <- " entry.old_path)
-      entry.path))
-
 (fn contains? [text query]
   (let [plain (tui.strip-ansi text)]
     (not (= nil (plain:find query 1 true)))))
 
 (fn path-match [query entry-index entry]
-  (if (contains? (path-text entry) query)
+  (if (contains? (entry-view.path-text entry) query)
       {:entry entry-index}))
 
 (fn collect-matches [state query]

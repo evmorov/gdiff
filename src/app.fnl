@@ -1,6 +1,7 @@
 (local clipboard (require :clipboard))
 (local config-store (require :config))
 (local editor (require :editor))
+(local entry-view (require :entry))
 (local git (require :git))
 (local preview (require :preview))
 (local reviews (require :reviews))
@@ -73,11 +74,6 @@
       (tui.color :added "[x]")
       (tui.color :dim "[ ]")))
 
-(fn display-path [entry]
-  (if (or (= entry.kind "R") (= entry.kind "C"))
-      (.. entry.path " <- " entry.old_path)
-      entry.path))
-
 (fn selected-entry [state]
   (. state.entries state.selected))
 
@@ -109,7 +105,7 @@
 
 (fn row-text [state entry selected?]
   (.. (row-prefix selected?) (reviewed-text entry) " " (status-text entry) " "
-      (search.highlight state (display-path entry))))
+      (search.highlight state (entry-view.path-text entry))))
 
 (fn visible-rows [state rows]
   (let [entries state.entries

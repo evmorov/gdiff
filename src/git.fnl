@@ -109,6 +109,7 @@
         (or (os.getenv "PWD") "."))))
 
 {: comparison-label
+ : current-branch
  : default-revision
  : diff-entries
  : preview-context

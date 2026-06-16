@@ -201,7 +201,7 @@
    :review_store review-store
    :review_scope review-scope
    :search (search.new-state)
-   :sync (sync.new-state)
+   :sync (sync.new-state revision)
    :pending-key nil})
 
 (fn handle-key [state config raw-key]

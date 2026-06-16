@@ -55,8 +55,7 @@
         items [state.revision_label
                "/ search"
                "C-d/C-u preview"
-               "r refresh"
-               "R sync"
+               "r refresh/sync"
                "y copy"
                "p PR"
                "space check"

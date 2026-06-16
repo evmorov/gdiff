@@ -134,6 +134,11 @@
   (set state.notice "Syncing remote...")
   (commands.sync-start))
 
+(fn refresh-and-sync [state]
+  (set state.show_sync_notice? true)
+  (set state.notice "Syncing remote...")
+  (commands.batch (commands.sync-start) (commands.refresh)))
+
 (fn update-remote-sync [state]
   (let [running? state.sync.running?]
     (sync.update state.sync)
@@ -158,7 +163,7 @@
         :clear-search search.clear
         :top jump-top
         :bottom jump-bottom
-        :refresh commands.refresh
+        :refresh refresh-and-sync
         :sync start-remote-sync
         :copy-path copy-selected-path
         :open-pr commands.open-linked-pr

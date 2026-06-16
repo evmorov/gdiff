@@ -66,6 +66,13 @@
       (faith.= nil (header:find "reviewed" 1 true))
       (faith.= "1/2 reviewed │ 2 files" footer-right))))
 
+(fn test-view-shows-single-refresh-sync-key []
+  (let [state (state [(entry "M" "a.rb")])
+        view (app.view state 10 100)
+        header (tui.strip-ansi view.header)]
+    (faith.match "r refresh/sync" header)
+    (faith.= nil (header:find "R sync" 1 true))))
+
 (fn test-view-adds-left-scroll-info-for-overflowing-file-list []
   (let [state (state [(entry "M" "1.rb")
                       (entry "M" "2.rb")
@@ -176,5 +183,6 @@
  : test-view-adds-left-scroll-info-for-overflowing-file-list
  : test-view-keeps_last_file_above_bottom_divider
  : test-view-moves_file_counts_to_footer_right
+ : test-view-shows-single-refresh-sync-key
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

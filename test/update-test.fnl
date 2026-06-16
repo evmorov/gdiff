@@ -51,6 +51,13 @@
     (update.run-command state {} command)
     (faith.= false state.sync.running?)))
 
+(fn test-lowercase-r-refreshes-files-and-starts-sync []
+  (let [state (state [(entry "M" "a.rb")])
+        (_ command) (update.update state {} (update.read-msg state "r"))]
+    (faith.= :function (type command))
+    (faith.= "Syncing remote..." state.notice)
+    (faith.= true state.show_sync_notice?)))
+
 (fn test-uppercase-r_returns_remote_sync_command []
   (let [state (state [(entry "M" "a.rb")])
         (_ command) (update.update state {} (update.read-msg state "R"))]
@@ -108,6 +115,7 @@
 
 {: test-command-dispatches-back-through-update
  : test-local-refresh_does_not_start_remote_sync
+ : test-lowercase-r-refreshes-files-and-starts-sync
  : test-open-pr-finished-updates-notice
  : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data

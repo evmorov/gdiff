@@ -14,7 +14,6 @@
 (fn test-read-msg-turns-raw-key-into-message-data []
   (let [state (state [(entry "M" "a.rb")])]
     (faith.= {:type :toggle-all-reviewed} (update.read-msg state "a"))
-    (faith.= {:type :sync} (update.read-msg state "R"))
     (faith.= {:type :open-pr} (update.read-msg state "p"))))
 
 (fn test-read-msg-keeps-pending-g-in-state []
@@ -58,18 +57,22 @@
     (faith.= "Syncing remote..." state.notice)
     (faith.= true state.show_sync_notice?)))
 
-(fn test-uppercase-r_returns_remote_sync_command []
+(fn test-uppercase-r-does-not-start-sync []
   (let [state (state [(entry "M" "a.rb")])
         (_ command) (update.update state {} (update.read-msg state "R"))]
-    (faith.= :function (type command))
-    (faith.= "Syncing remote..." state.notice)))
+    (update.run-command state {} command)
+    (faith.= nil state.notice)
+    (faith.= false state.show_sync_notice?)
+    (faith.= false state.sync.running?)))
 
-(fn test-uppercase-r-shows-notice-when-startup-sync-is-running []
+(fn test-uppercase-r-does-not-attach-to-startup-sync []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.sync.running? true)
     (let [(_ command) (update.update state {} (update.read-msg state "R"))]
-      (faith.= :function (type command))
-      (faith.= "Syncing remote..." state.notice))))
+      (update.run-command state {} command)
+      (faith.= nil state.notice)
+      (faith.= false state.show_sync_notice?)
+      (faith.= true state.sync.running?))))
 
 (fn test-start-command-starts-remote-sync-quietly []
   (let [state (state [(entry "M" "a.rb")])
@@ -122,7 +125,7 @@
  : test-start-command-starts-remote-sync-quietly
  : test-split-keys-move-divider-by-five-percent
  : test-split-ratio-is-clamped
- : test-uppercase-r-shows-notice-when-startup-sync-is-running
- : test-uppercase-r_returns_remote_sync_command
+ : test-uppercase-r-does-not-attach-to-startup-sync
+ : test-uppercase-r-does-not-start-sync
  : test-unknown-key-clears-pending-g
  : test-update-returns-command-for-review-persistence}

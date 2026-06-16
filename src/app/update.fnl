@@ -41,7 +41,6 @@
     "n" :search-next
     "N" :search-previous
     "r" :refresh
-    "R" :sync
     "y" :copy-path
     "p" :open-pr
     "<" :split-left
@@ -129,11 +128,6 @@
 (fn move-split [state delta]
   (set state.split_ratio (clamp (+ (or state.split_ratio 0.4) delta) 0.1 0.9)))
 
-(fn start-remote-sync [state]
-  (set state.show_sync_notice? true)
-  (set state.notice "Syncing remote...")
-  (commands.sync-start))
-
 (fn refresh-and-sync [state]
   (set state.show_sync_notice? true)
   (set state.notice "Syncing remote...")
@@ -144,8 +138,9 @@
     (sync.update state.sync)
     (when (and running? (not state.sync.running?)
                (not (sync.warning state.sync)))
-      (when state.show_sync_notice?
-        (set state.notice "Remote in sync")))
+      (let [sync-notice (sync.notice state.sync)]
+        (if sync-notice (set state.notice sync-notice)
+            state.show_sync_notice? (set state.notice "Remote in sync"))))
     (when (and running? (not state.sync.running?))
       (set state.show_sync_notice? false))))
 
@@ -164,7 +159,6 @@
         :top jump-top
         :bottom jump-bottom
         :refresh refresh-and-sync
-        :sync start-remote-sync
         :copy-path copy-selected-path
         :open-pr commands.open-linked-pr
         :split-left #(move-split $1 -0.05)

@@ -66,10 +66,13 @@
 (fn branch-status-command [path targets]
   (let [tmp (.. path ".tmp")
         commands (icollect [_ target (ipairs targets)]
-                   (target-status-command target))]
-    (table.insert commands 1 (fetch-command))
-    (.. "( " (table.concat commands "; ") " ) > " (sys.shell-quote tmp)
-        " && mv " (sys.shell-quote tmp) " " (sys.shell-quote path))))
+                   (target-status-command target))
+        checks (table.concat commands "; ")]
+    (.. "( " (fetch-command) "; gdiff_fetch_status=$?; "
+        "if [ \"$gdiff_fetch_status\" -ne 0 ]; then "
+        "printf '%s\\t%s\\n' fetch-error \"$gdiff_fetch_status\"; " "else "
+        checks "; fi ) > " (sys.shell-quote tmp) " && mv " (sys.shell-quote tmp)
+        " " (sys.shell-quote path))))
 
 (fn spawn-branch-status [path targets]
   (sys.remove-file path)
@@ -88,6 +91,7 @@
                 :ahead (tonumber ahead)
                 :behind (tonumber behind)}
       "detached" {:kind :detached :branch branch}
+      "fetch-error" {:kind :fetch-error :status branch}
       "no-upstream" {:kind :no-upstream :branch branch}
       "error" {:kind :error :branch branch}
       "skip" {:kind :skip :branch branch}
@@ -112,24 +116,32 @@
   {:branch branch :upstream upstream :ahead (or ahead 0) :behind (or behind 0)})
 
 (fn warning-for-status [status]
-  (if (= status.kind :skip)
-      nil
-      (= status.kind :detached)
-      "Detached HEAD: branch sync unavailable"
-      (= status.kind :no-upstream)
-      (.. "No upstream for " status.branch)
-      (= status.kind :error)
-      (.. "Could not check branch sync for " status.branch)
-      (not status.branch)
-      "Could not check branch sync"
-      (= status.branch "(detached)")
-      "Detached HEAD: branch sync unavailable"
-      (not status.upstream)
-      (.. "No upstream for " status.branch)
-      (< 0 status.behind)
-      (.. "Branch not in sync: " status.branch " vs " status.upstream " (+"
-          status.ahead "/-" status.behind ")")
+  (if (= status.kind :skip) nil
+      (= status.kind :fetch-error) nil
+      (= status.kind :detached) "Detached HEAD: branch sync unavailable"
+      (= status.kind :no-upstream) (.. "No upstream for " status.branch)
+      (= status.kind :error) (.. "Could not check branch sync for "
+                                 status.branch)
+      (not status.branch) "Could not check branch sync"
+      (= status.branch "(detached)") "Detached HEAD: branch sync unavailable"
+      (not status.upstream) (.. "No upstream for " status.branch)
+      (< 0 status.behind) (.. "Branch not in sync: " status.branch " vs "
+                              status.upstream " (+" status.ahead "/-"
+                              status.behind ")")
       nil))
+
+(fn notice-for-status [status]
+  (case status.kind
+    :fetch-error "Could not sync remote"
+    _ nil))
+
+(fn notice-from-output [text]
+  (var notice nil)
+  (each [line (string.gmatch (or text "") "[^\r\n]+")]
+    (let [status (parse-target-status-line line)]
+      (when (and status (not notice))
+        (set notice (notice-for-status status)))))
+  notice)
 
 (fn warning-from-output [text]
   (let [warnings []]
@@ -148,6 +160,7 @@
 (fn new-state [?revision]
   {:path (sys.temp-path)
    :running? false
+   :notice nil
    :warning nil
    :targets (targets-for-revision (or ?revision "HEAD"))})
 
@@ -159,6 +172,7 @@
       true)))
 
 (fn finish [state output]
+  (set state.notice (notice-from-output output))
   (set state.warning (warning-from-output output))
   (set state.running? false)
   (sys.remove-file state.path))
@@ -175,7 +189,11 @@
 (fn warning [state]
   state.warning)
 
+(fn notice [state]
+  state.notice)
+
 {: new-state
+ : notice
  : start
  : branch-status-command
  : fetch-command

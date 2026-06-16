@@ -122,6 +122,15 @@
     (faith.= false state.sync.running?)
     (faith.= "Remote in sync" state.notice)))
 
+(fn test-fetch-failure-shows-sync-notice-not-success []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.sync.running? true)
+    (set state.show_sync_notice? true)
+    (faith.is (sys.write-file state.sync.path "fetch-error\t128\n"))
+    (faith.is (app.handle-key state {} :tick))
+    (faith.= nil state.sync.warning)
+    (faith.= "Could not sync remote" state.notice)))
+
 (fn test-startup-clean-remote-sync-finish-stays-quiet []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.sync.running? true)
@@ -130,6 +139,14 @@
     (faith.is (app.handle-key state {} :tick))
     (faith.= nil state.sync.warning)
     (faith.= nil state.notice)))
+
+(fn test-startup-fetch-failure-shows-sync-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.sync.running? true)
+    (faith.is (sys.write-file state.sync.path "fetch-error\t128\n"))
+    (faith.is (app.handle-key state {} :tick))
+    (faith.= nil state.sync.warning)
+    (faith.= "Could not sync remote" state.notice)))
 
 (fn test-remote-sync-warning-persists-until-clean-sync []
   (let [state (state [(entry "M" "a.rb")])]
@@ -175,10 +192,12 @@
 
 {: test-a-toggles-all-reviewed-and-A-does-nothing
  : test-search-next-is-relative-to-current-cursor
+ : test-fetch-failure-shows-sync-notice-not-success
  : test-manual-clean-remote-sync-finish-updates-notice
  : test-remote-sync-finish-is-polled-on-input
  : test-remote-sync-warning-persists-until-clean-sync
  : test-startup-clean-remote-sync-finish-stays-quiet
+ : test-startup-fetch-failure-shows-sync-notice
  : test-split-key-does-not-start-due-sync
  : test-view-adds-left-scroll-info-for-overflowing-file-list
  : test-view-keeps_last_file_above_bottom_divider

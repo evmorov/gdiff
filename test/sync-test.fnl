@@ -66,6 +66,8 @@
 (fn test-branch-status-command-separates-target-subshells []
   (let [command (sync.branch-status-command "/tmp/gdiff-sync-status"
                                             ["main" "proxysql"])]
+    (faith.match "gdiff_fetch_status" command)
+    (faith.match "fetch%-error" command)
     (faith.match "%)%; %(" command)
     (faith.= nil (command:find ") (" 1 true))
     (faith.= nil (command:find "\n" 1 true))
@@ -87,6 +89,11 @@
 
 (fn test-clean-branch-has-no-warning []
   (let [state (finish-with-output "branch\tfeature\torigin/feature\t0\t0\n")]
+    (faith.= nil (sync.warning state))))
+
+(fn test-fetch-failure-has-sync-notice-not-warning []
+  (let [state (finish-with-output "fetch-error\t128\n")]
+    (faith.= "Could not sync remote" (sync.notice state))
     (faith.= nil (sync.warning state))))
 
 (fn test-branch-ahead-of-upstream-has-no-warning []
@@ -113,6 +120,7 @@
  : test-branch-status-command-separates-target-subshells
  : test-combines-revision-side-warnings
  : test-fetch-command-is-quiet-and-noninteractive
+ : test-fetch-failure-has-sync-notice-not-warning
  : test-keeps-old-current-branch-status-parser
  : test-range-revision-checks-both-sides
  : test-single-revision-checks-current-branch

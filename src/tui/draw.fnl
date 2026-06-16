@@ -1,7 +1,8 @@
-(local body (require :tui.components.body))
-(local chrome (require :tui.components.chrome))
+(require :tui.components.register)
+
 (local context (require :tui.context))
 (local frame (require :tui.frame))
+(local renderer (require :tui.renderer))
 (local split (require :tui.components.split))
 (local terminal (require :tui.terminal))
 
@@ -11,10 +12,7 @@
         view (view-fn state ctx.rows ctx.cols)]
     (frame.with-frame (fn []
                         (frame.prepare state rows cols)
-                        (chrome.draw-header ctx view)
-                        (body.draw ctx view)
-                        (chrome.draw-bottom-rule ctx view)
-                        (chrome.draw-footer ctx view)))
+                        (renderer.draw ctx view)))
     (io.flush)))
 
 {: draw :split-widths split.widths}

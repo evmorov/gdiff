@@ -1,14 +1,5 @@
-(import-macros {: defrenderer} :tui.macros)
-
-(local lines-view (require :tui.components.lines))
-(local list-view (require :tui.components.list))
 (local nodes (require :tui.nodes))
 (local renderer (require :tui.renderer))
-(local split-view (require :tui.components.split))
-
-(defrenderer :split split-view)
-(defrenderer :list list-view)
-(defrenderer :lines lines-view)
 
 (fn legacy-body [view]
   (if view.preview

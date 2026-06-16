@@ -34,7 +34,9 @@
   (faith.= :function (type tui.components.split.draw))
   (faith.= :function (type tui.components.list.draw))
   (faith.= :function (type tui.components.lines.draw))
-  (faith.= :function (type tui.components.scrollbar.draw)))
+  (faith.= :function (type tui.components.scrollbar.draw))
+  (faith.= :function (type tui.components.screen.draw))
+  (faith.= tui.components.screen (tui.renderer.component-for {:type :screen})))
 
 (fn test-renderer-dispatches_registered_components []
   (let [calls []

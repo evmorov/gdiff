@@ -1,4 +1,6 @@
 (local ansi (require :tui.ansi))
+(require :tui.components.register)
+
 (local context (require :tui.context))
 (local draw (require :tui.draw))
 (local body (require :tui.components.body))
@@ -14,6 +16,7 @@
 (local row-view (require :tui.components.row))
 (local runtime (require :tui.runtime))
 (local scrollbar (require :tui.components.scrollbar))
+(local screen-view (require :tui.components.screen))
 (local split-view (require :tui.components.split))
 (local terminal (require :tui.terminal))
 (local theme (require :tui.theme))
@@ -28,6 +31,7 @@
               :rule rule-view
               :row row-view
               :scrollbar scrollbar
+              :screen screen-view
               :split split-view}
  :context context.new
  :context-body-rows context.body-rows

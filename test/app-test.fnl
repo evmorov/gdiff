@@ -64,14 +64,14 @@
           footer-right (tui.strip-ansi view.footer.right)]
       (faith.= nil (header:find "files" 1 true))
       (faith.= nil (header:find "reviewed" 1 true))
-      (faith.= "1/2 reviewed │ 2 files" footer-right))))
+      (faith.= "1/2 reviewed" footer-right))))
 
 (fn test-view-shows_diff_stats_in_footer_right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
     (set state.diff_stats {:additions 42 :deletions 7})
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "0/2 reviewed │ 2 files │ +42 -7" footer-right))))
+      (faith.= "0/2 reviewed │ +42 -7" footer-right))))
 
 (fn test-view-shows-single-refresh-sync-key []
   (let [state (state [(entry "M" "a.rb")])

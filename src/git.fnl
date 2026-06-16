@@ -14,13 +14,16 @@
 (fn entry-from-name-status-line [line]
   (let [parts (split-tabs line)
         status (. parts 1)
-        kind (and status (status:sub 1 1))]
+        kind (and status (status:sub 1 1))
+        path (. parts 2)
+        new-path (. parts 3)
+        path-entry #(entry status path)]
     (case kind
-      "A" (entry status (. parts 2))
-      "M" (entry status (. parts 2))
-      "D" (entry status (. parts 2))
-      "R" (entry "R" (. parts 3) (. parts 2))
-      "C" (entry "R" (. parts 3) (. parts 2))
+      "A" (path-entry)
+      "M" (path-entry)
+      "D" (path-entry)
+      "R" (entry "R" new-path path)
+      "C" (entry "R" new-path path)
       _ nil)))
 
 (fn parse-name-status [text]

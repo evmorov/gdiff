@@ -5,4 +5,5 @@
             :git-test
             :preview-test
             :reviews-test
-            :sync-test])
+            :sync-test
+            :update-test])

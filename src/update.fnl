@@ -23,9 +23,49 @@
   (accumulate [count 0 _ entry (ipairs entries)]
     (if entry.reviewed (+ count 1) count)))
 
-(fn warm-preview-cache [state]
-  (preview-warm.start state.preview_warm state.src_dir state.revision
-                      state.entries))
+(fn none [_dispatch _get-state]
+  nil)
+
+(fn batch [...]
+  (let [commands [...]]
+    (fn [dispatch get-state]
+      (each [_ command (ipairs commands)]
+        (when command
+          (command dispatch get-state))))))
+
+(fn persist-reviewed-command []
+  (fn [dispatch get-state]
+    (let [state (get-state)]
+      (when (not (reviews.persist state.review_store state.review_scope
+                                  state.entries))
+        (dispatch {:type :review-persist-failed})))))
+
+(fn warm-preview-cache-command []
+  (fn [_dispatch get-state]
+    (let [state (get-state)]
+      (preview-warm.start state.preview_warm state.src_dir state.revision
+                          state.entries))))
+
+(fn sync-start-command []
+  (fn [_dispatch get-state]
+    (let [state (get-state)]
+      (sync.start state.sync))))
+
+(fn open-editor-command [config entry]
+  (fn [_dispatch get-state]
+    (editor.run config entry (. (get-state) :stty-state))))
+
+(fn copy-path-command [path]
+  (fn [dispatch _get-state]
+    (dispatch {:type :copy-path-finished :path path :ok? (clipboard.copy path)})))
+
+(fn refresh-command []
+  (fn [dispatch get-state]
+    (let [state (get-state)
+          reviewed (reviews.paths state.entries)
+          (entries err) (git.diff-entries state.revision)]
+      (when (not err)
+        (dispatch {:type :refresh-loaded :entries entries :reviewed reviewed})))))
 
 (fn event-key [key]
   (case key
@@ -74,11 +114,6 @@
 (fn set-notice [state action path]
   (set state.notice (.. action ": " path)))
 
-(fn persist-reviewed [state]
-  (when (not (reviews.persist state.review_store state.review_scope
-                              state.entries))
-    (set state.notice "Could not save reviewed marks")))
-
 (fn reviewed-action [entry]
   (if entry.reviewed "Marked reviewed" "Unmarked reviewed"))
 
@@ -86,8 +121,8 @@
   (let [entry (selected-entry state)]
     (when entry
       (set entry.reviewed (not entry.reviewed))
-      (set-notice state (reviewed-action entry) entry.path)
-      (persist-reviewed state))))
+      (set-notice state (reviewed-action entry) entry.path)))
+  (persist-reviewed-command))
 
 (fn toggle-all-reviewed [state]
   (let [entries state.entries
@@ -98,7 +133,7 @@
     (set state.notice (if review?
                           "Marked all reviewed"
                           "Unmarked all reviewed"))
-    (persist-reviewed state)))
+    (persist-reviewed-command)))
 
 (fn jump-top [state]
   (set-selection state 1))
@@ -107,34 +142,30 @@
   (let [last (length state.entries)]
     (set-selection state last)))
 
-(fn refresh-state [state]
-  (let [reviewed (reviews.paths state.entries)
-        (entries err) (git.diff-entries state.revision)]
-    (when (not err)
-      (set state.entries (reviews.apply entries reviewed))
-      (set state.preview_cache {})
-      (warm-preview-cache state)
-      (preview.reset-scroll state)
-      (move-selection state 0)
-      (persist-reviewed state)
-      (sync.start state.sync))))
+(fn refresh-state [_state]
+  (refresh-command))
+
+(fn apply-refresh [state entries reviewed]
+  (set state.entries (reviews.apply entries reviewed))
+  (set state.preview_cache {})
+  (preview.reset-scroll state)
+  (move-selection state 0)
+  (batch (warm-preview-cache-command) (persist-reviewed-command)
+         (sync-start-command)))
 
 (fn open-selected [state config]
   (let [entry (selected-entry state)]
     (when entry
       (set-notice state "Opened" entry.path)
-      (editor.run config entry state.stty-state))))
+      (open-editor-command config entry))))
 
 (fn copy-selected-path [state]
   (let [entry (selected-entry state)]
     (when entry
-      (if (clipboard.copy entry.path)
-          (set-notice state "Copied" entry.path)
-          (set-notice state "Copy failed" entry.path)))))
+      (copy-path-command entry.path))))
 
 (fn continue-after [f]
-  (f)
-  true)
+  (or (f) none))
 
 (fn handle-action [state config key]
   (case key
@@ -156,20 +187,55 @@
     :refresh (continue-after #(refresh-state state))
     :copy-path (continue-after #(copy-selected-path state))
     :tick (continue-after #nil)
-    :quit false
-    _ true))
+    :quit (do
+            (set state.quit? true)
+            none)
+    _ none))
 
 (fn update [state config msg]
-  (case (and (= (type msg) :table) msg.type)
-    :quit (set state.quit? true)
-    :search-input (search.handle-input state msg.key)
-    :key (do
-           (set state.pending-key msg.pending-key)
-           (let [running? (if msg.action
-                              (handle-action state config msg.action)
-                              true)]
-             (when (= running? false)
-               (set state.quit? true)))))
+  (let [command (case (and (= (type msg) :table) msg.type)
+                  :quit (do
+                          (set state.quit? true)
+                          none)
+                  :search-input (do
+                                  (search.handle-input state msg.key)
+                                  none)
+                  :key (do
+                         (set state.pending-key msg.pending-key)
+                         (if msg.action
+                             (handle-action state config msg.action)
+                             none))
+                  :review-persist-failed (do
+                                           (set state.notice
+                                                "Could not save reviewed marks")
+                                           none)
+                  :copy-path-finished (do
+                                        (set-notice state
+                                                    (if msg.ok?
+                                                        "Copied"
+                                                        "Copy failed")
+                                                    msg.path)
+                                        none)
+                  :refresh-loaded (apply-refresh state msg.entries msg.reviewed)
+                  _ none)]
+    (values state command)))
+
+(fn run-command [state config command]
+  (let [queue []]
+    (fn dispatch [msg]
+      (when msg
+        (table.insert queue msg)))
+
+    (fn get-state []
+      state)
+
+    (when command
+      (command dispatch get-state))
+    (while (> (length queue) 0)
+      (let [msg (table.remove queue 1)
+            (_ next-command) (update state config msg)]
+        (when next-command
+          (next-command dispatch get-state)))))
   state)
 
 (fn init [revision entries review-store review-scope src-dir]
@@ -192,11 +258,12 @@
 
 (fn handle-key [state config raw-key]
   (sync.update state.sync)
-  (update state config (read-msg state raw-key))
+  (let [(_ command) (update state config (read-msg state raw-key))]
+    (run-command state config command))
   (not state.quit?))
 
 (fn start [state]
-  (warm-preview-cache state)
-  (sync.start state.sync))
+  (run-command state {} (batch (warm-preview-cache-command)
+                               (sync-start-command))))
 
-{: handle-key : init :new-state init : read-msg : start : update}
+{: handle-key : init :new-state init : read-msg : run-command : start : update}

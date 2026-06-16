@@ -1,11 +1,11 @@
 (local ansi (require :tui.ansi))
-(local context (require :tui.context))
+(local layout (require :tui.layout))
 (local lines-view (require :tui.components.lines))
 (local list-view (require :tui.components.list))
 (local row-view (require :tui.components.row))
 (local scrollbar (require :tui.components.scrollbar))
 (local symbols (require :tui.symbols))
-(local terminal (require :tui.terminal))
+(local surface (require :tui.surface))
 (local theme (require :tui.theme))
 
 (fn widths [cols ?ratio]
@@ -44,28 +44,30 @@
               body-rows
               left-cols
               right-cols]
-  (terminal.cursor screen-row 1)
   (let [left-scroll? (scrollbar.visible? left-scroll body-rows)
         left-content-cols (if left-scroll? (- left-cols 1) left-cols)
         right-scroll? (scrollbar.visible? right-scroll body-rows)
-        right-content-cols (if right-scroll? (- right-cols 1) right-cols)]
-    (io.write (left-text ctx left-row left-content-cols))
-    (when left-scroll?
-      (io.write (scroll-marker ctx left-scroll row-index body-rows)))
-    (io.write (theme.color ctx.theme :muted symbols.line.vertical))
-    (io.write (right-text right-line right-content-cols))
-    (when right-scroll?
-      (io.write (scroll-marker ctx right-scroll row-index body-rows)))))
+        right-content-cols (if right-scroll? (- right-cols 1) right-cols)
+        line (.. (left-text ctx left-row left-content-cols)
+                 (if left-scroll?
+                     (scroll-marker ctx left-scroll row-index body-rows)
+                     "")
+                 (theme.color ctx.theme :muted symbols.line.vertical)
+                 (right-text right-line right-content-cols)
+                 (if right-scroll?
+                     (scroll-marker ctx right-scroll row-index body-rows)
+                     ""))]
+    (surface.write-at screen-row 1 line)))
 
 (fn draw [ctx node]
   (let [(left-cols right-cols) (widths ctx.cols node.ratio)
+        body (layout.body ctx)
         rows (list-view.rows node.left)
         preview (lines-view.rows node.right)
         left-scroll node.left.scroll
-        right-scroll node.right.scroll
-        body-rows (context.body-rows ctx)]
-    (for [i 1 body-rows]
-      (draw-row (+ i 2) ctx (. rows i) (. preview i) left-scroll right-scroll i
-                body-rows left-cols right-cols))))
+        right-scroll node.right.scroll]
+    (for [i 1 body.rows]
+      (draw-row (layout.row body i) ctx (. rows i) (. preview i) left-scroll
+                right-scroll i body.rows left-cols right-cols))))
 
 {: draw : widths}

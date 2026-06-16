@@ -28,15 +28,27 @@
     (faith.= 80 ctx.cols)
     (faith.= 6 (tui.context-body-rows ctx))))
 
+(fn test-layout-names_screen_regions []
+  (let [regions (tui.layout.screen 10 80)]
+    (faith.= {:row 1 :col 1 :rows 1 :cols 80} regions.header)
+    (faith.= {:row 2 :col 1 :rows 1 :cols 80} regions.header-rule)
+    (faith.= {:row 3 :col 1 :rows 6 :cols 80} regions.body)
+    (faith.= {:row 9 :col 1 :rows 1 :cols 80} regions.bottom-rule)
+    (faith.= {:row 10 :col 1 :rows 1 :cols 80} regions.footer)
+    (faith.= 4 (tui.layout.row regions.body 2))))
+
 (fn test-components-are-exposed-for-extension []
   (faith.= :table (type tui.components))
   (faith.= :table (type tui.renderer))
+  (faith.= :table (type tui.surface))
+  (faith.= :table (type tui.layout))
   (faith.= :function (type tui.components.split.draw))
   (faith.= :function (type tui.components.list.draw))
   (faith.= :function (type tui.components.lines.draw))
   (faith.= :function (type tui.components.scrollbar.draw))
   (faith.= :function (type tui.components.screen.draw))
-  (faith.= tui.components.screen (tui.renderer.component-for {:type :screen})))
+  (faith.= tui.components.screen (tui.renderer.component-for {:type :screen}))
+  (faith.= :function (type tui.surface.write-at)))
 
 (fn test-renderer-dispatches_registered_components []
   (let [calls []
@@ -174,6 +186,7 @@
  : test-header-rule-connects_body_divider
  : test-header-rule-connects_top_bar_separators
  : test-header-rule-crosses_top_bar_separator_and_body_divider
+ : test-layout-names_screen_regions
  : test-parses-terminal-background-response
  : test-render-context-carries-terminal-shape
  : test-renderer-dispatches_registered_components

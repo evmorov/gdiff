@@ -1,4 +1,5 @@
 (local ansi (require :tui.ansi))
+(local surface (require :tui.surface))
 (local theme (require :tui.theme))
 
 (fn render [ctx line selected? width]
@@ -7,8 +8,8 @@
       (ansi.pad-right line width)))
 
 (fn draw [ctx line selected? width ?newline]
-  (io.write (render ctx line selected? width))
+  (surface.write (render ctx line selected? width))
   (when ?newline
-    (io.write ansi.nl)))
+    (surface.newline)))
 
 {: draw : render}

@@ -8,6 +8,7 @@
 (local footer-view (require :tui.components.footer))
 (local frame (require :tui.frame))
 (local header-view (require :tui.components.header))
+(local layout (require :tui.layout))
 (local lines-view (require :tui.components.lines))
 (local list-view (require :tui.components.list))
 (local nodes (require :tui.nodes))
@@ -18,6 +19,7 @@
 (local scrollbar (require :tui.components.scrollbar))
 (local screen-view (require :tui.components.screen))
 (local split-view (require :tui.components.split))
+(local surface (require :tui.surface))
 (local terminal (require :tui.terminal))
 (local theme (require :tui.theme))
 
@@ -40,6 +42,7 @@
  :footer nodes.footer
  :frame frame
  :highlight-matches theme.highlight-matches
+ :layout layout
  :lines nodes.lines
  :list nodes.list
  :read-key terminal.read-key
@@ -50,6 +53,7 @@
  :screen nodes.screen
  :split nodes.split
  :strip-ansi ansi.strip-ansi
+ :surface surface
  :suspend terminal.suspend
  :terminal-size terminal.terminal-size
  :theme theme.new

@@ -1,9 +1,10 @@
 (local footer (require :tui.components.footer))
 (local header (require :tui.components.header))
+(local layout (require :tui.layout))
 (local nodes (require :tui.nodes))
 (local rule (require :tui.components.rule))
 (local split (require :tui.components.split))
-(local terminal (require :tui.terminal))
+(local surface (require :tui.surface))
 (local theme (require :tui.theme))
 
 (fn split-divider-col [body cols]
@@ -42,14 +43,16 @@
 
 (fn draw-bottom-rule [ctx view]
   (let [footer-node (view-footer view)
+        bottom-region (layout.region ctx :bottom-rule)
         divider-col (split-divider-col (view-body view) ctx.cols)
         footer-cols (footer-rule-cols ctx.cols
                                       (and footer-node footer-node.text)
                                       (and footer-node footer-node.right))]
-    (terminal.cursor (- ctx.rows 1) 1)
-    (terminal.clear-line)
-    (io.write (theme.color ctx.theme :muted
-                           (bottom-rule ctx.cols divider-col footer-cols)))))
+    (surface.write-row bottom-region.row
+                       (theme.color ctx.theme :muted
+                                    (bottom-rule bottom-region.cols divider-col
+                                                 footer-cols))
+                       true)))
 
 (fn styled-footer-text [ctx footer-node text]
   (footer.styled-text ctx footer-node text))

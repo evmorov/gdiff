@@ -1,7 +1,8 @@
 (local ansi (require :tui.ansi))
+(local layout (require :tui.layout))
 (local rule (require :tui.components.rule))
 (local symbols (require :tui.symbols))
-(local terminal (require :tui.terminal))
+(local surface (require :tui.surface))
 (local theme (require :tui.theme))
 
 (fn right-text [right cols]
@@ -62,23 +63,24 @@
 
 (fn draw-right [ctx right]
   (when right
-    (let [right (right-text right ctx.cols)
-          col (right-col ctx.cols right)]
-      (io.write ansi.esc "[" ctx.rows ";" col "H")
-      (io.write (theme.color ctx.theme :muted symbols.line.vertical) " ")
-      (io.write right))))
+    (let [footer-region (layout.region ctx :footer)
+          right (right-text right footer-region.cols)
+          col (right-col footer-region.cols right)]
+      (surface.write-at footer-region.row col
+                        (.. (theme.color ctx.theme :muted symbols.line.vertical)
+                            " " right)))))
 
 (fn draw [ctx footer]
-  (terminal.cursor ctx.rows 1)
-  (terminal.clear-line)
-  (when footer
-    (let [right footer.right
-          width (left-width ctx.cols right)
-          left (when footer.text (ansi.truncate footer.text width))]
-      (when left
-        (terminal.cursor ctx.rows 1)
-        (io.write (styled-text ctx footer left)))
-      (draw-right ctx right))))
+  (let [footer-region (layout.region ctx :footer)]
+    (surface.clear-row footer-region.row)
+    (when footer
+      (let [right footer.right
+            width (left-width footer-region.cols right)
+            left (when footer.text (ansi.truncate footer.text width))]
+        (when left
+          (surface.write-at footer-region.row footer-region.col
+                            (styled-text ctx footer left)))
+        (draw-right ctx right)))))
 
 {: draw
  : left-width

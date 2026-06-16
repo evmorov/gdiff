@@ -1,5 +1,5 @@
 (local symbols (require :tui.symbols))
-(local terminal (require :tui.terminal))
+(local surface (require :tui.surface))
 (local theme (require :tui.theme))
 
 (local thumb symbols.line.scroll-thumb)
@@ -26,7 +26,6 @@
   (when (visible? scroll height)
     (let [mark (marker scroll height row)]
       (when mark
-        (terminal.cursor screen-row col)
-        (io.write (theme.color ctx.theme :muted mark))))))
+        (surface.write-at screen-row col (theme.color ctx.theme :muted mark))))))
 
 {: draw : marker : thumb-range : visible?}

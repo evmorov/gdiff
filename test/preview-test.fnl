@@ -49,9 +49,9 @@
         state (state)
         key (preview-key.for-entry "HEAD" entry)]
     (tset state.preview_cache key ["1" "2" "3" "4" "5"])
-    (faith.= ["1" "2" "3"] (preview.visible-lines state entry 6))
+    (faith.= ["1" "2" "3"] (preview.visible-lines state entry 3))
     (faith.= {:offset 0 :total 5 :visible 3} (preview.scroll-info state))
-    (faith.= ["1" "2" "3" "4" "5"] (preview.visible-lines state entry 10))
+    (faith.= ["1" "2" "3" "4" "5"] (preview.visible-lines state entry 5))
     (faith.= nil (preview.scroll-info state))))
 
 (fn test-startup-can-cache-selected-preview-before-rendering []

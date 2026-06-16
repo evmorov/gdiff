@@ -4,6 +4,6 @@
   {:rows rows :cols cols :theme (or ?theme theme-store.default)})
 
 (fn body-rows [ctx]
-  (math.max 1 (- ctx.rows 3)))
+  (math.max 1 (- ctx.rows 4)))
 
 {: body-rows : new}

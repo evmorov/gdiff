@@ -40,6 +40,22 @@
 (fn ansi-sequence? [s i]
   (and (= (s:sub i i) esc) (= (s:sub (+ i 1) (+ i 1)) "[")))
 
+(fn utf8-char-end [s i]
+  (let [byte (string.byte s i)
+        last (length s)]
+    (if (not byte) i
+        (< byte 128) i
+        (< byte 224) (math.min last (+ i 1))
+        (< byte 240) (math.min last (+ i 2))
+        (math.min last (+ i 3)))))
+
+(fn next-char [s i]
+  (let [byte (string.byte s i)]
+    (if byte
+        (let [last (utf8-char-end s i)]
+          (values (s:sub i last) (+ last 1)))
+        (values nil (+ i 1)))))
+
 (fn visible-length [s]
   (let [s (tostring (or s ""))]
     (var i 1)
@@ -47,9 +63,9 @@
     (while (<= i (length s))
       (if (ansi-sequence? s i)
           (set i (+ (ansi-sequence-end s i) 1))
-          (do
+          (let [(_ next-i) (next-char s i)]
             (set len (+ len 1))
-            (set i (+ i 1)))))
+            (set i next-i))))
     len))
 
 (fn pad-right [s width]
@@ -65,9 +81,9 @@
     (while (<= i (length s))
       (if (ansi-sequence? s i)
           (set i (+ (ansi-sequence-end s i) 1))
-          (do
-            (set out (.. out (s:sub i i)))
-            (set i (+ i 1)))))
+          (let [(ch next-i) (next-char s i)]
+            (set out (.. out ch))
+            (set i next-i))))
     out))
 
 (fn match-ranges [plain query]
@@ -102,13 +118,13 @@
                   (let [last (ansi-sequence-end s i)]
                     (set out (.. out (s:sub i last)))
                     (set i (+ last 1)))
-                  (do
-                    (set out (.. out (s:sub i i)))
+                  (let [(ch next-i) (next-char s i)]
+                    (set out (.. out ch))
                     (when (and range (= visible range.last))
                       (set out (.. out end-code))
                       (set range-index (+ range-index 1)))
                     (set visible (+ visible 1))
-                    (set i (+ i 1))))))
+                    (set i next-i)))))
           out))))
 
 (fn truncate [s width]
@@ -125,10 +141,10 @@
                 (let [last (ansi-sequence-end s i)]
                   (set out (.. out (s:sub i last)))
                   (set i (+ last 1)))
-                (do
-                  (set out (.. out (s:sub i i)))
+                (let [(ch next-i) (next-char s i)]
+                  (set out (.. out ch))
                   (set visible (+ visible 1))
-                  (set i (+ i 1)))))
+                  (set i next-i))))
           (.. out suffix (reset-code))))))
 
 {: apply-block-style
@@ -137,6 +153,7 @@
  : esc
  : highlight-matches
  : nl
+ : next-char
  : pad-right
  : reset-code
  : reset-style

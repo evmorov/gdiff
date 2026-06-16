@@ -2,6 +2,8 @@
 (local preview (require :preview.core))
 (local tui (require :tui.core))
 
+(local separator " │ ")
+
 (fn new-state []
   {:active? false :query "" :matches [] :index 0})
 
@@ -48,13 +50,14 @@
         count (length search.matches)]
     (set state.notice
          (if search.active?
-             (.. "/" search.query " | " count " match" (if (= count 1) "" "es")
-                 " | enter finish | esc clear")
+             (.. "/" search.query separator count " match"
+                 (if (= count 1) "" "es") separator "enter finish" separator
+                 "esc clear")
              (and (> (length search.query) 0)
                   (if (= count 0)
                       (.. "No matches for '" search.query "'")
                       (.. "Search: " search.index "/" count " " search.query
-                          " | n/N next/prev | q clear")))))))
+                          separator "n/N next/prev" separator "q clear")))))))
 
 (fn apply-match [state found]
   (when found
@@ -175,8 +178,9 @@
   (let [search (search state)]
     (if search.active?
         (let [count (length search.matches)]
-          (.. "/" search.query " | " count " match" (if (= count 1) "" "es")
-              " | enter finish | esc clear"))
+          (.. "/" search.query separator count " match"
+              (if (= count 1) "" "es") separator "enter finish" separator
+              "esc clear"))
         nil)))
 
 {: active?

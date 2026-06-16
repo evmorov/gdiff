@@ -55,6 +55,17 @@
     (faith.= "> [ ] [R] spec/tardis/api/v2_spec.rb <- spec/tardis/api_spec.rb"
              (plain-row-text (. view.body.left.rows 1)))))
 
+(fn test-view-moves_file_counts_to_footer_right []
+  (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
+    (let [first-entry (. state.entries 1)]
+      (set first-entry.reviewed true))
+    (let [view (app.view state 10 100)
+          header (tui.strip-ansi view.header)
+          footer-right (tui.strip-ansi view.footer.right)]
+      (faith.= nil (header:find "files" 1 true))
+      (faith.= nil (header:find "reviewed" 1 true))
+      (faith.= "2 files │ 1/2 reviewed" footer-right))))
+
 (fn test-view-adds-left-scroll-info-for-overflowing-file-list []
   (let [state (state [(entry "M" "1.rb")
                       (entry "M" "2.rb")
@@ -62,7 +73,19 @@
                       (entry "M" "4.rb")
                       (entry "M" "5.rb")])
         view (app.view state 6 100)]
-    (faith.= {:offset 0 :total 5 :visible 3} view.body.left.scroll)))
+    (faith.= {:offset 0 :total 5 :visible 2} view.body.left.scroll)))
+
+(fn test-view-keeps_last_file_above_bottom_divider []
+  (let [state (state [(entry "M" "1.rb")
+                      (entry "M" "2.rb")
+                      (entry "M" "3.rb")
+                      (entry "M" "4.rb")
+                      (entry "M" "5.rb")])]
+    (set state.selected 5)
+    (let [view (app.view state 6 100)
+          rows view.body.left.rows]
+      (faith.= 2 (length rows))
+      (faith.= "> [ ] [M] 5.rb" (plain-row-text (. rows 2))))))
 
 (fn test-split-key-does-not-start-due-sync []
   (let [state (state [(entry "M" "a.rb")])]
@@ -100,5 +123,7 @@
  : test-search-next-is-relative-to-current-cursor
  : test-split-key-does-not-start-due-sync
  : test-view-adds-left-scroll-info-for-overflowing-file-list
+ : test-view-keeps_last_file_above_bottom_divider
+ : test-view-moves_file_counts_to_footer_right
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

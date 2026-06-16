@@ -26,7 +26,7 @@
   (let [ctx (tui.context 10 80)]
     (faith.= 10 ctx.rows)
     (faith.= 80 ctx.cols)
-    (faith.= 7 (tui.context-body-rows ctx))))
+    (faith.= 6 (tui.context-body-rows ctx))))
 
 (fn test-components-are-exposed-for-extension []
   (faith.= :table (type tui.components))
@@ -34,6 +34,61 @@
   (faith.= :function (type tui.components.list.draw))
   (faith.= :function (type tui.components.lines.draw))
   (faith.= :function (type tui.components.scrollbar.draw)))
+
+(fn test-header-rule-connects_top_bar_separators []
+  (let [rule (tui.components.chrome.header-rule "a │ b │ c" 9)]
+    (faith.= "──┴───┴──" rule)))
+
+(fn test-header-rule-connects_body_divider []
+  (let [rule (tui.components.chrome.header-rule "abcdefghi" 9 5)]
+    (faith.= "────┬────" rule)))
+
+(fn test-header-rule-crosses_top_bar_separator_and_body_divider []
+  (let [rule (tui.components.chrome.header-rule "a │ b" 5 3)]
+    (faith.= "──┼──" rule)))
+
+(fn test-bottom-rule-connects_body_divider []
+  (let [rule (tui.components.chrome.bottom-rule 9 5)]
+    (faith.= "────┴────" rule)))
+
+(fn test-bottom-rule-connects_footer_right_separator []
+  (let [rule (tui.components.chrome.bottom-rule 9 nil 7)]
+    (faith.= "──────┬──" rule)))
+
+(fn test-bottom-rule-crosses_body_divider_and_footer_separator []
+  (let [rule (tui.components.chrome.bottom-rule 9 5 5)]
+    (faith.= "────┼────" rule)))
+
+(fn test-bottom-rule-connects_all_footer_right_separators []
+  (let [footer-cols (tui.components.chrome.footer-rule-cols 30 nil
+                                                            "65 files │ 12/65 reviewed")
+        rule (tui.components.chrome.bottom-rule 30 nil footer-cols)]
+    (faith.= "───┬──────────┬───────────────"
+             rule)))
+
+(fn test-bottom-rule-connects_left_footer_separators []
+  (let [footer-cols (tui.components.chrome.footer-rule-cols 20 "a │ b │ c"
+                                                            nil)]
+    (faith.= true (. footer-cols 3))
+    (faith.= true (. footer-cols 7))))
+
+(fn test-footer-right-col_includes_leading_separator []
+  (faith.= 8 (tui.components.chrome.footer-right-col 20 "11 chars ok")))
+
+(fn test-footer-text-styles_separators_as_muted []
+  (let [ctx (tui.context 10 80)
+        node (tui.footer :prompt "Search │ next")
+        styled (tui.components.chrome.styled-footer-text ctx node node.text)]
+    (faith.= "Search │ next" (ansi.strip-ansi styled))
+    (when (ansi.color?)
+      (faith.is (styled:find "\27[2m│" 1 true)))))
+
+(fn test-visible-length-counts_utf8_glyph_as_one_cell []
+  (faith.= 1 (ansi.visible-length "│"))
+  (faith.= 5 (ansi.visible-length "a │ b")))
+
+(fn test-truncate_preserves_whole_utf8_glyphs []
+  (faith.= "a │..." (ansi.truncate "a │ b c" 6)))
 
 (fn test-split-component-calculates_widths []
   (let [(left right divider) (tui.components.split.widths 101 0.4)]
@@ -54,7 +109,7 @@
         (start finish) (tui.components.scrollbar.thumb-range scroll 5)]
     (faith.= 3 start)
     (faith.= 5 finish)
-    (faith.= "│" (tui.components.scrollbar.marker scroll 5 2))
+    (faith.= nil (tui.components.scrollbar.marker scroll 5 2))
     (faith.= "█" (tui.components.scrollbar.marker scroll 5 3))))
 
 (fn test-parses-terminal-background-response []
@@ -97,7 +152,17 @@
     (faith.= nil (style:find "48;" 1 true))))
 
 {: test-empty-footer-is-nil
+ : test-bottom-rule-connects_footer_right_separator
+ : test-bottom-rule-connects_all_footer_right_separators
+ : test-bottom-rule-connects_body_divider
+ : test-bottom-rule-connects_left_footer_separators
+ : test-bottom-rule-crosses_body_divider_and_footer_separator
  : test-components-are-exposed-for-extension
+ : test-footer-right-col_includes_leading_separator
+ : test-footer-text-styles_separators_as_muted
+ : test-header-rule-connects_body_divider
+ : test-header-rule-connects_top_bar_separators
+ : test-header-rule-crosses_top_bar_separator_and_body_divider
  : test-parses-terminal-background-response
  : test-render-context-carries-terminal-shape
  : test-screen-builds-declarative-view-tree
@@ -107,4 +172,6 @@
  : test-search-match-does-not-guess-background
  : test-search-match-uses-derived-background
  : test-selected-row-does-not-guess-without-background
- : test-selected-row-uses-derived-background}
+ : test-selected-row-uses-derived-background
+ : test-truncate_preserves_whole_utf8_glyphs
+ : test-visible-length-counts_utf8_glyph_as_one_cell}

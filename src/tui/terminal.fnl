@@ -21,6 +21,18 @@
 (fn cursor [row col]
   (io.write ansi.esc "[" row ";" col "H"))
 
+(fn clear-line []
+  (io.write ansi.esc "[2K"))
+
+(fn clear-screen []
+  (io.write ansi.esc "[2J" ansi.esc "[H"))
+
+(fn begin-frame []
+  (io.write ansi.esc "[?2026h"))
+
+(fn end-frame []
+  (io.write ansi.esc "[?2026l"))
+
 (fn escape-key []
   (let [a (io.read 1)
         b (io.read 1)]
@@ -72,6 +84,7 @@
   (let [background-rgb (query-background-rgb)]
     (os.execute "stty raw -echo min 0 time 10 2>/dev/null")
     (io.write ansi.esc "[?1049h" ansi.esc "[?25l")
+    (clear-screen)
     (io.flush)
     (values stty-state background-rgb)))
 
@@ -86,7 +99,11 @@
   (f)
   (raw-terminal stty-state))
 
-{: cursor
+{: begin-frame
+ : clear-line
+ : clear-screen
+ : cursor
+ : end-frame
  : raw-terminal
  : read-key
  : restore-terminal

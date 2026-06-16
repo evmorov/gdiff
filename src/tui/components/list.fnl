@@ -2,6 +2,7 @@
 (local context (require :tui.context))
 (local row-view (require :tui.components.row))
 (local scrollbar (require :tui.components.scrollbar))
+(local terminal (require :tui.terminal))
 
 (fn rows [node]
   (or node.rows []))
@@ -12,6 +13,8 @@
         content-width (if scroll? (- width 1) width)]
     (for [i 1 (context.body-rows ctx)]
       (let [row (. (rows node) i)]
+        (terminal.cursor (+ i 2) 1)
+        (terminal.clear-line)
         (when (and row (> content-width 0))
           (row-view.draw ctx (ansi.truncate row.text content-width)
                          row.selected? content-width))

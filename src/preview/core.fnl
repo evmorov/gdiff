@@ -93,16 +93,16 @@
 (fn scroll-page-up [state entry]
   (scroll state entry (- (page-step state))))
 
-(fn visible-lines [state entry rows ?opts]
-  (let [usable (math.max 1 (- rows 3))
+(fn visible-lines [state entry visible ?opts]
+  (let [visible (math.max 1 visible)
         lines (if (and ?opts ?opts.nonblocking?)
                   (nonblocking-lines state entry)
                   (lines state entry))]
-    (set state.preview_rows usable)
+    (set state.preview_rows visible)
     (set state.preview_total (length lines))
     (set-scroll-for-lines state lines (or state.preview_scroll 0))
     (let [first (+ state.preview_scroll 1)
-          last (math.min (length lines) (+ state.preview_scroll usable))]
+          last (math.min (length lines) (+ state.preview_scroll visible))]
       (if (> first last)
           []
           (fcollect [i first last]

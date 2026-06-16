@@ -8,9 +8,9 @@
 
 (defnode split [left right ?ratio] :split :left left :right right :ratio ?ratio)
 
-(fn footer [kind text]
-  (when text
-    {:type kind :text text}))
+(fn footer [kind text ?right]
+  (when (or text ?right)
+    {:type kind :text text :right ?right}))
 
 (defnode screen [header body ?footer] :screen :header header :body body :footer
   ?footer)

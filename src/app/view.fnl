@@ -3,6 +3,7 @@
 (local preview-warm (require :preview.warm))
 (local search (require :app.search))
 (local sync (require :git.sync))
+(local symbols (require :tui.symbols))
 (local tui (require :tui.core))
 
 (fn status-color [entry]
@@ -35,31 +36,41 @@
 (fn plural-s [n]
   (if (= n 1) "" "s"))
 
-(fn viewport [selected count rows]
-  (let [usable (math.max 1 (- rows 3))
-        top (clamp (- selected (math.floor (/ usable 2))) 1
-                   (math.max 1 (- count usable -1)))
-        bottom (math.min count (+ top usable -1))]
+(fn body-row-count [rows]
+  (math.max 1 (- rows 4)))
+
+(fn viewport [selected count visible]
+  (let [top (clamp (- selected (math.floor (/ visible 2))) 1
+                   (math.max 1 (- count visible -1)))
+        bottom (math.min count (+ top visible -1))]
     (values top bottom)))
 
-(fn list-scroll-info [top count rows]
-  (let [visible (math.max 1 (- rows 3))]
-    (when (> count visible)
-      {:offset (- top 1) :visible visible :total count})))
+(fn list-scroll-info [top count visible]
+  (when (> count visible)
+    {:offset (- top 1) :visible visible :total count}))
 
-(fn header-line [state count]
+(fn header-line [state]
+  (let [separator (.. " " (tui.color state.theme :muted symbols.line.separator)
+                      " ")
+        items [state.revision_label
+               "/ search"
+               "C-d/C-u preview"
+               "r refresh"
+               "y copy"
+               "p PR"
+               "space check"
+               "a all/none"
+               "enter/o open"
+               "Ctrl-C quit"]]
+    (table.concat items separator)))
+
+(fn footer-summary [state count]
   (let [reviewed (reviewed-count state.entries)
-        help (table.concat [" | / search"
-                            " | C-d/C-u preview"
-                            " | r refresh"
-                            " | y copy"
-                            " | p PR"
-                            " | space check"
-                            " | a all/none"
-                            " | enter/o open"
-                            " | Ctrl-C quit"])]
-    (.. "gdiff " state.revision_label " | " count " file" (plural-s count)
-        " | " reviewed "/" count " reviewed" help)))
+        separator (.. " " (tui.color state.theme :muted symbols.line.separator)
+                      " ")]
+    (table.concat [(.. count " file" (plural-s count))
+                   (.. reviewed "/" count " reviewed")]
+                  separator)))
 
 (fn row-prefix [state selected?]
   (if selected? (tui.color state.theme :selected-marker "> ") "  "))
@@ -72,35 +83,37 @@
 (fn row [state entry selected?]
   (tui.row (row-text state entry selected?) selected?))
 
-(fn visible-rows [state rows]
+(fn visible-rows [state visible]
   (let [entries state.entries
         selected state.selected
         count (length entries)
-        (first-row last-row) (viewport selected count rows)]
+        (first-row last-row) (viewport selected count visible)]
     (fcollect [i first-row last-row]
       (let [entry (. entries i)
             selected? (= i selected)]
         (row state entry selected?)))))
 
-(fn footer [state]
+(fn footer [state count]
   (let [prompt (search.status state)
-        warning (sync.warning state.sync)]
-    (if prompt (tui.footer :prompt prompt)
-        warning (tui.footer :warning warning)
-        (tui.footer :notice state.notice))))
+        warning (sync.warning state.sync)
+        summary (footer-summary state count)]
+    (if prompt (tui.footer :prompt prompt summary) warning
+        (tui.footer :warning warning summary)
+        (tui.footer :notice state.notice summary))))
 
 (fn view [state rows _cols]
   (let [count (length state.entries)
+        visible (body-row-count rows)
         selected-entry (selected-entry state)
-        (first-row _last-row) (viewport state.selected count rows)
+        (first-row _last-row) (viewport state.selected count visible)
         _ (preview-warm.import-entry state.preview_warm state.preview_cache
                                      state.revision selected-entry)
-        left (tui.list (visible-rows state rows)
-                       (list-scroll-info first-row count rows))
-        right-lines (preview.visible-lines state selected-entry rows
+        left (tui.list (visible-rows state visible)
+                       (list-scroll-info first-row count visible))
+        right-lines (preview.visible-lines state selected-entry visible
                                            {:nonblocking? true})
         right (tui.lines right-lines (preview.scroll-info state))
         body (tui.split left right state.split_ratio)]
-    (tui.screen (header-line state count) body (footer state))))
+    (tui.screen (header-line state) body (footer state count))))
 
 {: view}

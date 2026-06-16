@@ -1,8 +1,8 @@
+(local symbols (require :tui.symbols))
 (local terminal (require :tui.terminal))
 (local theme (require :tui.theme))
 
-(local thumb "█")
-(local track "│")
+(local thumb symbols.line.scroll-thumb)
 
 (fn visible? [scroll height]
   (if (and scroll (> height 0) (> (or scroll.total 0) (or scroll.visible 0)))
@@ -20,11 +20,13 @@
 
 (fn marker [scroll height row]
   (let [(start finish) (thumb-range scroll height)]
-    (if (and (>= row start) (<= row finish)) thumb track)))
+    (if (and (>= row start) (<= row finish)) thumb)))
 
 (fn draw [ctx scroll row screen-row col height]
   (when (visible? scroll height)
-    (terminal.cursor screen-row col)
-    (io.write (theme.color ctx.theme :muted (marker scroll height row)))))
+    (let [mark (marker scroll height row)]
+      (when mark
+        (terminal.cursor screen-row col)
+        (io.write (theme.color ctx.theme :muted mark))))))
 
 {: draw : marker : thumb-range : visible?}

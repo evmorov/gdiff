@@ -42,6 +42,11 @@
         bottom (math.min count (+ top usable -1))]
     (values top bottom)))
 
+(fn list-scroll-info [top count rows]
+  (let [visible (math.max 1 (- rows 3))]
+    (when (> count visible)
+      {:offset (- top 1) :visible visible :total count})))
+
 (fn header-line [state count]
   (let [reviewed (reviewed-count state.entries)
         help (table.concat [" | / search"
@@ -87,11 +92,14 @@
 (fn view [state rows _cols]
   (let [count (length state.entries)
         selected-entry (selected-entry state)
+        (first-row _last-row) (viewport state.selected count rows)
         _ (preview-warm.import-entry state.preview_warm state.preview_cache
                                      state.revision selected-entry)
-        left (tui.list (visible-rows state rows))
-        right (tui.lines (preview.visible-lines state selected-entry rows
-                                                {:nonblocking? true}))
+        left (tui.list (visible-rows state rows)
+                       (list-scroll-info first-row count rows))
+        right-lines (preview.visible-lines state selected-entry rows
+                                           {:nonblocking? true})
+        right (tui.lines right-lines (preview.scroll-info state))
         body (tui.split left right state.split_ratio)]
     (tui.screen (header-line state count) body (footer state))))
 

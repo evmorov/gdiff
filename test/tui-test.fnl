@@ -32,13 +32,30 @@
   (faith.= :table (type tui.components))
   (faith.= :function (type tui.components.split.draw))
   (faith.= :function (type tui.components.list.draw))
-  (faith.= :function (type tui.components.lines.draw)))
+  (faith.= :function (type tui.components.lines.draw))
+  (faith.= :function (type tui.components.scrollbar.draw)))
 
 (fn test-split-component-calculates_widths []
   (let [(left right divider) (tui.components.split.widths 101 0.4)]
     (faith.= 40 left)
     (faith.= 60 right)
     (faith.= 41 divider)))
+
+(fn test-scrollbar_only_visible_for_overflow []
+  (faith.is (tui.components.scrollbar.visible? {:offset 0 :total 10 :visible 5}
+                                               5))
+  (faith.= nil (tui.components.scrollbar.visible? {:offset 0
+                                                   :total 5
+                                                   :visible 5}
+                                                  5)))
+
+(fn test-scrollbar_thumb_tracks_offset []
+  (let [scroll {:offset 5 :total 10 :visible 5}
+        (start finish) (tui.components.scrollbar.thumb-range scroll 5)]
+    (faith.= 3 start)
+    (faith.= 5 finish)
+    (faith.= "│" (tui.components.scrollbar.marker scroll 5 2))
+    (faith.= "█" (tui.components.scrollbar.marker scroll 5 3))))
 
 (fn test-parses-terminal-background-response []
   (faith.= {:r 0 :g 17 :b 255}
@@ -85,6 +102,8 @@
  : test-render-context-carries-terminal-shape
  : test-screen-builds-declarative-view-tree
  : test-split-component-calculates_widths
+ : test-scrollbar_only_visible_for_overflow
+ : test-scrollbar_thumb_tracks_offset
  : test-search-match-does-not-guess-background
  : test-search-match-uses-derived-background
  : test-selected-row-does-not-guess-without-background

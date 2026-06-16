@@ -214,6 +214,7 @@
    :selected 1
    :preview_scroll 0
    :preview_rows 1
+   :preview_total 0
    :split_ratio 0.4
    :theme theme.default
    :preview_cache {}

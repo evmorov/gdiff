@@ -16,6 +16,7 @@
    :preview_context (git.preview-context)
    :preview_rows 1
    :preview_scroll 0
+   :preview_total 0
    :revision "HEAD"})
 
 (fn test-visible-lines-renders-and-caches-real-git-preview []
@@ -42,6 +43,16 @@
         lines (preview.visible-lines state entry 20 {:nonblocking? true})]
     (faith.= "Loading preview..." (t.text lines))
     (faith.= 0 (t.count-pairs state.preview_cache))))
+
+(fn test-scroll-info-only-appears-when-preview-overflows []
+  (let [entry {:status "M" :kind "M" :path "a.rb" :reviewed false}
+        state (state)
+        key (preview-key.for-entry "HEAD" entry)]
+    (tset state.preview_cache key ["1" "2" "3" "4" "5"])
+    (faith.= ["1" "2" "3"] (preview.visible-lines state entry 6))
+    (faith.= {:offset 0 :total 5 :visible 3} (preview.scroll-info state))
+    (faith.= ["1" "2" "3" "4" "5"] (preview.visible-lines state entry 10))
+    (faith.= nil (preview.scroll-info state))))
 
 (fn test-startup-can-cache-selected-preview-before-rendering []
   (setup-repo)
@@ -77,5 +88,6 @@
 
 {: test-visible-lines-can-be-nonblocking-while-warming
  : test-refresh-loaded-keeps-cache-and-caches-selected-preview
+ : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
  : test-visible-lines-renders-and-caches-real-git-preview}

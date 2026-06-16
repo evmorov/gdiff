@@ -8,6 +8,7 @@
 (local nodes (require :tui.nodes))
 (local row-view (require :tui.components.row))
 (local runtime (require :tui.runtime))
+(local scrollbar (require :tui.components.scrollbar))
 (local split-view (require :tui.components.split))
 (local terminal (require :tui.terminal))
 (local theme (require :tui.theme))
@@ -18,6 +19,7 @@
               :lines lines-view
               :list list-view
               :row row-view
+              :scrollbar scrollbar
               :split split-view}
  :context context.new
  :context-body-rows context.body-rows

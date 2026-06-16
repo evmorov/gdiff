@@ -55,6 +55,15 @@
     (faith.= "> [ ] [R] spec/tardis/api/v2_spec.rb <- spec/tardis/api_spec.rb"
              (plain-row-text (. view.body.left.rows 1)))))
 
+(fn test-view-adds-left-scroll-info-for-overflowing-file-list []
+  (let [state (state [(entry "M" "1.rb")
+                      (entry "M" "2.rb")
+                      (entry "M" "3.rb")
+                      (entry "M" "4.rb")
+                      (entry "M" "5.rb")])
+        view (app.view state 6 100)]
+    (faith.= {:offset 0 :total 5 :visible 3} view.body.left.scroll)))
+
 (fn test-split-key-does-not-start-due-sync []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.sync.next_at 0)
@@ -90,5 +99,6 @@
 {: test-a-toggles-all-reviewed-and-A-does-nothing
  : test-search-next-is-relative-to-current-cursor
  : test-split-key-does-not-start-due-sync
+ : test-view-adds-left-scroll-info-for-overflowing-file-list
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

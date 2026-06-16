@@ -99,6 +99,7 @@
                   (nonblocking-lines state entry)
                   (lines state entry))]
     (set state.preview_rows usable)
+    (set state.preview_total (length lines))
     (set-scroll-for-lines state lines (or state.preview_scroll 0))
     (let [first (+ state.preview_scroll 1)
           last (math.min (length lines) (+ state.preview_scroll usable))]
@@ -107,9 +108,16 @@
           (fcollect [i first last]
             (. lines i))))))
 
+(fn scroll-info [state]
+  (let [visible (or state.preview_rows 0)
+        total (or state.preview_total 0)]
+    (when (> total visible)
+      {:offset (or state.preview_scroll 0) :visible visible :total total})))
+
 {: lines
  : nonblocking-lines
  : reset-scroll
+ : scroll-info
  : scroll-page-down
  : scroll-page-up
  : visible-lines}

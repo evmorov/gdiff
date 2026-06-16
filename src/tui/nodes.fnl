@@ -2,9 +2,9 @@
 
 (defnode row [text ?selected?] :row :text text :selected? ?selected?)
 
-(defnode list [rows] :list :rows rows)
+(defnode list [rows ?scroll] :list :rows rows :scroll ?scroll)
 
-(defnode lines [lines] :lines :lines lines)
+(defnode lines [lines ?scroll] :lines :lines lines :scroll ?scroll)
 
 (defnode split [left right ?ratio] :split :left left :right right :ratio ?ratio)
 

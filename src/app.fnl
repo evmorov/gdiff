@@ -31,33 +31,34 @@
 
 (fn parse-args [argv]
   (let [options {}]
-    (var revision nil)
-    (var err nil)
-    (var i 1)
-    (while (and (not err) (<= i (length argv)))
-      (let [arg (. argv i)
-            editor (parse-editor-option arg)]
-        (if editor
-            (do
-              (set options.editor editor)
-              (set i (+ i 1)))
-            (or (= arg "--editor") (= arg "-e"))
-            (let [(value next-i next-err) (next-arg argv i arg)]
-              (set options.editor value)
-              (set i next-i)
-              (set err next-err))
-            (= arg "--")
-            (let [(value next-i next-err) (next-arg argv i "--")]
-              (set revision value)
-              (set i next-i)
-              (set err next-err))
-            (and (= (arg:sub 1 1) "-") (not (= arg "-")))
-            (set err (.. "Unknown option: " arg))
-            (let [(next-revision next-err) (parse-revision revision arg)]
-              (set revision next-revision)
-              (set err next-err)
-              (set i (+ i 1))))))
-    (values options revision err)))
+    (fn parse-from [i revision]
+      (if (> i (length argv))
+          (values options revision nil)
+          (let [arg (. argv i)
+                editor (parse-editor-option arg)]
+            (if editor
+                (do
+                  (set options.editor editor)
+                  (parse-from (+ i 1) revision))
+                (or (= arg "--editor") (= arg "-e"))
+                (let [(value next-i err) (next-arg argv i arg)]
+                  (set options.editor value)
+                  (if err
+                      (values options revision err)
+                      (parse-from next-i revision)))
+                (= arg "--")
+                (let [(value next-i err) (next-arg argv i "--")]
+                  (if err
+                      (values options revision err)
+                      (parse-from next-i value)))
+                (and (= (arg:sub 1 1) "-") (not (= arg "-")))
+                (values options revision (.. "Unknown option: " arg))
+                (let [(next-revision err) (parse-revision revision arg)]
+                  (if err
+                      (values options next-revision err)
+                      (parse-from (+ i 1) next-revision)))))))
+
+    (parse-from 1 nil)))
 
 (fn status-color [entry]
   (case entry.kind
@@ -78,6 +79,12 @@
 
 (fn selected-entry [state]
   (. state.entries state.selected))
+
+(fn set-selection [state selected]
+  (let [before state.selected]
+    (set state.selected selected)
+    (when (not (= before state.selected))
+      (preview.reset-scroll state))))
 
 (fn clamp [n low high]
   (math.max low (math.min high n)))
@@ -118,6 +125,10 @@
       (let [entry (. entries i)
             selected? (= i selected)]
         {:text (row-text state entry selected?) :selected? selected?}))))
+
+(fn warm-preview-cache [state]
+  (preview-warm.start state.preview_warm state.src_dir state.revision
+                      state.entries))
 
 (fn view [state rows _cols]
   (preview-warm.update state.preview_warm state.preview_cache)
@@ -160,12 +171,10 @@
 
 (fn move-selection [state delta]
   (let [entries state.entries
-        before state.selected]
-    (if (= (length entries) 0)
-        (set state.selected 1)
-        (set state.selected (clamp (+ state.selected delta) 1 (length entries))))
-    (when (not (= before state.selected))
-      (preview.reset-scroll state))))
+        selected (if (= (length entries) 0)
+                     1
+                     (clamp (+ state.selected delta) 1 (length entries)))]
+    (set-selection state selected)))
 
 (fn set-notice [state action path]
   (set state.notice (.. action ": " path)))
@@ -197,15 +206,11 @@
     (persist-reviewed state)))
 
 (fn jump-top [state]
-  (when (not (= state.selected 1))
-    (set state.selected 1)
-    (preview.reset-scroll state)))
+  (set-selection state 1))
 
 (fn jump-bottom [state]
   (let [last (length state.entries)]
-    (when (not (= state.selected last))
-      (set state.selected last)
-      (preview.reset-scroll state))))
+    (set-selection state last)))
 
 (fn refresh-state [state]
   (let [reviewed (reviews.paths state.entries)
@@ -213,8 +218,7 @@
     (when (not err)
       (set state.entries (reviews.apply entries reviewed))
       (set state.preview_cache {})
-      (preview-warm.start state.preview_warm state.src_dir state.revision
-                          state.entries)
+      (warm-preview-cache state)
       (preview.reset-scroll state)
       (move-selection state 0)
       (persist-reviewed state)
@@ -272,24 +276,26 @@
             (handle-action state config key)
             true))))
 
+(fn new-state [revision entries review-store review-scope src-dir]
+  {:revision revision
+   :src_dir src-dir
+   :revision_label (git.comparison-label revision)
+   :entries entries
+   :selected 1
+   :preview_scroll 0
+   :preview_rows 1
+   :preview_cache {}
+   :preview_context (git.preview-context)
+   :preview_warm (preview-warm.new-state)
+   :review_store review-store
+   :review_scope review-scope
+   :search (search.new-state)
+   :sync (sync.new-state)
+   :pending-key nil})
+
 (fn picker [revision entries config review-store review-scope src-dir]
-  (let [state {:revision revision
-               :src_dir src-dir
-               :revision_label (git.comparison-label revision)
-               :entries entries
-               :selected 1
-               :preview_scroll 0
-               :preview_rows 1
-               :preview_cache {}
-               :preview_context (git.preview-context)
-               :preview_warm (preview-warm.new-state)
-               :review_store review-store
-               :review_scope review-scope
-               :search (search.new-state)
-               :sync (sync.new-state)
-               :pending-key nil}]
-    (preview-warm.start state.preview_warm state.src_dir state.revision
-                        state.entries)
+  (let [state (new-state revision entries review-store review-scope src-dir)]
+    (warm-preview-cache state)
     (sync.start state.sync)
     (tui.run-loop state view #(handle-key $1 config $2))))
 

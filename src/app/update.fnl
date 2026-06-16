@@ -244,8 +244,8 @@
    :pending-key nil})
 
 (fn handle-key [state config raw-key]
+  (update-remote-sync state)
   (when (= raw-key :tick)
-    (update-remote-sync state)
     (preview-warm.update state.preview_warm state.preview_cache))
   (let [(_ command) (update state config (read-msg state raw-key))]
     (run-command state config command))

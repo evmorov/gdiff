@@ -104,6 +104,17 @@
     (faith.= nil state.sync.warning)
     (faith.= "Remote in sync" state.notice)))
 
+(fn test-remote-sync-finish-is-polled-on-input []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
+    (set state.sync.running? true)
+    (set state.show_sync_notice? true)
+    (faith.is (sys.write-file state.sync.path
+                              "branch\tfeature\torigin/feature\t0\t0\n"))
+    (faith.is (app.handle-key state {} "j"))
+    (faith.= 2 state.selected)
+    (faith.= false state.sync.running?)
+    (faith.= "Remote in sync" state.notice)))
+
 (fn test-startup-clean-remote-sync-finish-stays-quiet []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.sync.running? true)
@@ -158,6 +169,7 @@
 {: test-a-toggles-all-reviewed-and-A-does-nothing
  : test-search-next-is-relative-to-current-cursor
  : test-manual-clean-remote-sync-finish-updates-notice
+ : test-remote-sync-finish-is-polled-on-input
  : test-remote-sync-warning-persists-until-clean-sync
  : test-startup-clean-remote-sync-finish-stays-quiet
  : test-split-key-does-not-start-due-sync

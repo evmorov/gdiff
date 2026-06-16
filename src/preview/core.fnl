@@ -1,7 +1,7 @@
-(local git (require :git))
-(local preview-key (require :preview_key))
-(local sys (require :sys))
-(local tui (require :tui))
+(local git (require :git.core))
+(local preview-key (require :preview.key))
+(local sys (require :platform.core))
+(local tui (require :tui.core))
 
 (fn clamp [n low high]
   (math.max low (math.min high n)))

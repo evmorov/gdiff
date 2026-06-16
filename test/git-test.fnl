@@ -1,5 +1,5 @@
 (local faith (require :faith))
-(local git (require :git))
+(local git (require :git.core))
 (local t (require :test-helper))
 
 (fn entries-by-path [entries]

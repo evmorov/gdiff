@@ -1,6 +1,6 @@
 (local faith (require :faith))
-(local reviews (require :reviews))
-(local update (require :update))
+(local reviews (require :storage.reviews))
+(local update (require :app.update))
 
 (fn entry [status path]
   {:status status :kind (status:sub 1 1) :path path :reviewed false})

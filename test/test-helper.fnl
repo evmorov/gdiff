@@ -1,5 +1,5 @@
 (local faith (require :faith))
-(local sys (require :sys))
+(local sys (require :platform.core))
 
 (fn output [cmd]
   (let [(out ok _kind _code) (sys.read-command cmd)]
@@ -41,7 +41,7 @@
   (sh (.. "git commit -m " (sys.shell-quote (or ?message "test")))))
 
 (fn strip-lines [lines]
-  (let [tui (require :tui)]
+  (let [tui (require :tui.core)]
     (icollect [_ line (ipairs lines)]
       (tui.strip-ansi line))))
 

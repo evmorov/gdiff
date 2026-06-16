@@ -1,6 +1,6 @@
-(local config-store (require :config))
-(local sys (require :sys))
-(local tui (require :tui))
+(local config-store (require :storage.config))
+(local sys (require :platform.core))
+(local tui (require :tui.core))
 
 (fn command [editor path]
   (if (= (type editor) "table")

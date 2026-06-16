@@ -1,4 +1,4 @@
-(local sys (require :sys))
+(local sys (require :platform.core))
 
 (fn split-tabs [line]
   (icollect [part (string.gmatch line "([^\t]+)")]

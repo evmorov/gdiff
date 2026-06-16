@@ -1,9 +1,9 @@
-(local clipboard (require :clipboard))
-(local editor (require :editor))
-(local git (require :git))
-(local preview-warm (require :preview_warm))
-(local reviews (require :reviews))
-(local sync (require :sync))
+(local clipboard (require :platform.clipboard))
+(local editor (require :platform.editor))
+(local git (require :git.core))
+(local preview-warm (require :preview.warm))
+(local reviews (require :storage.reviews))
+(local sync (require :git.sync))
 
 (fn none [_dispatch _get-state]
   nil)

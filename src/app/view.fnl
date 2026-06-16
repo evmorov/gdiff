@@ -1,9 +1,9 @@
-(local entry-view (require :entry))
-(local preview (require :preview))
-(local preview-warm (require :preview_warm))
-(local search (require :search))
-(local sync (require :sync))
-(local tui (require :tui))
+(local entry-view (require :app.entry))
+(local preview (require :preview.core))
+(local preview-warm (require :preview.warm))
+(local search (require :app.search))
+(local sync (require :git.sync))
+(local tui (require :tui.core))
 
 (fn status-color [entry]
   (case entry.kind
@@ -62,6 +62,9 @@
   (.. (row-prefix selected?) (reviewed-text entry) " " (status-text entry) " "
       (search.highlight state (entry-view.path-text entry))))
 
+(fn row [state entry selected?]
+  (tui.row (row-text state entry selected?) selected?))
+
 (fn visible-rows [state rows]
   (let [entries state.entries
         selected state.selected
@@ -70,17 +73,22 @@
     (fcollect [i first-row last-row]
       (let [entry (. entries i)
             selected? (= i selected)]
-        {:text (row-text state entry selected?) :selected? selected?}))))
+        (row state entry selected?)))))
+
+(fn footer [state]
+  (let [prompt (search.status state)
+        warning (sync.warning state.sync)]
+    (if prompt (tui.footer :prompt prompt)
+        warning (tui.footer :warning warning)
+        (tui.footer :notice state.notice))))
 
 (fn view [state rows _cols]
   (preview-warm.update state.preview_warm state.preview_cache)
-  (let [count (length state.entries)]
-    {:header (header-line state count)
-     :rows (visible-rows state rows)
-     :preview (preview.visible-lines state (selected-entry state) rows)
-     :split_ratio state.split_ratio
-     :prompt (search.status state)
-     :warning (sync.warning state.sync)
-     :notice state.notice}))
+  (let [count (length state.entries)
+        left (tui.list (visible-rows state rows))
+        right (tui.lines (preview.visible-lines state (selected-entry state)
+                                                rows))
+        body (tui.split left right state.split_ratio)]
+    (tui.screen (header-line state count) body (footer state))))
 
 {: view}

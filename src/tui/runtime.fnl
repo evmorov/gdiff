@@ -1,0 +1,22 @@
+(local draw (require :tui.draw))
+(local terminal (require :tui.terminal))
+
+(fn run [program]
+  (let [stty-state (terminal.saved-stty)]
+    (terminal.raw-terminal stty-state)
+    (let [(ok err) (pcall (fn []
+                            (set program.state.stty-state stty-state)
+                            (var running true)
+                            (while running
+                              (draw.draw program.view program.state)
+                              (set running
+                                   (program.update program.state
+                                                   (terminal.read-key program.state))))))]
+      (terminal.restore-terminal stty-state)
+      (when (not ok)
+        (error err)))))
+
+(fn run-loop [state view handle-key]
+  (run {:state state :view view :update handle-key}))
+
+{: run : run-loop}

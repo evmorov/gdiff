@@ -1,7 +1,7 @@
 (local fennel (require :fennel))
-(local git (require :git))
-(local preview (require :preview))
-(local sys (require :sys))
+(local git (require :git.core))
+(local preview (require :preview.core))
+(local sys (require :platform.core))
 
 (fn read-manifest [path]
   (let [source (sys.read-file path)]

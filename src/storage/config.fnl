@@ -1,5 +1,5 @@
 (local fennel (require :fennel))
-(local sys (require :sys))
+(local sys (require :platform.core))
 
 (fn path []
   (let [xdg (os.getenv "XDG_CONFIG_HOME")

@@ -1,5 +1,5 @@
 (local faith (require :faith))
-(local reviews (require :reviews))
+(local reviews (require :storage.reviews))
 (local t (require :test-helper))
 
 (fn entry [path reviewed?]

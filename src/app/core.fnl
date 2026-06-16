@@ -1,10 +1,10 @@
-(local args (require :args))
-(local config-store (require :config))
-(local git (require :git))
-(local reviews (require :reviews))
-(local tui (require :tui))
-(local app-update (require :update))
-(local app-view (require :view))
+(local args (require :app.args))
+(local config-store (require :storage.config))
+(local git (require :git.core))
+(local reviews (require :storage.reviews))
+(local tui (require :tui.core))
+(local app-update (require :app.update))
+(local app-view (require :app.view))
 
 (local handle-key app-update.handle-key)
 (local new-state app-update.init)
@@ -14,7 +14,9 @@
   (let [state (app-update.init revision entries review-store review-scope
                                src-dir)]
     (app-update.start state)
-    (tui.run-loop state app-view.view #(app-update.handle-key $1 config $2))))
+    (tui.run {:state state
+              :view app-view.view
+              :update #(app-update.handle-key $1 config $2)})))
 
 (fn exit-with-error [message]
   (io.stderr:write message "\n")

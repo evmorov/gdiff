@@ -1,5 +1,5 @@
-(local git (require :git))
-(local sys (require :sys))
+(local git (require :git.core))
+(local sys (require :platform.core))
 
 (local interval-seconds 300)
 

@@ -7,4 +7,5 @@
             :preview_warm_test
             :reviews-test
             :sync-test
+            :tui-test
             :update-test])

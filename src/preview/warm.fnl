@@ -1,6 +1,6 @@
 (local fennel (require :fennel))
-(local preview-key (require :preview_key))
-(local sys (require :sys))
+(local preview-key (require :preview.key))
+(local sys (require :platform.core))
 
 (fn make-dir []
   (let [path (sys.temp-path)]
@@ -20,7 +20,7 @@
 
 (fn worker-command [src-dir manifest dir start step]
   (.. "fennel --add-fennel-path " (sys.shell-quote (.. src-dir "/?.fnl")) " "
-      (sys.shell-quote (.. src-dir "/preview_worker.fnl")) " "
+      (sys.shell-quote (.. src-dir "/preview/worker.fnl")) " "
       (sys.shell-quote manifest) " " (sys.shell-quote dir) " " start " " step))
 
 (fn new-state []

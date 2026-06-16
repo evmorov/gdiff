@@ -1,4 +1,4 @@
-(local args (require :args))
+(local args (require :app.args))
 (local faith (require :faith))
 
 (fn test-parses-editor-and-revision []

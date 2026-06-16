@@ -1,6 +1,6 @@
 (local faith (require :faith))
-(local sync (require :sync))
-(local sys (require :sys))
+(local sync (require :git.sync))
+(local sys (require :platform.core))
 (local t (require :test-helper))
 
 (fn finish-with-output [output ?revision]

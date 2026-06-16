@@ -1,8 +1,8 @@
 (local faith (require :faith))
 (local fennel (require :fennel))
-(local preview-key (require :preview_key))
-(local preview-warm (require :preview_warm))
-(local sys (require :sys))
+(local preview-key (require :preview.key))
+(local preview-warm (require :preview.warm))
+(local sys (require :platform.core))
 (local t (require :test-helper))
 
 (fn write-output [dir index lines]

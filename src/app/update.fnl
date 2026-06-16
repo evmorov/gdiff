@@ -1,10 +1,10 @@
-(local commands (require :commands))
-(local git (require :git))
-(local preview (require :preview))
-(local preview-warm (require :preview_warm))
-(local reviews (require :reviews))
-(local search (require :search))
-(local sync (require :sync))
+(local commands (require :app.commands))
+(local git (require :git.core))
+(local preview (require :preview.core))
+(local preview-warm (require :preview.warm))
+(local reviews (require :storage.reviews))
+(local search (require :app.search))
+(local sync (require :git.sync))
 
 (fn selected-entry [state]
   (. state.entries state.selected))

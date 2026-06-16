@@ -1,6 +1,6 @@
 (local faith (require :faith))
-(local git (require :git))
-(local preview (require :preview))
+(local git (require :git.core))
+(local preview (require :preview.core))
 (local t (require :test-helper))
 
 (fn setup-repo []

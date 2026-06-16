@@ -1,5 +1,5 @@
 (local fennel (require :fennel))
-(local sys (require :sys))
+(local sys (require :platform.core))
 
 (fn state-dir []
   (let [xdg (os.getenv "XDG_STATE_HOME")

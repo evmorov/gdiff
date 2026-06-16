@@ -7,6 +7,6 @@
 
 (set fennel.path (.. src-dir "/?.fnl;" fennel.path))
 
-(local app (require :app))
+(local app (require :app.core))
 
 (app.main arg src-dir)

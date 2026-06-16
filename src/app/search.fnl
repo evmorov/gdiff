@@ -1,6 +1,6 @@
-(local entry-view (require :entry))
-(local preview (require :preview))
-(local tui (require :tui))
+(local entry-view (require :app.entry))
+(local preview (require :preview.core))
+(local tui (require :tui.core))
 
 (fn new-state []
   {:active? false :query "" :matches [] :index 0})

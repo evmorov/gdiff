@@ -1,7 +1,7 @@
-(local app (require :app))
+(local app (require :app.core))
 (local faith (require :faith))
-(local reviews (require :reviews))
-(local tui (require :tui))
+(local reviews (require :storage.reviews))
+(local tui (require :tui.core))
 
 (fn entry [status path ?old-path]
   {:status status
@@ -49,7 +49,7 @@
                              "spec/tardis/api_spec.rb")])
         view (app.view state 10 100)]
     (faith.= "> [ ] [R] spec/tardis/api/v2_spec.rb <- spec/tardis/api_spec.rb"
-             (plain-row-text (. view.rows 1)))))
+             (plain-row-text (. view.body.left.rows 1)))))
 
 (fn test-split-key-does-not-start-due-sync []
   (let [state (state [(entry "M" "a.rb")])]

@@ -31,6 +31,19 @@
   (.. "git diff --name-status --find-renames --find-copies "
       (sys.shell-quote revision) " 2>&1"))
 
+(fn revision-exists? [revision]
+  (let [cmd (.. "git rev-parse --verify --quiet "
+                (sys.shell-quote (.. revision "^{commit}")) " >/dev/null 2>&1")
+        (ok _kind _code) (os.execute cmd)]
+    ok))
+
+(fn default-revision []
+  (if (revision-exists? "main")
+      (values "main" nil)
+      (revision-exists? "master")
+      (values "master" nil)
+      (values nil "No revision provided, and neither main nor master exists.")))
+
 (fn diff-filter []
   (let [(output ok _kind _code) (sys.read-command "git config --get interactive.diffFilter 2>/dev/null")
         filter (sys.trim output)]
@@ -93,6 +106,7 @@
         (or (os.getenv "PWD") "."))))
 
 {: comparison-label
+ : default-revision
  : diff-entries
  : preview-context
  : preview-output

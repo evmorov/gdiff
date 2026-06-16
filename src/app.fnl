@@ -10,7 +10,8 @@
 (local tui (require :tui))
 
 (fn usage []
-  (io.stderr:write "Usage: gdiff [--editor <command>] <branch-or-revision-range>\n")
+  (io.stderr:write "Usage: gdiff [--editor <command>] [branch-or-revision-range]\n")
+  (io.stderr:write "Without a revision, gdiff tries main first, then master.\n")
   (io.stderr:write "Example: gdiff --editor nvim main...HEAD\n"))
 
 (fn next-arg [argv i option]
@@ -315,10 +316,13 @@
     (if err (do
               (io.stderr:write err "\n")
               (usage)
-              (os.exit 1))
-        (not revision) (do
-                         (usage)
-                         (os.exit 1))
-        (run revision options))))
+              (os.exit 1)) revision (run revision options)
+        (let [(revision err) (git.default-revision)]
+          (if err
+              (do
+                (io.stderr:write err "\n")
+                (usage)
+                (os.exit 1))
+              (run revision options))))))
 
 {: main}

@@ -1,0 +1,13 @@
+(fn defcommand [name args runtime-args body1 & body]
+  (assert name "expected command name")
+  (assert args "expected command arguments")
+  (assert runtime-args "expected runtime command arguments")
+  (assert body1 "expected command body")
+  `(fn ,name
+     ,args
+
+     (fn ,runtime-args
+       ,body1
+       ,(unpack body))))
+
+{: defcommand}

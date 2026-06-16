@@ -1,0 +1,17 @@
+(fn defnode [name args node-type & fields]
+  (assert name "expected node constructor name")
+  (assert args "expected node constructor arguments")
+  (assert node-type "expected node type")
+  (assert (= 0 (% (length fields) 2)) "expected field key/value pairs")
+  (let [node (gensym "node")
+        setters []]
+    (for [i 1 (length fields) 2]
+      (table.insert setters `(tset ,node ,(. fields i) ,(. fields (+ i 1)))))
+    `(fn ,name
+       ,args
+       (let [,node {:type ,node-type}]
+         (do
+           ,(unpack setters))
+         ,node))))
+
+{: defnode}

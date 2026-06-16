@@ -21,4 +21,5 @@ trap cleanup EXIT
 cd "$test_repo"
 fennel \
   --add-fennel-path "$repo_dir/src/?.fnl;$repo_dir/test/?.fnl" \
+  --add-macro-path "$repo_dir/src/?.fnlm;$repo_dir/src/?.fnl" \
   "$repo_dir/test/run.fnl"

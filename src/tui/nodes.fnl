@@ -1,20 +1,18 @@
-(fn row [text ?selected?]
-  {:type :row :text text :selected? ?selected?})
+(import-macros {: defnode} :tui.macros)
 
-(fn list [rows]
-  {:type :list :rows rows})
+(defnode row [text ?selected?] :row :text text :selected? ?selected?)
 
-(fn lines [lines]
-  {:type :lines :lines lines})
+(defnode list [rows] :list :rows rows)
 
-(fn split [left right ?ratio]
-  {:type :split :left left :right right :ratio ?ratio})
+(defnode lines [lines] :lines :lines lines)
+
+(defnode split [left right ?ratio] :split :left left :right right :ratio ?ratio)
 
 (fn footer [kind text]
   (when text
     {:type kind :text text}))
 
-(fn screen [header body ?footer]
-  {:type :screen :header header :body body :footer ?footer})
+(defnode screen [header body ?footer] :screen :header header :body body :footer
+  ?footer)
 
 {: footer : lines : list : row : screen : split}

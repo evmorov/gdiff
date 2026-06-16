@@ -4,6 +4,7 @@
 (local entry-view (require :entry))
 (local git (require :git))
 (local preview (require :preview))
+(local preview-warm (require :preview_warm))
 (local reviews (require :reviews))
 (local search (require :search))
 (local sync (require :sync))
@@ -119,6 +120,7 @@
         {:text (row-text state entry selected?) :selected? selected?}))))
 
 (fn view [state rows _cols]
+  (preview-warm.update state.preview_warm state.preview_cache)
   (let [count (length state.entries)]
     {:header (header-line state count)
      :rows (visible-rows state rows)
@@ -211,6 +213,8 @@
     (when (not err)
       (set state.entries (reviews.apply entries reviewed))
       (set state.preview_cache {})
+      (preview-warm.start state.preview_warm state.src_dir state.revision
+                          state.entries)
       (preview.reset-scroll state)
       (move-selection state 0)
       (persist-reviewed state)
@@ -268,8 +272,9 @@
             (handle-action state config key)
             true))))
 
-(fn picker [revision entries config review-store review-scope]
+(fn picker [revision entries config review-store review-scope src-dir]
   (let [state {:revision revision
+               :src_dir src-dir
                :revision_label (git.comparison-label revision)
                :entries entries
                :selected 1
@@ -277,11 +282,14 @@
                :preview_rows 1
                :preview_cache {}
                :preview_context (git.preview-context)
+               :preview_warm (preview-warm.new-state)
                :review_store review-store
                :review_scope review-scope
                :search (search.new-state)
                :sync (sync.new-state)
                :pending-key nil}]
+    (preview-warm.start state.preview_warm state.src_dir state.revision
+                        state.entries)
     (sync.start state.sync)
     (tui.run-loop state view #(handle-key $1 config $2))))
 
@@ -294,7 +302,7 @@
     (set config.editor options.editor))
   config)
 
-(fn run [revision options]
+(fn run [revision options src-dir]
   (let [config (merge-options (config-store.load) options)
         (entries err) (git.diff-entries revision)]
     (if err (exit-with-error err) (= (length entries) 0)
@@ -302,20 +310,20 @@
         (let [review-store (reviews.load-store)
               scope (reviews.scope (git.repo-root) revision)
               entries (reviews.apply entries (reviews.marks review-store scope))]
-          (picker revision entries config review-store scope)))))
+          (picker revision entries config review-store scope src-dir)))))
 
-(fn main [argv]
+(fn main [argv src-dir]
   (let [(options revision err) (parse-args argv)]
     (if err (do
               (io.stderr:write err "\n")
               (usage)
-              (os.exit 1)) revision (run revision options)
+              (os.exit 1)) revision (run revision options src-dir)
         (let [(revision err) (git.default-revision)]
           (if err
               (do
                 (io.stderr:write err "\n")
                 (usage)
                 (os.exit 1))
-              (run revision options))))))
+              (run revision options src-dir))))))
 
 {: main}

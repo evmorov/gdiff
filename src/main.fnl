@@ -9,4 +9,4 @@
 
 (local app (require :app))
 
-(app.main arg)
+(app.main arg src-dir)

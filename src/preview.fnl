@@ -88,4 +88,4 @@
           (fcollect [i first last]
             (. lines i))))))
 
-{: reset-scroll : scroll-page-down : scroll-page-up : visible-lines}
+{: lines : reset-scroll : scroll-page-down : scroll-page-up : visible-lines}

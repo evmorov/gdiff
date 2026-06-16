@@ -32,7 +32,7 @@
   (let [state (get-state)]
     (preview-warm.start state.preview_warm state.src_dir state.revision
                         (preview-warm.missing-entries state.revision
-                                                      state.entries
+                                                      (preview-warm.side-priority-entries state.entries)
                                                       state.preview_cache))))
 
 (defcommand sync-start

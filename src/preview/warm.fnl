@@ -16,6 +16,7 @@
   (.. dir "/manifest.fnl"))
 
 (local max-workers 4)
+(local edge-batch-size (* max-workers 2))
 (local max-checks-per-update 64)
 (local max-imports-per-update 8)
 
@@ -50,6 +51,24 @@
     (icollect [_ entry (ipairs entries)]
       (when (not (. cache (preview-key.for-entry revision entry)))
         entry))))
+
+(fn side-priority-entries [entries ?batch-size]
+  (let [batch-size (or ?batch-size edge-batch-size)
+        out []]
+    (var left 1)
+    (var right (length entries))
+    (while (<= left right)
+      (var front-count 0)
+      (while (and (<= left right) (< front-count batch-size))
+        (table.insert out (. entries left))
+        (set left (+ left 1))
+        (set front-count (+ front-count 1)))
+      (var back-count 0)
+      (while (and (<= left right) (< back-count batch-size))
+        (table.insert out (. entries right))
+        (set right (- right 1))
+        (set back-count (+ back-count 1))))
+    out))
 
 (fn index-entries [revision entries]
   (let [indexes {}
@@ -154,6 +173,7 @@
 {: import-entry
  : missing-entries
  : new-state
+ : side-priority-entries
  : start
  : update
  : worker-command}

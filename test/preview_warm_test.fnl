@@ -12,6 +12,10 @@
 (fn entry [status path ?old-path]
   {:status status :kind (status:sub 1 1) :path path :old_path ?old-path})
 
+(fn paths [entries]
+  (icollect [_ entry (ipairs entries)]
+    entry.path))
+
 (fn warm-state [entries]
   (let [index-key {}
         key-index {}]
@@ -92,6 +96,37 @@
     (faith.= [first second]
              (preview-warm.missing-entries "HEAD" [first second] nil))))
 
+(fn test-side-priority-entries-warmer-from-edges-to-center []
+  (let [entries (fcollect [i 1 20]
+                  (entry "M" (tostring i)))]
+    (faith.= ["1"
+              "2"
+              "3"
+              "4"
+              "5"
+              "6"
+              "7"
+              "8"
+              "20"
+              "19"
+              "18"
+              "17"
+              "16"
+              "15"
+              "14"
+              "13"
+              "9"
+              "10"
+              "11"
+              "12"]
+             (paths (preview-warm.side-priority-entries entries)))))
+
+(fn test-side-priority-entries-handles-small-lists []
+  (let [entries (fcollect [i 1 6]
+                  (entry "M" (tostring i)))]
+    (faith.= ["1" "2" "3" "4" "5" "6"]
+             (paths (preview-warm.side-priority-entries entries)))))
+
 (fn test-start-with-no-missing-entries-cleans-existing-warmer []
   (t.reset-workdir)
   (t.mkdir "warm")
@@ -143,6 +178,8 @@
 {: test-fennel-command-builds-standard-subprocess-environment
  : test-import-entry-checks-only-the-requested-ready-preview
  : test-missing-entries-skips-cached-previews
+ : test-side-priority-entries-handles-small-lists
+ : test-side-priority-entries-warmer-from-edges-to-center
  : test-start-with-no-missing-entries-cleans-existing-warmer
  : test-update-imports-all-previews-and-cleans-temp-dir
  : test-update-imports-ready-previews-in-small-batches

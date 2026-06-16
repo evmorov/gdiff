@@ -84,6 +84,15 @@
     (faith.= ["file 10"]
              (. cache (preview-key.for-entry "HEAD" (. entries 10))))))
 
+(fn test-worker-command-loads-runtime-and-macro-paths []
+  (let [command (preview-warm.worker-command "/app/src" "manifest.fnl" "warm" 1
+                                             4)]
+    (faith.match "%-%-add%-fennel%-path '/app/src/%?%.fnl'" command)
+    (faith.match "%-%-add%-macro%-path '/app/src/%?%.fnlm;/app/src/%?%.fnl'"
+                 command)
+    (faith.match "'/app/src/preview/worker%.fnl'" command)))
+
 {: test-update-imports-all-previews-and-cleans-temp-dir
  : test-update-imports-ready-previews-in-small-batches
- : test-update-imports-ready-previews-out-of-order}
+ : test-update-imports-ready-previews-out-of-order
+ : test-worker-command-loads-runtime-and-macro-paths}

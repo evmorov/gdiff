@@ -20,6 +20,8 @@
 
 (fn worker-command [src-dir manifest dir start step]
   (.. "fennel --add-fennel-path " (sys.shell-quote (.. src-dir "/?.fnl")) " "
+      "--add-macro-path "
+      (sys.shell-quote (.. src-dir "/?.fnlm;" src-dir "/?.fnl")) " "
       (sys.shell-quote (.. src-dir "/preview/worker.fnl")) " "
       (sys.shell-quote manifest) " " (sys.shell-quote dir) " " start " " step))
 
@@ -133,4 +135,4 @@
   (when (and state.dir (<= (remaining state) 0))
     (cleanup state)))
 
-{: new-state : start : update}
+{: new-state : start : update : worker-command}

@@ -25,6 +25,15 @@
   (faith.= ["feature"]
            (sync.targets-for-revision "feature...feature" "current")))
 
+(fn test-target-status-command-is-quoted-and-structured []
+  (let [command (sync.target-status-command "feature branch")]
+    (faith.match "label='feature branch'" command)
+    (faith.match "git branch %-%-show%-current" command)
+    (faith.match "refs/heads/%$label" command)
+    (faith.match "%$label@{upstream}" command)
+    (faith.match "rev%-list %-%-left%-right %-%-count" command)
+    (faith.match "printf 'branch" command)))
+
 (fn test-warns-when-branch-is-behind-upstream []
   (t.reset-workdir)
   (let [state (finish-with-output "branch\tfeature\torigin/feature\t0\t2\n")]
@@ -53,4 +62,5 @@
  : test-keeps-old-current-branch-status-parser
  : test-range-revision-checks-both-sides
  : test-single-revision-checks-current-branch
+ : test-target-status-command-is-quoted-and-structured
  : test-warns-when-branch-is-behind-upstream}

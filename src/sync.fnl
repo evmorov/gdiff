@@ -26,21 +26,41 @@
           (add-target targets seen current-branch)))
     targets))
 
+(fn shell-lines [...]
+  (table.concat [...] " "))
+
+(fn shell-block [...]
+  (.. "( " (shell-lines ...) " )"))
+
+(fn assign-label [target]
+  (.. "label=" (sys.shell-quote target) ";"))
+
+(fn resolve-head-script []
+  (shell-lines "if [ \"$label\" = HEAD ]; then"
+               "branch=$(git branch --show-current 2>/dev/null);"
+               "if [ -z \"$branch\" ]; then printf 'detached\tHEAD\n'; exit 0; fi;"
+               "label=\"$branch\";" "fi;"))
+
+(fn require-local-branch-script []
+  (shell-lines "if ! git show-ref --verify --quiet \"refs/heads/$label\"; then"
+               "printf 'skip\t%s\n' \"$label\"; exit 0;" "fi;"))
+
+(fn load-upstream-script []
+  (shell-lines "upstream=$(git rev-parse --abbrev-ref \"$label@{upstream}\" 2>/dev/null);"
+               "if [ -z \"$upstream\" ]; then printf 'no-upstream\t%s\n' \"$label\"; exit 0; fi;"))
+
+(fn load-ahead-behind-script []
+  (shell-lines "counts=$(git rev-list --left-right --count \"$upstream...$label\" 2>/dev/null);"
+               "if [ -z \"$counts\" ]; then printf 'error\t%s\n' \"$label\"; exit 0; fi;"
+               "set -- $counts;"))
+
+(fn print-branch-status-script []
+  "printf 'branch\t%s\t%s\t%s\t%s\n' \"$label\" \"$upstream\" \"$2\" \"$1\";")
+
 (fn target-status-command [target]
-  (let [target (sys.shell-quote target)]
-    (.. "( label=" target "; " "if [ \"$label\" = HEAD ]; then "
-        "branch=$(git branch --show-current 2>/dev/null); "
-        "if [ -z \"$branch\" ]; then printf 'detached\tHEAD\n'; exit 0; fi; "
-        "label=\"$branch\"; " "fi; "
-        "if ! git show-ref --verify --quiet \"refs/heads/$label\"; then "
-        "printf 'skip\t%s\n' \"$label\"; exit 0; " "fi; "
-        "upstream=$(git rev-parse --abbrev-ref \"$label@{upstream}\" 2>/dev/null); "
-        "if [ -z \"$upstream\" ]; then printf 'no-upstream\t%s\n' \"$label\"; exit 0; fi; "
-        "counts=$(git rev-list --left-right --count \"$upstream...$label\" 2>/dev/null); "
-        "if [ -z \"$counts\" ]; then printf 'error\t%s\n' \"$label\"; exit 0; fi; "
-        "set -- $counts; "
-        "printf 'branch\t%s\t%s\t%s\t%s\n' \"$label\" \"$upstream\" \"$2\" \"$1\"; "
-        ")")))
+  (shell-block (assign-label target) (resolve-head-script)
+               (require-local-branch-script) (load-upstream-script)
+               (load-ahead-behind-script) (print-branch-status-script)))
 
 (fn branch-status-command [path targets]
   (let [tmp (.. path ".tmp")]
@@ -156,4 +176,10 @@
 (fn warning [state]
   state.warning)
 
-{: new-state : request : start : targets-for-revision : update : warning}
+{: new-state
+ : request
+ : start
+ : target-status-command
+ : targets-for-revision
+ : update
+ : warning}

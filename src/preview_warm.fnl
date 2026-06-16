@@ -15,6 +15,8 @@
   (.. dir "/manifest.fnl"))
 
 (local max-workers 4)
+(local max-checks-per-update 64)
+(local max-imports-per-update 8)
 
 (fn worker-command [src-dir manifest dir start step]
   (.. "fennel --add-fennel-path " (sys.shell-quote (.. src-dir "/?.fnl")) " "
@@ -22,7 +24,13 @@
       (sys.shell-quote manifest) " " (sys.shell-quote dir) " " start " " step))
 
 (fn new-state []
-  {:dir nil :count 0 :remaining 0 :imported {} :key-index {} :index-key {}})
+  {:dir nil
+   :count 0
+   :remaining 0
+   :scan-index 1
+   :imported {}
+   :key-index {}
+   :index-key {}})
 
 (fn cleanup [state]
   (when state.dir
@@ -30,6 +38,7 @@
   (set state.dir nil)
   (set state.count 0)
   (set state.remaining 0)
+  (set state.scan-index 1)
   (set state.imported {})
   (set state.key-index {})
   (set state.index-key {}))
@@ -65,6 +74,7 @@
           (set state.dir dir)
           (set state.count (length entries))
           (set state.remaining (length entries))
+          (set state.scan-index 1)
           (set state.imported {})
           (let [workers (worker-count entries)]
             (if (> workers 0)
@@ -87,6 +97,12 @@
     (tset state.imported index true)
     (set state.remaining (- (remaining state) 1))))
 
+(fn advance-scan-index [state]
+  (set state.scan-index
+       (if (>= (or state.scan-index 1) state.count)
+           1
+           (+ (or state.scan-index 1) 1))))
+
 (fn import-output [state cache index]
   (let [path (output-path state.dir index)
         lines (read-lines path)]
@@ -95,16 +111,25 @@
         (when key
           (tset cache key lines)))
       (sys.remove-file path)
-      (mark-imported state index))))
+      (mark-imported state index)
+      true)))
 
 (fn update [state cache]
   (when state.dir
     (when (not state.imported)
       (set state.imported {}))
     (set state.remaining (remaining state))
-    (for [index 1 state.count]
-      (when (not (. state.imported index))
-        (import-output state cache index))))
+    (var checks 0)
+    (var imports 0)
+    (let [max-checks (math.min state.count max-checks-per-update)]
+      (while (and (< checks max-checks) (< imports max-imports-per-update)
+                  (> (remaining state) 0))
+        (let [index (or state.scan-index 1)]
+          (when (not (. state.imported index))
+            (when (import-output state cache index)
+              (set imports (+ imports 1))))
+          (advance-scan-index state)
+          (set checks (+ checks 1))))))
   (when (and state.dir (<= (remaining state) 0))
     (cleanup state)))
 

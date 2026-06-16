@@ -54,7 +54,8 @@
 (fn test-uppercase-r_returns_remote_sync_command []
   (let [state (state [(entry "M" "a.rb")])
         (_ command) (update.update state {} (update.read-msg state "R"))]
-    (faith.= :function (type command))))
+    (faith.= :function (type command))
+    (faith.= "Syncing remote..." state.notice)))
 
 (fn test-split-keys-move-divider-by-five-percent []
   (let [state (state [(entry "M" "a.rb")])]

@@ -129,6 +129,18 @@
 (fn move-split [state delta]
   (set state.split_ratio (clamp (+ (or state.split_ratio 0.4) delta) 0.1 0.9)))
 
+(fn start-remote-sync [state]
+  (when (not state.sync.running?)
+    (set state.notice "Syncing remote..."))
+  (commands.sync-start))
+
+(fn update-remote-sync [state]
+  (let [running? state.sync.running?]
+    (sync.update state.sync)
+    (when (and running? (not state.sync.running?)
+               (not (sync.warning state.sync)))
+      (set state.notice "Remote in sync"))))
+
 (local action-handlers
        {:up #(move-selection $1 -1)
         :down #(move-selection $1 1)
@@ -144,7 +156,7 @@
         :top jump-top
         :bottom jump-bottom
         :refresh commands.refresh
-        :sync commands.sync-start
+        :sync start-remote-sync
         :copy-path copy-selected-path
         :open-pr commands.open-linked-pr
         :split-left #(move-split $1 -0.05)
@@ -229,7 +241,7 @@
 
 (fn handle-key [state config raw-key]
   (when (= raw-key :tick)
-    (sync.update state.sync)
+    (update-remote-sync state)
     (preview-warm.update state.preview_warm state.preview_cache))
   (let [(_ command) (update state config (read-msg state raw-key))]
     (run-command state config command))

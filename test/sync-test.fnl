@@ -49,13 +49,19 @@
 (fn test-start_launches_remote_sync_explicitly []
   (let [state (sync.new-state)
         calls []]
-    (sync.start state
-                (fn [path targets]
-                  (table.insert calls {:path path :targets targets})))
+    (faith.= true
+             (sync.start state
+                         (fn [path targets]
+                           (table.insert calls {:path path :targets targets}))))
     (faith.= true state.running?)
     (let [call (. calls 1)]
       (faith.= state.path call.path)
-      (faith.= state.targets call.targets))))
+      (faith.= state.targets call.targets))
+    (faith.= nil
+             (sync.start state
+                         (fn [path targets]
+                           (table.insert calls {:path path :targets targets}))))
+    (faith.= 1 (length calls))))
 
 (fn test-branch-status-command-separates-target-subshells []
   (let [command (sync.branch-status-command "/tmp/gdiff-sync-status"

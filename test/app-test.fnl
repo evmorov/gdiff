@@ -94,6 +94,30 @@
     (faith.= false state.sync.running?)
     (faith.almost= 0.45 state.split_ratio 0.0001)))
 
+(fn test-clean-remote-sync-finish-updates-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.sync.running? true)
+    (faith.is (sys.write-file state.sync.path
+                              "branch\tfeature\torigin/feature\t0\t0\n"))
+    (faith.is (app.handle-key state {} :tick))
+    (faith.= nil state.sync.warning)
+    (faith.= "Remote in sync" state.notice)))
+
+(fn test-remote-sync-warning-persists-until-clean-sync []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.sync.running? true)
+    (faith.is (sys.write-file state.sync.path
+                              "branch\tfeature\torigin/feature\t0\t2\n"))
+    (faith.is (app.handle-key state {} :tick))
+    (faith.= "Branch not in sync: feature vs origin/feature (+0/-2)"
+             state.sync.warning)
+    (set state.sync.running? true)
+    (faith.is (sys.write-file state.sync.path
+                              "branch\tfeature\torigin/feature\t0\t0\n"))
+    (faith.is (app.handle-key state {} :tick))
+    (faith.= nil state.sync.warning)
+    (faith.= "Remote in sync" state.notice)))
+
 (fn test-view-imports-only-selected-ready-preview-during-cursor-redraw []
   (t.reset-workdir)
   (t.mkdir "warm")
@@ -121,6 +145,8 @@
 
 {: test-a-toggles-all-reviewed-and-A-does-nothing
  : test-search-next-is-relative-to-current-cursor
+ : test-clean-remote-sync-finish-updates-notice
+ : test-remote-sync-warning-persists-until-clean-sync
  : test-split-key-does-not-start-due-sync
  : test-view-adds-left-scroll-info-for-overflowing-file-list
  : test-view-keeps_last_file_above_bottom_divider

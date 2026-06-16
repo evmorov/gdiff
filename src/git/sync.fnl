@@ -155,7 +155,8 @@
   (when (not state.running?)
     (let [spawn (or ?spawn spawn-branch-status)]
       (set state.running? true)
-      (spawn state.path state.targets))))
+      (spawn state.path state.targets)
+      true)))
 
 (fn finish [state output]
   (set state.warning (warning-from-output output))

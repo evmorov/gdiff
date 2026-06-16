@@ -1,4 +1,5 @@
 (local ansi (require :tui.ansi))
+(local colors (require :tui.colors))
 
 (fn trim [s]
   (let [s (or s "")]
@@ -43,7 +44,32 @@
 (fn saved-stty []
   (trim (read-command "stty -g 2>/dev/null")))
 
+(fn read-osc-response [?limit]
+  (let [limit (or ?limit 128)]
+    (var out "")
+    (var done? false)
+    (for [_ 1 limit]
+      (when (not done?)
+        (let [c (io.read 1)]
+          (if c
+              (do
+                (set out (.. out c))
+                (when (or (= c "\7")
+                          (and (<= 2 (length out))
+                               (= (out:sub (- (length out) 1))
+                                  (.. ansi.esc "\\"))))
+                  (set done? true)))
+              (set done? true)))))
+    out))
+
+(fn query-background-rgb []
+  (io.write ansi.esc "]11;?\7")
+  (io.flush)
+  (colors.parse-background-response (read-osc-response)))
+
 (fn raw-terminal [stty-state]
+  (os.execute "stty raw -echo min 0 time 1 2>/dev/null")
+  (ansi.set-background-rgb (query-background-rgb))
   (os.execute "stty raw -echo min 0 time 10 2>/dev/null")
   (io.write ansi.esc "[?1049h" ansi.esc "[?25l")
   (io.flush)

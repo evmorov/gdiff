@@ -19,7 +19,7 @@
 
 (fn reviewed-text [entry]
   (if entry.reviewed
-      (tui.color :added "[x]")
+      "[x]"
       (tui.color :dim "[ ]")))
 
 (fn selected-entry [state]
@@ -56,7 +56,7 @@
         " | " reviewed "/" count " reviewed" help)))
 
 (fn row-prefix [selected?]
-  (if selected? "> " "  "))
+  (if selected? (tui.color :bold "> ") "  "))
 
 (fn row-text [state entry selected?]
   (.. (row-prefix selected?) (reviewed-text entry) " " (status-text entry) " "

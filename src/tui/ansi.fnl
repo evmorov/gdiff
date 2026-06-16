@@ -1,7 +1,9 @@
 (local esc "\27")
 (local nl "\r\n")
+(local colors-helper (require :tui.colors))
 
 (local colors {:reset "\27[0m"
+               :bold "\27[1m"
                :dim "\27[2m"
                :reverse "\27[7m"
                :added "\27[32m"
@@ -13,6 +15,8 @@
                :search "\27[30;43m"
                :search-end "\27[39;49m"})
 
+(var selected-row-style nil)
+
 (fn color? []
   (not (os.getenv "NO_COLOR")))
 
@@ -20,6 +24,12 @@
   (if (color?)
       (.. (. colors name) text colors.reset)
       text))
+
+(fn set-background-rgb [rgb]
+  (set selected-row-style (colors-helper.background-style rgb)))
+
+(fn pattern-quote [s]
+  (s:gsub "([^%w])" "%%%1"))
 
 (fn reset-code []
   (if (color?) colors.reset ""))
@@ -54,6 +64,20 @@
             (set len (+ len 1))
             (set i (+ i 1)))))
     len))
+
+(fn pad-right [s width]
+  (let [missing (- width (visible-length s))]
+    (if (< 0 missing)
+        (.. s (string.rep " " missing))
+        s)))
+
+(fn selected-row [line width]
+  (let [line (pad-right line width)]
+    (if (and (color?) selected-row-style)
+        (let [style selected-row-style
+              reset colors.reset]
+          (.. style (line:gsub (pattern-quote reset) (.. reset style)) reset))
+        line)))
 
 (fn strip-ansi [s]
   (let [s (tostring (or s ""))]
@@ -133,6 +157,8 @@
  : esc
  : highlight-matches
  : nl
+ : selected-row
+ : set-background-rgb
  : strip-ansi
  : truncate
  : visible-length}

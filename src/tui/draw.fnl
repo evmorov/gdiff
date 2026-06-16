@@ -2,10 +2,8 @@
 (local nodes (require :tui.nodes))
 (local terminal (require :tui.terminal))
 
-(fn write-row [line selected? ?newline]
-  (if selected?
-      (io.write (ansi.color :reverse line) ansi.esc "[0m")
-      (io.write line))
+(fn write-row [line selected? width ?newline]
+  (io.write (if selected? (ansi.selected-row line width) line))
   (when ?newline
     (io.write ansi.nl)))
 
@@ -16,7 +14,7 @@
 
 (fn draw-rows [rows cols]
   (each [_ row (ipairs rows)]
-    (write-row (ansi.truncate row.text cols) row.selected? true)))
+    (write-row (ansi.truncate row.text cols) row.selected? cols true)))
 
 (fn draw-lines [lines cols]
   (each [_ line (ipairs lines)]
@@ -37,7 +35,8 @@
                     divider-col]
   (terminal.cursor screen-row 1)
   (when left-row
-    (write-row (ansi.truncate left-row.text left-cols) left-row.selected?))
+    (write-row (ansi.truncate left-row.text left-cols) left-row.selected?
+               left-cols))
   (terminal.cursor screen-row divider-col)
   (io.write (ansi.color :dim "|"))
   (terminal.cursor screen-row (+ divider-col 1))

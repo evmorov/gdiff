@@ -149,6 +149,15 @@
     (faith.= nil state.sync.warning)
     (faith.= "Could not sync remote" state.notice)))
 
+(fn test-no-upstream-shows-sync-notice-not-warning []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.sync.running? true)
+    (set state.show_sync_notice? true)
+    (faith.is (sys.write-file state.sync.path "no-upstream\ttest2\n"))
+    (faith.is (app.handle-key state {} :tick))
+    (faith.= nil state.sync.warning)
+    (faith.= "No upstream for test2" state.notice)))
+
 (fn test-startup-clean-remote-sync-finish-stays-quiet []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.sync.running? true)
@@ -212,6 +221,7 @@
  : test-search-next-is-relative-to-current-cursor
  : test-fetch-failure-shows-sync-notice-not-success
  : test-manual-clean-remote-sync-finish-updates-notice
+ : test-no-upstream-shows-sync-notice-not-warning
  : test-remote-sync-finish-is-polled-on-input
  : test-remote-sync-warning-persists-until-clean-sync
  : test-quit-cleans-preview-warmer

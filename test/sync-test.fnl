@@ -96,6 +96,11 @@
     (faith.= "Could not sync remote" (sync.notice state))
     (faith.= nil (sync.warning state))))
 
+(fn test-no-upstream-has-sync-notice-not-warning []
+  (let [state (finish-with-output "no-upstream\ttest2\n")]
+    (faith.= "No upstream for test2" (sync.notice state))
+    (faith.= nil (sync.warning state))))
+
 (fn test-branch-ahead-of-upstream-has-no-warning []
   (let [state (finish-with-output "branch\tfeature\torigin/feature\t2\t0\n")]
     (faith.= nil (sync.warning state))))
@@ -122,6 +127,7 @@
  : test-fetch-command-is-quiet-and-noninteractive
  : test-fetch-failure-has-sync-notice-not-warning
  : test-keeps-old-current-branch-status-parser
+ : test-no-upstream-has-sync-notice-not-warning
  : test-range-revision-checks-both-sides
  : test-single-revision-checks-current-branch
  : test-start_launches_remote_sync_explicitly

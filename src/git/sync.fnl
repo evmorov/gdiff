@@ -119,21 +119,25 @@
   (if (= status.kind :skip) nil
       (= status.kind :fetch-error) nil
       (= status.kind :detached) "Detached HEAD: branch sync unavailable"
-      (= status.kind :no-upstream) (.. "No upstream for " status.branch)
+      (= status.kind :no-upstream) nil
       (= status.kind :error) (.. "Could not check branch sync for "
                                  status.branch)
       (not status.branch) "Could not check branch sync"
       (= status.branch "(detached)") "Detached HEAD: branch sync unavailable"
-      (not status.upstream) (.. "No upstream for " status.branch)
+      (not status.upstream) nil
       (< 0 status.behind) (.. "Branch not in sync: " status.branch " vs "
                               status.upstream " (+" status.ahead "/-"
                               status.behind ")")
       nil))
 
 (fn notice-for-status [status]
-  (case status.kind
-    :fetch-error "Could not sync remote"
-    _ nil))
+  (if (= status.kind :fetch-error)
+      "Could not sync remote"
+      (= status.kind :no-upstream)
+      (.. "No upstream for " status.branch)
+      (and status.branch (not status.upstream))
+      (.. "No upstream for " status.branch)
+      nil))
 
 (fn notice-from-output [text]
   (var notice nil)

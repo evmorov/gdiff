@@ -51,6 +51,14 @@
     (faith.= "> [ ] [R] spec/tardis/api/v2_spec.rb <- spec/tardis/api_spec.rb"
              (plain-row-text (. view.rows 1)))))
 
+(fn test-split-key-does-not-start-due-sync []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.sync.next_at 0)
+    (faith.is (app.handle-key state {} ">"))
+    (faith.= false state.sync.running?)
+    (faith.almost= 0.45 state.split_ratio 0.0001)))
+
 {: test-a-toggles-all-reviewed-and-A-does-nothing
  : test-search-next-is-relative-to-current-cursor
+ : test-split-key-does-not-start-due-sync
  : test-view-renders-renames-with-short-status}

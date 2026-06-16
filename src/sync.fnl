@@ -44,7 +44,7 @@
 
 (fn branch-status-command [path targets]
   (let [tmp (.. path ".tmp")]
-    (.. "( git fetch --quiet --prune 2>/dev/null; "
+    (.. "( nice -n 20 git fetch --quiet --prune 2>/dev/null; "
         (table.concat (icollect [_ target (ipairs targets)]
                         (target-status-command target))
                       " ") " ) > " (sys.shell-quote tmp) " && mv "
@@ -128,6 +128,9 @@
    :next_at 0
    :targets (targets-for-revision (or ?revision "HEAD"))})
 
+(fn request [state]
+  (set state.next_at 0))
+
 (fn start [state]
   (when (not state.running?)
     (set state.running? true)
@@ -153,4 +156,4 @@
 (fn warning [state]
   state.warning)
 
-{: new-state : start : targets-for-revision : update : warning}
+{: new-state : request : start : targets-for-revision : update : warning}

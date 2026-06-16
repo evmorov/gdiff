@@ -31,7 +31,7 @@
 (fn sync-start []
   (fn [_dispatch get-state]
     (let [state (get-state)]
-      (sync.start state.sync))))
+      (sync.request state.sync))))
 
 (fn open-editor [config entry]
   (fn [_dispatch get-state]

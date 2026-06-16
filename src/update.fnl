@@ -212,7 +212,8 @@
    :pending-key nil})
 
 (fn handle-key [state config raw-key]
-  (sync.update state.sync)
+  (when (= raw-key :tick)
+    (sync.update state.sync))
   (let [(_ command) (update state config (read-msg state raw-key))]
     (run-command state config command))
   (not state.quit?))

@@ -99,9 +99,6 @@
   (let [last (length state.entries)]
     (set-selection state last)))
 
-(fn refresh-state [_state]
-  (commands.refresh))
-
 (fn apply-refresh [state entries reviewed]
   (set state.entries (reviews.apply entries reviewed))
   (set state.preview_cache {})
@@ -121,46 +118,23 @@
     (when entry
       (commands.copy-path entry.path))))
 
-(local action-handlers {:up #(do
-                               (move-selection $1 -1)
-                               commands.none)
-                        :down #(do
-                                 (move-selection $1 1)
-                                 commands.none)
-                        :open #(or (open-selected $1 $2) commands.none)
-                        :toggle-reviewed #(or (toggle-reviewed $1)
-                                              commands.none)
-                        :toggle-all-reviewed #(or (toggle-all-reviewed $1)
-                                                  commands.none)
-                        :preview-down #(do
-                                         (preview.scroll-page-down $1
-                                                                   (selected-entry $1))
-                                         commands.none)
-                        :preview-up #(do
-                                       (preview.scroll-page-up $1
-                                                               (selected-entry $1))
-                                       commands.none)
-                        :search #(do
-                                   (search.start $1)
-                                   commands.none)
-                        :search-next #(do
-                                        (search.next $1)
-                                        commands.none)
-                        :search-previous #(do
-                                            (search.previous $1)
-                                            commands.none)
-                        :clear-search #(do
-                                         (search.clear $1)
-                                         commands.none)
-                        :top #(do
-                                (jump-top $1)
-                                commands.none)
-                        :bottom #(do
-                                   (jump-bottom $1)
-                                   commands.none)
-                        :refresh #(or (refresh-state $1) commands.none)
-                        :copy-path #(or (copy-selected-path $1) commands.none)
-                        :tick #commands.none})
+(local action-handlers {:up #(move-selection $1 -1)
+                        :down #(move-selection $1 1)
+                        :open open-selected
+                        :toggle-reviewed toggle-reviewed
+                        :toggle-all-reviewed toggle-all-reviewed
+                        :preview-down #(preview.scroll-page-down $1
+                                                                 (selected-entry $1))
+                        :preview-up #(preview.scroll-page-up $1
+                                                             (selected-entry $1))
+                        :search search.start
+                        :search-next search.next
+                        :search-previous search.previous
+                        :clear-search search.clear
+                        :top jump-top
+                        :bottom jump-bottom
+                        :refresh #(commands.refresh)
+                        :copy-path copy-selected-path})
 
 (fn update [state config msg]
   (let [msg-type (and (= (type msg) :table) msg.type)
@@ -186,12 +160,12 @@
                                                     msg.path)
                                         commands.none)
                   :refresh-loaded (apply-refresh state msg.entries msg.reviewed)
-                  _ (let [handler (. action-handlers msg-type)]
-                      (if handler
-                          (do
-                            (set state.pending-key msg.pending-key)
-                            (handler state config))
-                          commands.none)))]
+                  _ (do
+                      (set state.pending-key msg.pending-key)
+                      (let [handler (. action-handlers msg-type)]
+                        (if handler
+                            (or (handler state config) commands.none)
+                            commands.none))))]
     (values state command)))
 
 (fn run-command [state config command]

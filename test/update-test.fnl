@@ -25,6 +25,14 @@
     (update.update state {} (update.read-msg state "g"))
     (faith.= nil state.pending-key)))
 
+(fn test-unknown-key-clears-pending-g []
+  (let [state (state [(entry "M" "a.rb")])]
+    (update.update state {} (update.read-msg state "g"))
+    (faith.= "g" state.pending-key)
+    (update.update state {} (update.read-msg state "x"))
+    (faith.= nil state.pending-key)
+    (faith.= {:type :pending-key :pending-key "g"} (update.read-msg state "g"))))
+
 (fn test-update-returns-command-for-review-persistence []
   (let [state (state [(entry "M" "a.rb")])
         (_ command) (update.update state {} {:type :toggle-all-reviewed})]
@@ -42,4 +50,5 @@
 {: test-command-dispatches-back-through-update
  : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data
+ : test-unknown-key-clears-pending-g
  : test-update-returns-command-for-review-persistence}

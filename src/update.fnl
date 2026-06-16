@@ -121,43 +121,46 @@
     (when entry
       (commands.copy-path entry.path))))
 
-(fn continue-after [f]
-  (or (f) commands.none))
-
-(local action-handlers {:up (fn [state _config]
-                              (continue-after #(move-selection state -1)))
-                        :down (fn [state _config]
-                                (continue-after #(move-selection state 1)))
-                        :open (fn [state config]
-                                (continue-after #(open-selected state config)))
-                        :toggle-reviewed (fn [state _config]
-                                           (continue-after #(toggle-reviewed state)))
-                        :toggle-all-reviewed (fn [state _config]
-                                               (continue-after #(toggle-all-reviewed state)))
-                        :preview-down (fn [state _config]
-                                        (continue-after #(preview.scroll-page-down state
-                                                                                   (selected-entry state))))
-                        :preview-up (fn [state _config]
-                                      (continue-after #(preview.scroll-page-up state
-                                                                               (selected-entry state))))
-                        :search (fn [state _config]
-                                  (continue-after #(search.start state)))
-                        :search-next (fn [state _config]
-                                       (continue-after #(search.next state)))
-                        :search-previous (fn [state _config]
-                                           (continue-after #(search.previous state)))
-                        :clear-search (fn [state _config]
-                                        (continue-after #(search.clear state)))
-                        :top (fn [state _config]
-                               (continue-after #(jump-top state)))
-                        :bottom (fn [state _config]
-                                  (continue-after #(jump-bottom state)))
-                        :refresh (fn [state _config]
-                                   (continue-after #(refresh-state state)))
-                        :copy-path (fn [state _config]
-                                     (continue-after #(copy-selected-path state)))
-                        :tick (fn [_state _config]
-                                commands.none)})
+(local action-handlers {:up #(do
+                               (move-selection $1 -1)
+                               commands.none)
+                        :down #(do
+                                 (move-selection $1 1)
+                                 commands.none)
+                        :open #(or (open-selected $1 $2) commands.none)
+                        :toggle-reviewed #(or (toggle-reviewed $1)
+                                              commands.none)
+                        :toggle-all-reviewed #(or (toggle-all-reviewed $1)
+                                                  commands.none)
+                        :preview-down #(do
+                                         (preview.scroll-page-down $1
+                                                                   (selected-entry $1))
+                                         commands.none)
+                        :preview-up #(do
+                                       (preview.scroll-page-up $1
+                                                               (selected-entry $1))
+                                       commands.none)
+                        :search #(do
+                                   (search.start $1)
+                                   commands.none)
+                        :search-next #(do
+                                        (search.next $1)
+                                        commands.none)
+                        :search-previous #(do
+                                            (search.previous $1)
+                                            commands.none)
+                        :clear-search #(do
+                                         (search.clear $1)
+                                         commands.none)
+                        :top #(do
+                                (jump-top $1)
+                                commands.none)
+                        :bottom #(do
+                                   (jump-bottom $1)
+                                   commands.none)
+                        :refresh #(or (refresh-state $1) commands.none)
+                        :copy-path #(or (copy-selected-path $1) commands.none)
+                        :tick #commands.none})
 
 (fn update [state config msg]
   (let [msg-type (and (= (type msg) :table) msg.type)

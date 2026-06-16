@@ -43,10 +43,17 @@
     (values top bottom)))
 
 (fn header-line [state count]
-  (let [reviewed (reviewed-count state.entries)]
+  (let [reviewed (reviewed-count state.entries)
+        help (table.concat [" | / search"
+                            " | C-d/C-u preview"
+                            " | r refresh"
+                            " | y copy"
+                            " | space check"
+                            " | a all/none"
+                            " | enter/o open"
+                            " | Ctrl-C quit"])]
     (.. "gdiff " state.revision_label " | " count " file" (plural-s count)
-        " | " reviewed "/" count " reviewed"
-        " | / search | C-d/C-u preview | r refresh | y copy | space check | a all/none | enter/o open | Ctrl-C quit")))
+        " | " reviewed "/" count " reviewed" help)))
 
 (fn row-prefix [selected?]
   (if selected? "> " "  "))

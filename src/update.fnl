@@ -137,7 +137,7 @@
         :clear-search search.clear
         :top jump-top
         :bottom jump-bottom
-        :refresh #(commands.refresh)
+        :refresh commands.refresh
         :copy-path copy-selected-path
         :split-left #(move-split $1 -0.05)
         :split-right #(move-split $1 0.05)})

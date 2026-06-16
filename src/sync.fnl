@@ -75,8 +75,11 @@
   (sys.remove-file (.. path ".tmp"))
   (sys.background-command (branch-status-command path targets)))
 
+(local target-status-pattern
+       "^([^\t]+)\t([^\t]*)\t?([^\t]*)\t?([^\t]*)\t?([^\t]*)$")
+
 (fn parse-target-status-line [line]
-  (let [(kind branch upstream ahead behind) (line:match "^([^\t]+)\t([^\t]*)\t?([^\t]*)\t?([^\t]*)\t?([^\t]*)$")]
+  (let [(kind branch upstream ahead behind) (line:match target-status-pattern)]
     (case kind
       "branch" {:kind :branch
                 :branch branch
@@ -122,7 +125,7 @@
       "Detached HEAD: branch sync unavailable"
       (not status.upstream)
       (.. "No upstream for " status.branch)
-      (or (> status.ahead 0) (> status.behind 0))
+      (or (< 0 status.ahead) (< 0 status.behind))
       (.. "Branch not in sync: " status.branch " vs " status.upstream " (+"
           status.ahead "/-" status.behind ")")
       nil))
@@ -137,7 +140,7 @@
           (let [warning (warning-for-status status)]
             (when warning
               (table.insert warnings warning))))))
-    (if (> (length warnings) 0) (table.concat warnings "; ")
+    (if (< 0 (length warnings)) (table.concat warnings "; ")
         target-output? nil
         (warning-for-status (parse-branch-status text)))))
 
@@ -170,7 +173,7 @@
 
 (fn update [state]
   (poll state)
-  (when (and (not state.running?) (>= (os.time) state.next_at))
+  (when (and (not state.running?) (<= state.next_at (os.time)))
     (start state)))
 
 (fn warning [state]

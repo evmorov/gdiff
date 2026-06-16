@@ -48,9 +48,10 @@
       (values nil "No revision provided, and neither main nor master exists.")))
 
 (fn diff-filter []
-  (let [(output ok _kind _code) (sys.read-command "git config --get interactive.diffFilter 2>/dev/null")
+  (let [cmd "git config --get interactive.diffFilter 2>/dev/null"
+        (output ok _kind _code) (sys.read-command cmd)
         filter (sys.trim output)]
-    (if (and ok (> (length filter) 0))
+    (if (and ok (< 0 (length filter)))
         filter)))
 
 (fn preview-context []

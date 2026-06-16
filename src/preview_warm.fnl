@@ -77,7 +77,7 @@
           (set state.scan-index 1)
           (set state.imported {})
           (let [workers (worker-count entries)]
-            (if (> workers 0)
+            (if (< 0 workers)
                 (start-workers src-dir manifest dir workers)
                 (cleanup state))))))))
 
@@ -123,7 +123,7 @@
     (var imports 0)
     (let [max-checks (math.min state.count max-checks-per-update)]
       (while (and (< checks max-checks) (< imports max-imports-per-update)
-                  (> (remaining state) 0))
+                  (< 0 (remaining state)))
         (let [index (or state.scan-index 1)]
           (when (not (. state.imported index))
             (when (import-output state cache index)

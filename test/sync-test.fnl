@@ -53,7 +53,9 @@
              (sync.warning state))))
 
 (fn test-keeps-old-current-branch-status-parser []
-  (let [state (finish-with-output "# branch.head feature\n# branch.upstream origin/feature\n# branch.ab +0 -2\n")]
+  (let [output (.. "# branch.head feature\n"
+                   "# branch.upstream origin/feature\n" "# branch.ab +0 -2\n")
+        state (finish-with-output output)]
     (faith.= "Branch not in sync: feature vs origin/feature (+0/-2)"
              (sync.warning state))))
 

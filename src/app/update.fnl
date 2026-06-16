@@ -130,8 +130,8 @@
   (set state.split_ratio (clamp (+ (or state.split_ratio 0.4) delta) 0.1 0.9)))
 
 (fn start-remote-sync [state]
-  (when (not state.sync.running?)
-    (set state.notice "Syncing remote..."))
+  (set state.show_sync_notice? true)
+  (set state.notice "Syncing remote...")
   (commands.sync-start))
 
 (fn update-remote-sync [state]
@@ -139,7 +139,10 @@
     (sync.update state.sync)
     (when (and running? (not state.sync.running?)
                (not (sync.warning state.sync)))
-      (set state.notice "Remote in sync"))))
+      (when state.show_sync_notice?
+        (set state.notice "Remote in sync")))
+    (when (and running? (not state.sync.running?))
+      (set state.show_sync_notice? false))))
 
 (local action-handlers
        {:up #(move-selection $1 -1)
@@ -237,6 +240,7 @@
    :review_scope review-scope
    :search (search.new-state)
    :sync (sync.new-state revision)
+   :show_sync_notice? false
    :pending-key nil})
 
 (fn handle-key [state config raw-key]
@@ -247,9 +251,12 @@
     (run-command state config command))
   (not state.quit?))
 
-(fn start [state]
+(fn start-command [state]
   (cache-selected-preview state)
-  (run-command state {} (commands.warm-preview-cache)))
+  (commands.batch (commands.warm-preview-cache) (commands.sync-start)))
+
+(fn start [state]
+  (run-command state {} (start-command state)))
 
 {: cache-selected-preview
  : handle-key
@@ -258,4 +265,5 @@
  : read-msg
  : run-command
  : start
+ : start-command
  : update}

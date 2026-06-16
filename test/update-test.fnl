@@ -57,6 +57,19 @@
     (faith.= :function (type command))
     (faith.= "Syncing remote..." state.notice)))
 
+(fn test-uppercase-r-shows-notice-when-startup-sync-is-running []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.sync.running? true)
+    (let [(_ command) (update.update state {} (update.read-msg state "R"))]
+      (faith.= :function (type command))
+      (faith.= "Syncing remote..." state.notice))))
+
+(fn test-start-command-starts-remote-sync-quietly []
+  (let [state (state [(entry "M" "a.rb")])
+        command (update.start-command state)]
+    (faith.= :function (type command))
+    (faith.= nil state.notice)))
+
 (fn test-split-keys-move-divider-by-five-percent []
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {} (update.read-msg state "<"))
@@ -98,8 +111,10 @@
  : test-open-pr-finished-updates-notice
  : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data
+ : test-start-command-starts-remote-sync-quietly
  : test-split-keys-move-divider-by-five-percent
  : test-split-ratio-is-clamped
+ : test-uppercase-r-shows-notice-when-startup-sync-is-running
  : test-uppercase-r_returns_remote_sync_command
  : test-unknown-key-clears-pending-g
  : test-update-returns-command-for-review-persistence}

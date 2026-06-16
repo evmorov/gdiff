@@ -48,4 +48,4 @@
 
     (parse-from 1 nil)))
 
-{:parse parse :usage usage}
+{: parse : usage}

@@ -1,16 +1,20 @@
-(local actions (require :actions))
 (local args (require :args))
 (local config-store (require :config))
 (local git (require :git))
 (local reviews (require :reviews))
 (local tui (require :tui))
+(local app-update (require :update))
 (local app-view (require :view))
 
+(local handle-key app-update.handle-key)
+(local new-state app-update.init)
+(local view app-view.view)
+
 (fn picker [revision entries config review-store review-scope src-dir]
-  (let [state (actions.new-state revision entries review-store review-scope
-                                 src-dir)]
-    (actions.start state)
-    (tui.run-loop state app-view.view #(actions.handle-key $1 config $2))))
+  (let [state (app-update.init revision entries review-store review-scope
+                               src-dir)]
+    (app-update.start state)
+    (tui.run-loop state app-view.view #(app-update.handle-key $1 config $2))))
 
 (fn exit-with-error [message]
   (io.stderr:write message "\n")
@@ -45,7 +49,4 @@
                 (os.exit 1))
               (run revision options src-dir))))))
 
-{:handle-key actions.handle-key
- :main main
- :new-state actions.new-state
- :view app-view.view}
+{: handle-key : main : new-state : view}

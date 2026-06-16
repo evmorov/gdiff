@@ -75,4 +75,4 @@
      :warning (sync.warning state.sync)
      :notice state.notice}))
 
-{:view view}
+{: view}

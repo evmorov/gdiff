@@ -56,6 +56,14 @@
         (= key "g") (values "g" nil)
         (values nil key))))
 
+(fn read-msg [state raw-key]
+  (if (= raw-key :quit)
+      {:type :quit}
+      (search.active? state)
+      {:type :search-input :key raw-key}
+      (let [(pending-key action) (next-key state.pending-key raw-key)]
+        {:type :key :pending-key pending-key :action action})))
+
 (fn move-selection [state delta]
   (let [entries state.entries
         selected (if (= (length entries) 0)
@@ -151,23 +159,25 @@
     :quit false
     _ true))
 
-(fn handle-key [state config raw-key]
-  (sync.update state.sync)
-  (if (= raw-key :quit)
-      false
-      (search.active? state)
-      (search.handle-input state raw-key)
-      (let [(pending-key key) (next-key state.pending-key raw-key)]
-        (set state.pending-key pending-key)
-        (if key
-            (handle-action state config key)
-            true))))
+(fn update [state config msg]
+  (case (and (= (type msg) :table) msg.type)
+    :quit (set state.quit? true)
+    :search-input (search.handle-input state msg.key)
+    :key (do
+           (set state.pending-key msg.pending-key)
+           (let [running? (if msg.action
+                              (handle-action state config msg.action)
+                              true)]
+             (when (= running? false)
+               (set state.quit? true)))))
+  state)
 
-(fn new-state [revision entries review-store review-scope src-dir]
+(fn init [revision entries review-store review-scope src-dir]
   {:revision revision
    :src_dir src-dir
    :revision_label (git.comparison-label revision)
    :entries entries
+   :quit? false
    :selected 1
    :preview_scroll 0
    :preview_rows 1
@@ -180,8 +190,13 @@
    :sync (sync.new-state)
    :pending-key nil})
 
+(fn handle-key [state config raw-key]
+  (sync.update state.sync)
+  (update state config (read-msg state raw-key))
+  (not state.quit?))
+
 (fn start [state]
   (warm-preview-cache state)
   (sync.start state.sync))
 
-{:handle-key handle-key :new-state new-state :start start}
+{: handle-key : init :new-state init : read-msg : start : update}

@@ -28,7 +28,7 @@
       (gui? editor)))
 
 (fn run-detached [cmd]
-  (os.execute (.. cmd " >/dev/null 2>&1 &")))
+  (sys.background-command cmd))
 
 (fn run [config entry stty-state]
   (let [editor (config-store.editor-command config)
@@ -37,4 +37,4 @@
         (run-detached cmd)
         (tui.suspend stty-state #(os.execute cmd)))))
 
-{: command : run}
+{: command : run : run-detached}

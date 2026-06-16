@@ -118,7 +118,7 @@
 (fn open-selected [state config]
   (let [entry (selected-entry state)]
     (when entry
-      (set-notice state "Opened" entry.path)
+      (set-notice state "Opening" entry.path)
       (commands.open-editor config entry))))
 
 (fn copy-selected-path [state]

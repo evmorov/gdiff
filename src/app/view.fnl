@@ -68,8 +68,8 @@
   (let [reviewed (reviewed-count state.entries)
         separator (.. " " (tui.color state.theme :muted symbols.line.separator)
                       " ")]
-    (table.concat [(.. count " file" (plural-s count))
-                   (.. reviewed "/" count " reviewed")]
+    (table.concat [(.. reviewed "/" count " reviewed")
+                   (.. count " file" (plural-s count))]
                   separator)))
 
 (fn row-prefix [state selected?]

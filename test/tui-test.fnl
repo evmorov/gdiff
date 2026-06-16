@@ -30,21 +30,31 @@
 
 (fn test-components-are-exposed-for-extension []
   (faith.= :table (type tui.components))
+  (faith.= :table (type tui.renderer))
   (faith.= :function (type tui.components.split.draw))
   (faith.= :function (type tui.components.list.draw))
   (faith.= :function (type tui.components.lines.draw))
   (faith.= :function (type tui.components.scrollbar.draw)))
 
+(fn test-renderer-dispatches_registered_components []
+  (let [calls []
+        component {:draw (fn [_ctx node]
+                           (table.insert calls node.value))}
+        node {:type :test-component :value "drawn"}]
+    (tui.renderer.register node.type component)
+    (tui.renderer.draw (tui.context 5 20) node)
+    (faith.= ["drawn"] calls)))
+
 (fn test-header-rule-connects_top_bar_separators []
-  (let [rule (tui.components.chrome.header-rule "a │ b │ c" 9)]
+  (let [rule (tui.components.header.rule-line "a │ b │ c" 9)]
     (faith.= "──┴───┴──" rule)))
 
 (fn test-header-rule-connects_body_divider []
-  (let [rule (tui.components.chrome.header-rule "abcdefghi" 9 5)]
+  (let [rule (tui.components.header.rule-line "abcdefghi" 9 5)]
     (faith.= "────┬────" rule)))
 
 (fn test-header-rule-crosses_top_bar_separator_and_body_divider []
-  (let [rule (tui.components.chrome.header-rule "a │ b" 5 3)]
+  (let [rule (tui.components.header.rule-line "a │ b" 5 3)]
     (faith.= "──┼──" rule)))
 
 (fn test-bottom-rule-connects_body_divider []
@@ -60,25 +70,24 @@
     (faith.= "────┼────" rule)))
 
 (fn test-bottom-rule-connects_all_footer_right_separators []
-  (let [footer-cols (tui.components.chrome.footer-rule-cols 30 nil
-                                                            "65 files │ 12/65 reviewed")
+  (let [footer-cols (tui.components.footer.rule-cols 30 nil
+                                                     "65 files │ 12/65 reviewed")
         rule (tui.components.chrome.bottom-rule 30 nil footer-cols)]
     (faith.= "───┬──────────┬───────────────"
              rule)))
 
 (fn test-bottom-rule-connects_left_footer_separators []
-  (let [footer-cols (tui.components.chrome.footer-rule-cols 20 "a │ b │ c"
-                                                            nil)]
+  (let [footer-cols (tui.components.footer.rule-cols 20 "a │ b │ c" nil)]
     (faith.= true (. footer-cols 3))
     (faith.= true (. footer-cols 7))))
 
 (fn test-footer-right-col_includes_leading_separator []
-  (faith.= 8 (tui.components.chrome.footer-right-col 20 "11 chars ok")))
+  (faith.= 8 (tui.components.footer.right-col 20 "11 chars ok")))
 
 (fn test-footer-text-styles_separators_as_muted []
   (let [ctx (tui.context 10 80)
         node (tui.footer :prompt "Search │ next")
-        styled (tui.components.chrome.styled-footer-text ctx node node.text)]
+        styled (tui.components.footer.styled-text ctx node node.text)]
     (faith.= "Search │ next" (ansi.strip-ansi styled))
     (when (ansi.color?)
       (faith.is (styled:find "\27[2m│" 1 true)))))
@@ -165,6 +174,7 @@
  : test-header-rule-crosses_top_bar_separator_and_body_divider
  : test-parses-terminal-background-response
  : test-render-context-carries-terminal-shape
+ : test-renderer-dispatches_registered_components
  : test-screen-builds-declarative-view-tree
  : test-split-component-calculates_widths
  : test-scrollbar_only_visible_for_overflow

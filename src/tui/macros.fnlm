@@ -14,4 +14,7 @@
            ,(unpack setters))
          ,node))))
 
-{: defnode}
+(fn defrenderer [node-type component]
+  `(renderer.register ,node-type ,component))
+
+{: defnode : defrenderer}

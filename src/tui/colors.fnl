@@ -24,17 +24,23 @@
 (fn mix-channel [channel target amount]
   (clamp (round (+ channel (* (- target channel) amount))) 0 255))
 
-(fn selected-background [rgb]
+(fn nearby-background [rgb ?amount]
   (when rgb
     (let [target (if (< (luminance rgb) 0.5) 255 0)
-          amount 0.08]
+          amount (or ?amount 0.08)]
       {:r (mix-channel rgb.r target amount)
        :g (mix-channel rgb.g target amount)
        :b (mix-channel rgb.b target amount)})))
 
-(fn background-style [rgb]
-  (let [bg (selected-background rgb)]
+(fn selected-background [rgb]
+  (nearby-background rgb 0.08))
+
+(fn background-style [rgb ?amount]
+  (let [bg (nearby-background rgb ?amount)]
     (when bg
       (.. "\27[48;2;" bg.r ";" bg.g ";" bg.b "m"))))
 
-{: background-style : parse-background-response : selected-background}
+{: background-style
+ : nearby-background
+ : parse-background-response
+ : selected-background}

@@ -5,6 +5,7 @@
 (local reviews (require :storage.reviews))
 (local search (require :app.search))
 (local sync (require :git.sync))
+(local theme (require :tui.theme))
 
 (fn selected-entry [state]
   (. state.entries state.selected))
@@ -206,6 +207,7 @@
    :preview_scroll 0
    :preview_rows 1
    :split_ratio 0.4
+   :theme theme.default
    :preview_cache {}
    :preview_context (git.preview-context)
    :preview_warm (preview-warm.new-state)

@@ -1,6 +1,7 @@
 (local faith (require :faith))
 (local ansi (require :tui.ansi))
 (local colors (require :tui.colors))
+(local theme (require :tui.theme))
 (local tui (require :tui.core))
 
 (fn test-screen-builds-declarative-view-tree []
@@ -26,8 +27,10 @@
            (colors.parse-background-response "\27]11;rgb:0000/1111/ffff\7")))
 
 (fn test-selected-row-uses-derived-background []
-  (ansi.set-background-rgb {:r 16 :g 24 :b 32})
-  (let [row (ansi.selected-row (.. (ansi.color :bold "> ") "a.rb") 8)]
+  (let [t (theme.new {:r 16 :g 24 :b 32})
+        row (theme.selected-row t (.. (theme.color t :selected-marker "> ")
+                                      "a.rb")
+                                8)]
     (faith.= "> a.rb  " (ansi.strip-ansi row))
     (when (row:find ansi.esc 1 true)
       (faith.= nil (row:find "48;5;" 1 true))
@@ -35,14 +38,33 @@
       (faith.is (row:find "\27[0m\27[48;2;" 1 true)))))
 
 (fn test-selected-row-does-not-guess-without-background []
-  (ansi.set-background-rgb nil)
-  (let [row (ansi.selected-row (.. (ansi.color :bold "> ") "a.rb") 8)]
+  (let [t (theme.new nil)
+        row (theme.selected-row t (.. (theme.color t :selected-marker "> ")
+                                      "a.rb")
+                                8)]
     (faith.= "> a.rb  " (ansi.strip-ansi row))
     (faith.= nil (row:find "48;" 1 true))
     (faith.= nil (row:find "\27[2;7m" 1 true))))
 
+(fn test-search-match-uses-derived-background []
+  (let [t (theme.new {:r 16 :g 24 :b 32})
+        style (theme.style-for t :search-match)
+        text (theme.highlight-matches t "abc" "b")]
+    (faith.= "abc" (ansi.strip-ansi text))
+    (faith.= nil (style:find "48;5;" 1 true))
+    (faith.is (style:find "\27[48;2;" 1 true))))
+
+(fn test-search-match-does-not-guess-background []
+  (let [t (theme.new nil)
+        style (theme.style-for t :search-match)
+        text (theme.highlight-matches t "abc" "b")]
+    (faith.= "abc" (ansi.strip-ansi text))
+    (faith.= nil (style:find "48;" 1 true))))
+
 {: test-empty-footer-is-nil
  : test-parses-terminal-background-response
  : test-screen-builds-declarative-view-tree
+ : test-search-match-does-not-guess-background
+ : test-search-match-uses-derived-background
  : test-selected-row-does-not-guess-without-background
  : test-selected-row-uses-derived-background}

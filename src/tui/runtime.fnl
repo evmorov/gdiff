@@ -1,9 +1,11 @@
 (local draw (require :tui.draw))
 (local terminal (require :tui.terminal))
+(local theme (require :tui.theme))
 
 (fn run [program]
   (let [stty-state (terminal.saved-stty)]
-    (terminal.raw-terminal stty-state)
+    (let [(_ background-rgb) (terminal.raw-terminal stty-state)]
+      (set program.state.theme (theme.new background-rgb)))
     (let [(ok err) (pcall (fn []
                             (set program.state.stty-state stty-state)
                             (var running true)

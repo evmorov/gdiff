@@ -168,7 +168,7 @@
 
 (fn highlight [state text]
   (if (has-query? state)
-      (tui.highlight-matches text (query state))
+      (tui.highlight-matches state.theme text (query state))
       text))
 
 (fn status [state]

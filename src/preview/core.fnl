@@ -10,34 +10,34 @@
   (let [first (line:sub 1 1)]
     (if (or (line:match "^diff ") (line:match "^index ")
             (line:match "^%-%-%- ") (line:match "^%+%+%+ "))
-        :dim
+        :muted
         (= first "+")
-        :added
+        :status-added
         (= first "-")
-        :deleted
+        :status-deleted
         (= first "@")
-        :renamed
+        :status-renamed
         nil)))
 
-(fn color-line [line]
+(fn color-line [state line]
   (let [line (or line "")
         color (line-color line)]
     (if color
-        (tui.color color line)
+        (tui.color state.theme color line)
         line)))
 
-(fn lines-from-output [output filtered?]
+(fn lines-from-output [state output filtered?]
   (let [lines (icollect [line (string.gmatch (or output "") "[^\r\n]+")]
                 (if filtered?
                     line
-                    (color-line line)))]
+                    (color-line state line)))]
     (if (> (length lines) 0)
         lines
-        [(tui.color :dim "No preview for this file.")])))
+        [(tui.color state.theme :muted "No preview for this file.")])))
 
 (fn lines [state entry]
   (if (not entry)
-      [(tui.color :dim "No file selected.")]
+      [(tui.color state.theme :muted "No file selected.")]
       (let [key (preview-key.for-entry state.revision entry)
             cached (. state.preview_cache key)]
         (if cached
@@ -45,24 +45,24 @@
             (let [(output ok filtered?) (git.preview-output state.preview_context
                                                             state.revision entry)
                   lines (if ok
-                            (lines-from-output output filtered?)
-                            [(tui.color :deleted (sys.trim output))])]
+                            (lines-from-output state output filtered?)
+                            [(tui.color state.theme :warning (sys.trim output))])]
               (tset state.preview_cache key lines)
               lines)))))
 
 (fn warming? [state]
   (and state.preview_warm state.preview_warm.dir))
 
-(fn loading-lines []
-  [(tui.color :dim "Loading preview...")])
+(fn loading-lines [state]
+  [(tui.color state.theme :muted "Loading preview...")])
 
 (fn nonblocking-lines [state entry]
   (if (not entry)
-      [(tui.color :dim "No file selected.")]
+      [(tui.color state.theme :muted "No file selected.")]
       (let [key (preview-key.for-entry state.revision entry)
             cached (. state.preview_cache key)]
         (if cached cached
-            (warming? state) (loading-lines)
+            (warming? state) (loading-lines state)
             (lines state entry)))))
 
 (fn row-count [state]

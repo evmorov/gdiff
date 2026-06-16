@@ -69,11 +69,11 @@
 
 (fn raw-terminal [stty-state]
   (os.execute "stty raw -echo min 0 time 1 2>/dev/null")
-  (ansi.set-background-rgb (query-background-rgb))
-  (os.execute "stty raw -echo min 0 time 10 2>/dev/null")
-  (io.write ansi.esc "[?1049h" ansi.esc "[?25l")
-  (io.flush)
-  stty-state)
+  (let [background-rgb (query-background-rgb)]
+    (os.execute "stty raw -echo min 0 time 10 2>/dev/null")
+    (io.write ansi.esc "[?1049h" ansi.esc "[?25l")
+    (io.flush)
+    (values stty-state background-rgb)))
 
 (fn restore-terminal [stty-state]
   (io.write ansi.esc "[?25h" ansi.esc "[?1049l" ansi.esc "[0m")

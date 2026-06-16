@@ -7,20 +7,20 @@
 
 (fn status-color [entry]
   (case entry.kind
-    "A" :added
-    "M" :modified
-    "D" :deleted
-    "R" :renamed
-    "C" :copied
+    "A" :status-added
+    "M" :status-modified
+    "D" :status-deleted
+    "R" :status-renamed
+    "C" :status-copied
     _ :reset))
 
-(fn status-text [entry]
-  (tui.color (status-color entry) (.. "[" entry.status "]")))
+(fn status-text [state entry]
+  (tui.color state.theme (status-color entry) (.. "[" entry.status "]")))
 
-(fn reviewed-text [entry]
+(fn reviewed-text [state entry]
   (if entry.reviewed
       "[x]"
-      (tui.color :dim "[ ]")))
+      (tui.color state.theme :muted "[ ]")))
 
 (fn selected-entry [state]
   (. state.entries state.selected))
@@ -55,11 +55,12 @@
     (.. "gdiff " state.revision_label " | " count " file" (plural-s count)
         " | " reviewed "/" count " reviewed" help)))
 
-(fn row-prefix [selected?]
-  (if selected? (tui.color :bold "> ") "  "))
+(fn row-prefix [state selected?]
+  (if selected? (tui.color state.theme :selected-marker "> ") "  "))
 
 (fn row-text [state entry selected?]
-  (.. (row-prefix selected?) (reviewed-text entry) " " (status-text entry) " "
+  (.. (row-prefix state selected?) (reviewed-text state entry) " "
+      (status-text state entry) " "
       (search.highlight state (entry-view.path-text entry))))
 
 (fn row [state entry selected?]

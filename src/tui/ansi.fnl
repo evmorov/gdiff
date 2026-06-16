@@ -1,44 +1,31 @@
 (local esc "\27")
 (local nl "\r\n")
-(local colors-helper (require :tui.colors))
 
-(local colors {:reset "\27[0m"
-               :bold "\27[1m"
-               :dim "\27[2m"
-               :reverse "\27[7m"
-               :added "\27[32m"
-               :modified "\27[33m"
-               :deleted "\27[31m"
-               :renamed "\27[36m"
-               :copied "\27[35m"
-               :notice "\27[90m"
-               :search "\27[30;43m"
-               :search-end "\27[39;49m"})
-
-(var selected-row-style nil)
+(local reset-style "\27[0m")
 
 (fn color? []
   (not (os.getenv "NO_COLOR")))
-
-(fn color [name text]
-  (if (color?)
-      (.. (. colors name) text colors.reset)
-      text))
-
-(fn set-background-rgb [rgb]
-  (set selected-row-style (colors-helper.background-style rgb)))
 
 (fn pattern-quote [s]
   (s:gsub "([^%w])" "%%%1"))
 
 (fn reset-code []
-  (if (color?) colors.reset ""))
+  (if (color?) reset-style ""))
 
-(fn search-code []
-  colors.search)
+(fn apply-style [style text]
+  (if (and (color?) style)
+      (.. style text reset-style)
+      text))
 
-(fn search-end-code []
-  colors.search-end)
+(fn restyle-after-resets [text style]
+  (if (and (color?) style)
+      (text:gsub (pattern-quote reset-style) (.. reset-style style))
+      text))
+
+(fn apply-block-style [style text]
+  (if (and (color?) style)
+      (.. style (restyle-after-resets text style) reset-style)
+      text))
 
 (fn ansi-sequence-end [s i]
   (var j (+ i 2))
@@ -71,14 +58,6 @@
         (.. s (string.rep " " missing))
         s)))
 
-(fn selected-row [line width]
-  (let [line (pad-right line width)]
-    (if (and (color?) selected-row-style)
-        (let [style selected-row-style
-              reset colors.reset]
-          (.. style (line:gsub (pattern-quote reset) (.. reset style)) reset))
-        line)))
-
 (fn strip-ansi [s]
   (let [s (tostring (or s ""))]
     (var i 1)
@@ -105,13 +84,12 @@
               (set searching? false)))))
     ranges))
 
-(fn highlight-matches [s query]
+(fn highlight-matches [s query start-code end-code]
   (let [s (tostring (or s ""))
         ranges (match-ranges (strip-ansi s) (or query ""))]
-    (if (= (length ranges) 0)
+    (if (or (= (length ranges) 0) (not (color?)) (not start-code))
         s
-        (let [start-code (search-code)
-              end-code (search-end-code)]
+        (let [end-code (or end-code reset-style)]
           (var out "")
           (var i 1)
           (var visible 1)
@@ -153,12 +131,15 @@
                   (set i (+ i 1)))))
           (.. out suffix (reset-code))))))
 
-{: color
+{: apply-block-style
+ : apply-style
+ : color?
  : esc
  : highlight-matches
  : nl
- : selected-row
- : set-background-rgb
+ : pad-right
+ : reset-code
+ : reset-style
  : strip-ansi
  : truncate
  : visible-length}

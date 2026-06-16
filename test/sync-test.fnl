@@ -6,7 +6,6 @@
 (fn finish-with-output [output ?revision]
   (let [state (sync.new-state ?revision)]
     (set state.running? true)
-    (set state.next_at (+ (os.time) 999))
     (faith.is (sys.write-file state.path output))
     (sync.update state)
     state))
@@ -41,6 +40,22 @@
     (faith.match "BatchMode=yes" command)
     (faith.match "git fetch %-%-quiet %-%-prune" command)
     (faith.match "</dev/null >/dev/null 2>&1" command)))
+
+(fn test-update_does_not_start_remote_sync_automatically []
+  (let [state (sync.new-state)]
+    (sync.update state)
+    (faith.= false state.running?)))
+
+(fn test-start_launches_remote_sync_explicitly []
+  (let [state (sync.new-state)
+        calls []]
+    (sync.start state
+                (fn [path targets]
+                  (table.insert calls {:path path :targets targets})))
+    (faith.= true state.running?)
+    (let [call (. calls 1)]
+      (faith.= state.path call.path)
+      (faith.= state.targets call.targets))))
 
 (fn test-branch-status-command-separates-target-subshells []
   (let [command (sync.branch-status-command "/tmp/gdiff-sync-status"
@@ -95,5 +110,7 @@
  : test-keeps-old-current-branch-status-parser
  : test-range-revision-checks-both-sides
  : test-single-revision-checks-current-branch
+ : test-start_launches_remote_sync_explicitly
  : test-target-status-command-is-quoted-and-structured
+ : test-update_does_not_start_remote_sync_automatically
  : test-warns-when-branch-is-behind-upstream}

@@ -1,8 +1,6 @@
 (local git (require :git.core))
 (local sys (require :platform.core))
 
-(local interval-seconds 300)
-
 (fn add-target [targets seen target]
   (when (and target (> (length target) 0) (not (. seen target)))
     (tset seen target true)
@@ -151,17 +149,13 @@
   {:path (sys.temp-path)
    :running? false
    :warning nil
-   :next_at 0
    :targets (targets-for-revision (or ?revision "HEAD"))})
 
-(fn request [state]
-  (set state.next_at 0))
-
-(fn start [state]
+(fn start [state ?spawn]
   (when (not state.running?)
-    (set state.running? true)
-    (set state.next_at (+ (os.time) interval-seconds))
-    (spawn-branch-status state.path state.targets)))
+    (let [spawn (or ?spawn spawn-branch-status)]
+      (set state.running? true)
+      (spawn state.path state.targets))))
 
 (fn finish [state output]
   (set state.warning (warning-from-output output))
@@ -175,15 +169,12 @@
         (finish state output)))))
 
 (fn update [state]
-  (poll state)
-  (when (and (not state.running?) (<= state.next_at (os.time)))
-    (start state)))
+  (poll state))
 
 (fn warning [state]
   state.warning)
 
 {: new-state
- : request
  : start
  : branch-status-command
  : fetch-command

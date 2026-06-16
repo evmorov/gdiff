@@ -14,6 +14,7 @@
 (fn test-read-msg-turns-raw-key-into-message-data []
   (let [state (state [(entry "M" "a.rb")])]
     (faith.= {:type :toggle-all-reviewed} (update.read-msg state "a"))
+    (faith.= {:type :sync} (update.read-msg state "R"))
     (faith.= {:type :open-pr} (update.read-msg state "p"))))
 
 (fn test-read-msg-keeps-pending-g-in-state []
@@ -39,6 +40,20 @@
         (_ command) (update.update state {} {:type :toggle-all-reviewed})]
     (faith.= {"a.rb" true} (reviews.paths state.entries))
     (faith.= "Marked all reviewed" state.notice)
+    (faith.= :function (type command))))
+
+(fn test-local-refresh_does_not_start_remote_sync []
+  (let [state (state [])
+        (_ command) (update.update state {}
+                                   {:type :refresh-loaded
+                                    :entries []
+                                    :reviewed {}})]
+    (update.run-command state {} command)
+    (faith.= false state.sync.running?)))
+
+(fn test-uppercase-r_returns_remote_sync_command []
+  (let [state (state [(entry "M" "a.rb")])
+        (_ command) (update.update state {} (update.read-msg state "R"))]
     (faith.= :function (type command))))
 
 (fn test-split-keys-move-divider-by-five-percent []
@@ -78,10 +93,12 @@
     (faith.= "No linked PR for feature" state.notice)))
 
 {: test-command-dispatches-back-through-update
+ : test-local-refresh_does_not_start_remote_sync
  : test-open-pr-finished-updates-notice
  : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data
  : test-split-keys-move-divider-by-five-percent
  : test-split-ratio-is-clamped
+ : test-uppercase-r_returns_remote_sync_command
  : test-unknown-key-clears-pending-g
  : test-update-returns-command-for-review-persistence}

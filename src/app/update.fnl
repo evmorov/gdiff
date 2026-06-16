@@ -41,6 +41,7 @@
     "n" :search-next
     "N" :search-previous
     "r" :refresh
+    "R" :sync
     "y" :copy-path
     "p" :open-pr
     "<" :split-left
@@ -112,8 +113,7 @@
   (preview.reset-scroll state)
   (move-selection state 0)
   (cache-selected-preview state)
-  (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed)
-                  (commands.sync-start)))
+  (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed)))
 
 (fn open-selected [state config]
   (let [entry (selected-entry state)]
@@ -144,6 +144,7 @@
         :top jump-top
         :bottom jump-bottom
         :refresh commands.refresh
+        :sync commands.sync-start
         :copy-path copy-selected-path
         :open-pr commands.open-linked-pr
         :split-left #(move-split $1 -0.05)
@@ -236,9 +237,7 @@
 
 (fn start [state]
   (cache-selected-preview state)
-  (run-command state {}
-               (commands.batch (commands.warm-preview-cache)
-                               (commands.sync-start))))
+  (run-command state {} (commands.warm-preview-cache)))
 
 {: cache-selected-preview
  : handle-key

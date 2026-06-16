@@ -56,6 +56,7 @@
                "/ search"
                "C-d/C-u preview"
                "r refresh"
+               "R sync"
                "y copy"
                "p PR"
                "space check"

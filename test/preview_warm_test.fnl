@@ -22,8 +22,9 @@
         first-key (preview-key.for-entry "HEAD" first)
         second-key (preview-key.for-entry "HEAD" second)
         state {:dir "warm"
-               :next-index 1
                :count 2
+               :remaining 2
+               :imported {}
                :key-index {first-key 1 second-key 2}
                :index-key {1 first-key 2 second-key}}
         cache {}]
@@ -33,4 +34,30 @@
     (faith.= nil state.dir)
     (faith.= false (sys.write-file "warm/still-there" "x"))))
 
-{: test-update-imports-all-previews-and-cleans-temp-dir}
+(fn test-update-imports-ready-previews-out-of-order []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (write-output "warm" 2 ["second"])
+  (let [first (entry "M" "a.rb")
+        second (entry "M" "b.rb")
+        first-key (preview-key.for-entry "HEAD" first)
+        second-key (preview-key.for-entry "HEAD" second)
+        state {:dir "warm"
+               :count 2
+               :remaining 2
+               :imported {}
+               :key-index {first-key 1 second-key 2}
+               :index-key {1 first-key 2 second-key}}
+        cache {}]
+    (preview-warm.update state cache)
+    (faith.= nil (. cache first-key))
+    (faith.= ["second"] (. cache second-key))
+    (faith.= 1 state.remaining)
+    (faith.= "warm" state.dir)
+    (write-output "warm" 1 ["first"])
+    (preview-warm.update state cache)
+    (faith.= ["first"] (. cache first-key))
+    (faith.= nil state.dir)))
+
+{: test-update-imports-all-previews-and-cleans-temp-dir
+ : test-update-imports-ready-previews-out-of-order}

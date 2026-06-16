@@ -21,13 +21,17 @@
       (os.execute (.. "mv " (sys.shell-quote tmp) " " (sys.shell-quote path)
                       " 2>/dev/null")))))
 
-(fn warm [manifest-path dir]
+(fn warm [manifest-path dir start step]
   (let [manifest (read-manifest manifest-path)]
     (when manifest
       (let [state {:revision manifest.revision
                    :preview_cache {}
                    :preview_context (git.preview-context)}]
-        (each [i entry (ipairs manifest.entries)]
-          (write-output dir i (preview.lines state entry)))))))
+        (for [i start (length manifest.entries) step]
+          (write-output dir i (preview.lines state (. manifest.entries i))))))))
 
-(warm (. arg 1) (. arg 2))
+(let [manifest-path (. arg 1)
+      output-dir (. arg 2)
+      start-index (tonumber (. arg 3))
+      step (tonumber (. arg 4))]
+  (warm manifest-path output-dir start-index step))

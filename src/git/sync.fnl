@@ -150,30 +150,22 @@
 (fn new-state [?revision]
   {:path (sys.temp-path)
    :running? false
-   :requested? false
    :warning nil
    :next_at 0
-   :synced_at (os.time)
    :targets (targets-for-revision (or ?revision "HEAD"))})
 
 (fn request [state]
-  (when (not state.running?)
-    (set state.requested? true)
-    (set state.next_at 0)))
+  (set state.next_at 0))
 
-(fn start [state ?spawn]
+(fn start [state]
   (when (not state.running?)
-    (let [spawn (or ?spawn spawn-branch-status)]
-      (set state.requested? false)
-      (set state.running? true)
-      (set state.next_at (+ (os.time) interval-seconds))
-      (spawn state.path state.targets))))
+    (set state.running? true)
+    (set state.next_at (+ (os.time) interval-seconds))
+    (spawn-branch-status state.path state.targets)))
 
 (fn finish [state output]
   (set state.warning (warning-from-output output))
-  (set state.requested? false)
   (set state.running? false)
-  (set state.synced_at (os.time))
   (sys.remove-file state.path))
 
 (fn poll [state]
@@ -190,17 +182,12 @@
 (fn warning [state]
   state.warning)
 
-(fn syncing? [state]
-  (or state.running? state.requested?))
-
 {: new-state
  : request
  : start
  : branch-status-command
  : fetch-command
- : finish
  : target-status-command
  : targets-for-revision
  : update
- : warning
- : syncing?}
+ : warning}

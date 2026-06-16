@@ -23,33 +23,6 @@
   (faith.= ["feature"]
            (sync.targets-for-revision "feature...feature" "current")))
 
-(fn test-new-state-has_initial_sync_time []
-  (let [before (os.time)
-        state (sync.new-state)
-        after (os.time)]
-    (faith.is (<= before state.synced_at))
-    (faith.is (<= state.synced_at after))))
-
-(fn test-request-enters_syncing_mode_before_worker_starts []
-  (let [state (sync.new-state)]
-    (sync.request state)
-    (faith.= true state.requested?)
-    (faith.is (sync.syncing? state))))
-
-(fn test-start-moves_requested_sync_to_running []
-  (let [state (sync.new-state)]
-    (sync.request state)
-    (sync.start state (fn [_path _targets] nil))
-    (faith.= false state.requested?)
-    (faith.= true state.running?)
-    (faith.is (sync.syncing? state))))
-
-(fn test-finish-leaves_syncing_mode []
-  (let [state (sync.new-state)]
-    (set state.running? true)
-    (sync.finish state "branch\tfeature\torigin/feature\t0\t0\n")
-    (faith.= false (sync.syncing? state))))
-
 (fn test-target-status-command-is-quoted-and-structured []
   (let [command (sync.target-status-command "feature branch")]
     (faith.match "label='feature branch'" command)
@@ -95,13 +68,6 @@
   (let [state (finish-with-output "branch\tfeature\torigin/feature\t0\t0\n")]
     (faith.= nil (sync.warning state))))
 
-(fn test-finished-sync-records_time []
-  (let [before (os.time)
-        state (finish-with-output "branch\tfeature\torigin/feature\t0\t0\n")
-        after (os.time)]
-    (faith.is (<= before state.synced_at))
-    (faith.is (<= state.synced_at after))))
-
 (fn test-branch-ahead-of-upstream-has-no-warning []
   (let [state (finish-with-output "branch\tfeature\torigin/feature\t2\t0\n")]
     (faith.= nil (sync.warning state))))
@@ -126,13 +92,8 @@
  : test-branch-status-command-separates-target-subshells
  : test-combines-revision-side-warnings
  : test-fetch-command-is-quiet-and-noninteractive
- : test-finished-sync-records_time
  : test-keeps-old-current-branch-status-parser
- : test-finish-leaves_syncing_mode
- : test-new-state-has_initial_sync_time
  : test-range-revision-checks-both-sides
- : test-request-enters_syncing_mode_before_worker_starts
  : test-single-revision-checks-current-branch
- : test-start-moves_requested_sync_to_running
  : test-target-status-command-is-quoted-and-structured
  : test-warns-when-branch-is-behind-upstream}

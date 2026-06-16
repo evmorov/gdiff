@@ -64,55 +64,7 @@
           footer-right (tui.strip-ansi view.footer.right)]
       (faith.= nil (header:find "files" 1 true))
       (faith.= nil (header:find "reviewed" 1 true))
-      (faith.= "1/2 reviewed │ 2 files │ Synced: 0m ago" footer-right))))
-
-(fn test-view-adds_zero_minute_sync_status_to_footer_right []
-  (let [state (state [(entry "M" "a.rb")])]
-    (set state.sync.synced_at (os.time))
-    (let [view (app.view state 10 100)
-          footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "0/1 reviewed │ 1 file │ Synced: 0m ago" footer-right))))
-
-(fn test-view-adds_minute_sync_status_to_footer_right []
-  (let [state (state [(entry "M" "a.rb")])]
-    (set state.sync.synced_at (- (os.time) 61))
-    (let [view (app.view state 10 100)
-          footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "0/1 reviewed │ 1 file │ Synced: 1m ago" footer-right))))
-
-(fn test-view-shows_stable_width_syncing_status []
-  (let [state (state [(entry "M" "a.rb")])]
-    (set state.background_syncing? true)
-    (set state.sync.synced_at (os.time))
-    (let [view (app.view state 10 100)
-          footer-right (tui.strip-ansi view.footer.right)
-          normal "0/1 reviewed │ 1 file │ Synced: 0m ago"]
-      (faith.= "0/1 reviewed │ 1 file │ Synced: ...   " footer-right)
-      (faith.= (length normal) (length footer-right)))))
-
-(fn test-view-shows_syncing_status_while_preview_cache_warms []
-  (let [state (state [(entry "M" "a.rb")])]
-    (set state.preview_warm.dir "warm")
-    (let [view (app.view state 10 100)
-          footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "0/1 reviewed │ 1 file │ Synced: ...   " footer-right))))
-
-(fn test-refresh-enters_background_sync_mode_immediately []
-  (let [state (state [(entry "M" "a.rb")])
-        (_ command) (app.update state {} {:type :refresh})]
-    (faith.= true state.background_syncing?)
-    (faith.= :function (type command))))
-
-(fn test-background_sync_finishes_after_all_work_is_done []
-  (let [state (state [(entry "M" "a.rb")])
-        before (os.time)]
-    (set state.background_syncing? true)
-    (set state.sync.requested? false)
-    (set state.sync.running? false)
-    (set state.preview_warm.dir nil)
-    (app.finish-background-sync-if-complete state)
-    (faith.= false state.background_syncing?)
-    (faith.is (<= before state.sync.synced_at))))
+      (faith.= "1/2 reviewed │ 2 files" footer-right))))
 
 (fn test-view-adds-left-scroll-info-for-overflowing-file-list []
   (let [state (state [(entry "M" "1.rb")
@@ -169,14 +121,8 @@
 
 {: test-a-toggles-all-reviewed-and-A-does-nothing
  : test-search-next-is-relative-to-current-cursor
- : test-background_sync_finishes_after_all_work_is_done
- : test-refresh-enters_background_sync_mode_immediately
  : test-split-key-does-not-start-due-sync
- : test-view-adds_minute_sync_status_to_footer_right
  : test-view-adds-left-scroll-info-for-overflowing-file-list
- : test-view-adds_zero_minute_sync_status_to_footer_right
- : test-view-shows_stable_width_syncing_status
- : test-view-shows_syncing_status_while_preview_cache_warms
  : test-view-keeps_last_file_above_bottom_divider
  : test-view-moves_file_counts_to_footer_right
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw

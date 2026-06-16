@@ -38,6 +38,12 @@
                                             :status "R"}}
              (entries-by-path entries))))
 
+(fn test-diff-stats-reports_total_additions_and_deletions []
+  (setup-changed-repo)
+  (let [(stats err) (git.diff-stats "HEAD")]
+    (faith.= nil err)
+    (faith.= {:additions 2 :deletions 2} stats)))
+
 (fn test-default-revision-prefers-main []
   (t.init-repo)
   (t.write-file "README.md" "# main\n")
@@ -83,4 +89,5 @@
  : test-comparison-revision-expands-single-revision
  : test-comparison-revision-keeps-explicit-range
  : test-diff-entries-reports-working-tree-changes
+ : test-diff-stats-reports_total_additions_and_deletions
  : test-linked-pr-url-command-quotes-branch}

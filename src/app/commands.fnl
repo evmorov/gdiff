@@ -67,9 +67,15 @@
   [dispatch get-state]
   (let [state (get-state)
         reviewed (reviews.paths state.entries)
-        (entries err) (git.diff-entries state.revision)]
+        (entries err) (git.diff-entries state.revision)
+        (diff-stats _stats-err) (if (not err)
+                                    (git.diff-stats state.revision)
+                                    (values nil nil))]
     (when (not err)
-      (dispatch {:type :refresh-loaded :entries entries :reviewed reviewed}))))
+      (dispatch {:type :refresh-loaded
+                 :entries entries
+                 :reviewed reviewed
+                 :diff_stats diff-stats}))))
 
 {: batch
  : copy-path

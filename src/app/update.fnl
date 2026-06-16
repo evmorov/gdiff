@@ -107,8 +107,9 @@
   (preview.lines state (selected-entry state))
   state)
 
-(fn apply-refresh [state entries reviewed]
+(fn apply-refresh [state entries reviewed diff-stats]
   (set state.entries (reviews.apply entries reviewed))
+  (set state.diff_stats diff-stats)
   (preview.reset-scroll state)
   (move-selection state 0)
   (cache-selected-preview state)
@@ -194,7 +195,8 @@
                                                (.. "Opened PR: " msg.url)
                                                (or msg.error "No linked PR")))
                                       commands.none)
-                  :refresh-loaded (apply-refresh state msg.entries msg.reviewed)
+                  :refresh-loaded (apply-refresh state msg.entries msg.reviewed
+                                                 msg.diff_stats)
                   _ (do
                       (set state.pending-key msg.pending-key)
                       (let [handler (. action-handlers msg-type)]
@@ -221,11 +223,12 @@
           (next-command dispatch get-state)))))
   state)
 
-(fn init [revision entries review-store review-scope src-dir]
+(fn init [revision entries review-store review-scope src-dir ?diff-stats]
   {:revision revision
    :src_dir src-dir
    :revision_label (git.comparison-label revision)
    :entries entries
+   :diff_stats ?diff-stats
    :quit? false
    :selected 1
    :preview_scroll 0

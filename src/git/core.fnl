@@ -34,6 +34,23 @@
   (.. "git diff --name-status --find-renames --find-copies "
       (sys.shell-quote revision) " 2>&1"))
 
+(fn diff-stats-command [revision]
+  (.. "git diff --numstat --find-renames --find-copies "
+      (sys.shell-quote revision) " 2>&1"))
+
+(fn parse-numstat [text]
+  (accumulate [stats {:additions 0 :deletions 0} line (string.gmatch (or text
+                                                                         "")
+                                                                     "[^\r\n]+")]
+    (let [parts (split-tabs line)
+          additions (tonumber (. parts 1))
+          deletions (tonumber (. parts 2))]
+      (when additions
+        (set stats.additions (+ stats.additions additions)))
+      (when deletions
+        (set stats.deletions (+ stats.deletions deletions)))
+      stats)))
+
 (fn revision-exists? [revision]
   (let [cmd (.. "git rev-parse --verify --quiet "
                 (sys.shell-quote (.. revision "^{commit}")) " >/dev/null 2>&1")
@@ -113,6 +130,12 @@
         (values (parse-name-status output) nil)
         (values nil (sys.trim output)))))
 
+(fn diff-stats [revision]
+  (let [(output ok _kind _code) (sys.read-command (diff-stats-command revision))]
+    (if ok
+        (values (parse-numstat output) nil)
+        (values nil (sys.trim output)))))
+
 (fn preview-output [context revision entry]
   (let [filter context.diff-filter]
     (if filter
@@ -140,6 +163,8 @@
  : current-branch
  : default-revision
  : diff-entries
+ : diff-stats
+ : diff-stats-command
  : linked-pr-url
  : linked-pr-url-command
  : preview-context

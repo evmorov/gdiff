@@ -67,10 +67,18 @@
 (fn footer-summary [state count]
   (let [reviewed (reviewed-count state.entries)
         separator (.. " " (tui.color state.theme :muted symbols.line.separator)
-                      " ")]
-    (table.concat [(.. reviewed "/" count " reviewed")
-                   (.. count " file" (plural-s count))]
-                  separator)))
+                      " ")
+        stats state.diff_stats
+        items [(.. reviewed "/" count " reviewed")
+               (.. count " file" (plural-s count))]]
+    (when stats
+      (table.insert items
+                    (.. (tui.color state.theme :status-added
+                                   (.. "+" stats.additions))
+                        " "
+                        (tui.color state.theme :status-deleted
+                                   (.. "-" stats.deletions)))))
+    (table.concat items separator)))
 
 (fn row-prefix [state selected?]
   (if selected? (tui.color state.theme :selected-marker "> ") "  "))

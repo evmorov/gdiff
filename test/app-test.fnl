@@ -66,6 +66,13 @@
       (faith.= nil (header:find "reviewed" 1 true))
       (faith.= "1/2 reviewed │ 2 files" footer-right))))
 
+(fn test-view-shows_diff_stats_in_footer_right []
+  (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
+    (set state.diff_stats {:additions 42 :deletions 7})
+    (let [view (app.view state 10 100)
+          footer-right (tui.strip-ansi view.footer.right)]
+      (faith.= "0/2 reviewed │ 2 files │ +42 -7" footer-right))))
+
 (fn test-view-shows-single-refresh-sync-key []
   (let [state (state [(entry "M" "a.rb")])
         view (app.view state 10 100)
@@ -214,6 +221,7 @@
  : test-view-adds-left-scroll-info-for-overflowing-file-list
  : test-view-keeps_last_file_above_bottom_divider
  : test-view-moves_file_counts_to_footer_right
+ : test-view-shows_diff_stats_in_footer_right
  : test-view-shows-single-refresh-sync-key
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

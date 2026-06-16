@@ -101,6 +101,17 @@
     (faith.= false state.sync.running?)
     (faith.almost= 0.45 state.split_ratio 0.0001)))
 
+(fn test-quit-cleans-preview-warmer []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (t.write-file "warm/manifest.fnl" "{}")
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.preview_warm.dir "warm")
+    (faith.= false (app.handle-key state {} :quit))
+    (faith.= true state.quit?)
+    (faith.= nil state.preview_warm.dir)
+    (faith.= false (sys.write-file "warm/still-there" "x"))))
+
 (fn test-manual-clean-remote-sync-finish-updates-notice []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.sync.running? true)
@@ -196,6 +207,7 @@
  : test-manual-clean-remote-sync-finish-updates-notice
  : test-remote-sync-finish-is-polled-on-input
  : test-remote-sync-warning-persists-until-clean-sync
+ : test-quit-cleans-preview-warmer
  : test-startup-clean-remote-sync-finish-stays-quiet
  : test-startup-fetch-failure-shows-sync-notice
  : test-split-key-does-not-start-due-sync

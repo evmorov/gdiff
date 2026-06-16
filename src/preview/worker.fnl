@@ -27,8 +27,13 @@
       (let [state {:revision manifest.revision
                    :preview_cache {}
                    :preview_context (git.preview-context)}]
+        (var canceled? false)
         (for [i start (length manifest.entries) step]
-          (write-output dir i (preview.lines state (. manifest.entries i))))))))
+          (if canceled?
+              nil
+              (sys.file-exists? manifest-path)
+              (write-output dir i (preview.lines state (. manifest.entries i)))
+              (set canceled? true)))))))
 
 (let [manifest-path (. arg 1)
       output-dir (. arg 2)

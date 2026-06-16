@@ -170,7 +170,8 @@
           (set checks (+ checks 1))))))
   (finish-if-complete state))
 
-{: import-entry
+{: cleanup
+ : import-entry
  : missing-entries
  : new-state
  : side-priority-entries

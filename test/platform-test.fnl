@@ -15,6 +15,16 @@
   (faith.= "( code 'a.rb' ) </dev/null >/dev/null 2>&1 &"
            (sys.background-shell-command (editor.command "code" "a.rb"))))
 
+(fn test-file-exists-checks-plain-files []
+  (let [path "/tmp/gdiff-platform-file-exists-test"]
+    (sys.remove-file path)
+    (faith.= false (sys.file-exists? path))
+    (faith.is (sys.write-file path "x"))
+    (faith.= true (sys.file-exists? path))
+    (sys.remove-file path)
+    (faith.= false (sys.file-exists? path))))
+
 {: test-background-shell-command-detaches-from-terminal
  : test-browser-command-quotes-url
- : test-editor-detached-command-does-not-use-terminal-stdin}
+ : test-editor-detached-command-does-not-use-terminal-stdin
+ : test-file-exists-checks-plain-files}

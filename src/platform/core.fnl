@@ -30,6 +30,14 @@
           true)
         false)))
 
+(fn file-exists? [path]
+  (let [f (io.open path "r")]
+    (if f
+        (do
+          (f:close)
+          true)
+        false)))
+
 (fn remove-file [path]
   (os.remove path))
 
@@ -53,6 +61,7 @@
 {: background-command
  : background-shell-command
  : ensure-dir
+ : file-exists?
  : read-command
  : read-file
  : remove-dir

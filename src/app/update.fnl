@@ -168,6 +168,7 @@
   (let [msg-type (and (= (type msg) :table) msg.type)
         command (case msg-type
                   :quit (do
+                          (preview-warm.cleanup state.preview_warm)
                           (set state.quit? true)
                           commands.none)
                   :pending-key (do

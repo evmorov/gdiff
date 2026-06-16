@@ -31,7 +31,9 @@
   [_dispatch get-state]
   (let [state (get-state)]
     (preview-warm.start state.preview_warm state.src_dir state.revision
-                        state.entries)))
+                        (preview-warm.missing-entries state.revision
+                                                      state.entries
+                                                      state.preview_cache))))
 
 (defcommand sync-start
   []

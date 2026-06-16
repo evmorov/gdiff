@@ -45,6 +45,12 @@
 (fn write-manifest [path revision entries]
   (sys.write-file path (fennel.view {:revision revision :entries entries})))
 
+(fn missing-entries [revision entries cache]
+  (let [cache (or cache {})]
+    (icollect [_ entry (ipairs entries)]
+      (when (not (. cache (preview-key.for-entry revision entry)))
+        entry))))
+
 (fn index-entries [revision entries]
   (let [indexes {}
         keys {}]
@@ -63,22 +69,23 @@
 
 (fn start [state src-dir revision entries]
   (cleanup state)
-  (let [dir (make-dir)]
-    (when dir
-      (let [manifest (manifest-path dir)]
-        (when (write-manifest manifest revision entries)
-          (let [(key-index index-key) (index-entries revision entries)]
-            (set state.key-index key-index)
-            (set state.index-key index-key))
-          (set state.dir dir)
-          (set state.count (length entries))
-          (set state.remaining (length entries))
-          (set state.scan-index 1)
-          (set state.imported {})
-          (let [workers (worker-count entries)]
-            (if (< 0 workers)
-                (start-workers src-dir manifest dir workers)
-                (cleanup state))))))))
+  (when (< 0 (length entries))
+    (let [dir (make-dir)]
+      (when dir
+        (let [manifest (manifest-path dir)]
+          (when (write-manifest manifest revision entries)
+            (let [(key-index index-key) (index-entries revision entries)]
+              (set state.key-index key-index)
+              (set state.index-key index-key))
+            (set state.dir dir)
+            (set state.count (length entries))
+            (set state.remaining (length entries))
+            (set state.scan-index 1)
+            (set state.imported {})
+            (let [workers (worker-count entries)]
+              (if (< 0 workers)
+                  (start-workers src-dir manifest dir workers)
+                  (cleanup state)))))))))
 
 (fn read-lines [path]
   (let [source (sys.read-file path)]
@@ -144,4 +151,9 @@
           (set checks (+ checks 1))))))
   (finish-if-complete state))
 
-{: import-entry : new-state : start : update : worker-command}
+{: import-entry
+ : missing-entries
+ : new-state
+ : start
+ : update
+ : worker-command}

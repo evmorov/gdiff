@@ -82,6 +82,26 @@
     (faith.= nil (. cache first-key))
     (faith.= 1 state.remaining)))
 
+(fn test-missing-entries-skips-cached-previews []
+  (let [first (entry "M" "a.rb")
+        second (entry "M" "b.rb")
+        first-key (preview-key.for-entry "HEAD" first)
+        cache {first-key ["cached"]}]
+    (faith.= [second]
+             (preview-warm.missing-entries "HEAD" [first second] cache))
+    (faith.= [first second]
+             (preview-warm.missing-entries "HEAD" [first second] nil))))
+
+(fn test-start-with-no-missing-entries-cleans-existing-warmer []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (t.write-file "warm/manifest.fnl" "{}")
+  (let [state (warm-state [(entry "M" "a.rb")])]
+    (set state.dir "warm")
+    (preview-warm.start state "." "HEAD" [])
+    (faith.= nil state.dir)
+    (faith.= false (sys.write-file "warm/still-there" "x"))))
+
 (fn test-update-imports-ready-previews-in-small-batches []
   (t.reset-workdir)
   (t.mkdir "warm")
@@ -122,6 +142,8 @@
 
 {: test-fennel-command-builds-standard-subprocess-environment
  : test-import-entry-checks-only-the-requested-ready-preview
+ : test-missing-entries-skips-cached-previews
+ : test-start-with-no-missing-entries-cleans-existing-warmer
  : test-update-imports-all-previews-and-cleans-temp-dir
  : test-update-imports-ready-previews-in-small-batches
  : test-update-imports-ready-previews-out-of-order

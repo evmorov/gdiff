@@ -1,6 +1,6 @@
 (local sys (require :sys))
 
-(local interval-seconds 600)
+(local interval-seconds 300)
 
 (fn branch-status-command [path]
   (let [tmp (.. path ".tmp")]

@@ -55,6 +55,118 @@
     (faith.= "> [ ] [R] spec/tardis/api/v2_spec.rb <- spec/tardis/api_spec.rb"
              (plain-row-text (. view.body.left.rows 1)))))
 
+(fn test-backtick_toggles_tree_mode_without_clearing_search []
+  (let [state (state [(entry "A" "script/shorthand_branch.sh")
+                      (entry "M"
+                             "spec/lib/epoxy/version_branch_validation_spec.rb")
+                      (entry "M"
+                             "spec/lib/tasks/helpers/commit_validator_spec.rb")])]
+    (app.handle-key state {} "/")
+    (app.handle-key state {} "s")
+    (faith.= true state.search.active?)
+    (faith.is (app.handle-key state {} "`"))
+    (faith.= :tree state.view_mode)
+    (faith.= true state.search.active?)
+    (faith.= "s" state.search.query)
+    (faith.is (app.handle-key state {} "`"))
+    (faith.= :flat state.view_mode)
+    (faith.= true state.search.active?)
+    (faith.= "s" state.search.query)))
+
+(fn test-backtick_preserves_selected_file_with_search []
+  (let [state (state [(entry "M" "alpha/file.rb") (entry "M" "z.rb")])]
+    (app.handle-key state {} "/")
+    (app.handle-key state {} "a")
+    (app.handle-key state {} :enter)
+    (faith.= 1 state.selected)
+    (app.handle-key state {} "j")
+    (faith.= 2 state.selected)
+    (faith.is (app.handle-key state {} "`"))
+    (faith.= :tree state.view_mode)
+    (faith.= 2 state.selected)
+    (faith.= 3 state.tree_selected_row)
+    (faith.is (app.handle-key state {} "`"))
+    (faith.= :flat state.view_mode)
+    (faith.= 2 state.selected)))
+
+(fn test-tree_view_renders_collapsed_folders_and_file_rows []
+  (let [state (state [(entry "A" "script/shorthand_branch.sh")
+                      (entry "M"
+                             "spec/lib/epoxy/version_branch_validation_spec.rb")
+                      (entry "M"
+                             "spec/lib/tasks/helpers/commit_validator_spec.rb")])]
+    (app.handle-key state {} "`")
+    (let [view (app.view state 12 100)
+          rows view.body.left.rows]
+      (faith.= "  script/" (plain-row-text (. rows 1)))
+      (faith.= ">   [ ] [A] shorthand_branch.sh" (plain-row-text (. rows 2)))
+      (faith.= "  spec/lib/" (plain-row-text (. rows 3)))
+      (faith.= "    epoxy/" (plain-row-text (. rows 4)))
+      (faith.= "      [ ] [M] version_branch_validation_spec.rb"
+               (plain-row-text (. rows 5)))
+      (faith.= "    tasks/helpers/" (plain-row-text (. rows 6)))
+      (faith.= "      [ ] [M] commit_validator_spec.rb"
+               (plain-row-text (. rows 7))))))
+
+(fn test-tree_mode_navigation_moves_between_folders_and_files []
+  (let [state (state [(entry "M" "z.rb")
+                      (entry "A" "script/shorthand_branch.sh")
+                      (entry "M"
+                             "spec/lib/epoxy/version_branch_validation_spec.rb")])]
+    (app.handle-key state {} "`")
+    (faith.= 1 state.selected)
+    (faith.= 5 state.tree_selected_row)
+    (app.handle-key state {} "g")
+    (app.handle-key state {} "g")
+    (faith.= 1 state.tree_selected_row)
+    (let [view (app.view state 10 100)]
+      (faith.= nil (. view.body.right.lines 1)))
+    (app.handle-key state {} "j")
+    (faith.= 2 state.tree_selected_row)
+    (faith.= 2 state.selected)
+    (app.handle-key state {} "j")
+    (faith.= 3 state.tree_selected_row)
+    (app.handle-key state {} "k")
+    (faith.= 2 state.tree_selected_row)
+    (app.handle-key state {} "g")
+    (app.handle-key state {} "g")
+    (faith.= 1 state.tree_selected_row)
+    (app.handle-key state {} "G")
+    (faith.= 5 state.tree_selected_row)
+    (faith.= 1 state.selected)))
+
+(fn test-space_on_tree_folder_toggles_descendant_files []
+  (let [state (state [(entry "A" "script/shorthand_branch.sh")
+                      (entry "M"
+                             "spec/lib/epoxy/version_branch_validation_spec.rb")
+                      (entry "M"
+                             "spec/lib/tasks/helpers/commit_validator_spec.rb")])]
+    (app.handle-key state {} "`")
+    (faith.= 2 state.tree_selected_row)
+    (app.handle-key state {} "j")
+    (faith.= 3 state.tree_selected_row)
+    (app.handle-key state {} " ")
+    (faith.= {"spec/lib/epoxy/version_branch_validation_spec.rb" true
+              "spec/lib/tasks/helpers/commit_validator_spec.rb" true}
+             (reviews.paths state.entries))
+    (app.handle-key state {} " ")
+    (faith.= {} (reviews.paths state.entries))))
+
+(fn test-tree_search_matches_folders []
+  (let [state (state [(entry "A" "script/shorthand_branch.sh")
+                      (entry "M"
+                             "spec/lib/epoxy/version_branch_validation_spec.rb")])]
+    (app.handle-key state {} "`")
+    (app.handle-key state {} "/")
+    (app.handle-key state {} "e")
+    (app.handle-key state {} "p")
+    (app.handle-key state {} "o")
+    (app.handle-key state {} "x")
+    (faith.= :tree state.view_mode)
+    (faith.= 3 state.tree_selected_row)
+    (let [view (app.view state 10 100)]
+      (faith.= nil (. view.body.right.lines 1)))))
+
 (fn test-view-moves_file_counts_to_footer_right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
     (let [first-entry (. state.entries 1)]
@@ -219,6 +331,8 @@
 
 {: test-a-toggles-all-reviewed-and-A-does-nothing
  : test-search-next-is-relative-to-current-cursor
+ : test-backtick_preserves_selected_file_with_search
+ : test-backtick_toggles_tree_mode_without_clearing_search
  : test-fetch-failure-shows-sync-notice-not-success
  : test-manual-clean-remote-sync-finish-updates-notice
  : test-no-upstream-shows-sync-notice-not-warning
@@ -228,6 +342,10 @@
  : test-startup-clean-remote-sync-finish-stays-quiet
  : test-startup-fetch-failure-shows-sync-notice
  : test-split-key-does-not-start-due-sync
+ : test-space_on_tree_folder_toggles_descendant_files
+ : test-tree_mode_navigation_moves_between_folders_and_files
+ : test-tree_search_matches_folders
+ : test-tree_view_renders_collapsed_folders_and_file_rows
  : test-view-adds-left-scroll-info-for-overflowing-file-list
  : test-view-keeps_last_file_above_bottom_divider
  : test-view-moves_file_counts_to_footer_right

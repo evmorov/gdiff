@@ -1,5 +1,6 @@
 (local entry-view (require :app.entry))
 (local preview (require :preview.core))
+(local tree (require :app.tree))
 (local tui (require :tui.core))
 
 (local separator " │ ")
@@ -27,23 +28,36 @@
   (if (contains? (entry-view.path-text entry) query)
       {:entry entry-index}))
 
+(fn tree-label [row]
+  (if (= row.type :folder)
+      row.name
+      (or row.name (entry-view.path-text row.entry))))
+
+(fn tree-match [query row-index row]
+  (if (contains? (tree-label row) query)
+      {:tree-row row-index :entry row.entry-index}))
+
 (fn collect-matches [state query]
   (let [matches []]
     (when (> (length query) 0)
-      (each [entry-index entry (ipairs state.entries)]
-        (let [found (path-match query entry-index entry)]
-          (when found
-            (table.insert matches found)))))
+      (if (= state.view_mode :tree)
+          (each [row-index row (ipairs (tree.rows state.entries))]
+            (let [found (tree-match query row-index row)]
+              (when found
+                (table.insert matches found))))
+          (each [entry-index entry (ipairs state.entries)]
+            (let [found (path-match query entry-index entry)]
+              (when found
+                (table.insert matches found))))))
     matches))
 
-(fn first-index [state matches]
-  (var index 1)
-  (var found? false)
-  (each [i found (ipairs matches)]
-    (when (and (not found?) (>= found.entry state.selected))
-      (set index i)
-      (set found? true)))
-  index)
+(fn cursor-position [state]
+  (if (= state.view_mode :tree)
+      (or state.tree_selected_row 1)
+      state.selected))
+
+(fn match-position [found]
+  (or found.tree-row found.entry))
 
 (fn set-status [state]
   (let [search (search state)
@@ -59,9 +73,26 @@
                       (.. "Search: " search.index "/" count " " search.query
                           separator "n/N next/prev" separator "q clear")))))))
 
+(fn first-index [state matches]
+  (let [cursor (cursor-position state)]
+    (var index 1)
+    (var found? false)
+    (each [i found (ipairs matches)]
+      (when (and (not found?) (>= (match-position found) cursor))
+        (set index i)
+        (set found? true)))
+    index))
+
+(fn set-tree-match [state found]
+  (set state.tree_selected_row found.tree-row)
+  (when found.entry
+    (set state.selected found.entry)))
+
 (fn apply-match [state found]
   (when found
-    (set state.selected found.entry)
+    (if found.tree-row
+        (set-tree-match state found)
+        (set state.selected found.entry))
     (preview.reset-scroll state)))
 
 (fn jump-to [state index]
@@ -76,31 +107,38 @@
     (set-status state)))
 
 (fn next-index-from-selection [state matches]
-  (var index 1)
-  (var found? false)
-  (each [i found (ipairs matches)]
-    (when (and (not found?) (> found.entry state.selected))
-      (set index i)
-      (set found? true)))
-  index)
+  (let [cursor (cursor-position state)]
+    (var index 1)
+    (var found? false)
+    (each [i found (ipairs matches)]
+      (when (and (not found?) (> (match-position found) cursor))
+        (set index i)
+        (set found? true)))
+    index))
 
 (fn previous-index-from-selection [state matches]
-  (let [count (length matches)]
+  (let [count (length matches)
+        cursor (cursor-position state)]
     (var index count)
     (var found? false)
     (for [i count 1 -1]
       (let [found (. matches i)]
-        (when (and found (not found?) (< found.entry state.selected))
+        (when (and found (not found?) (< (match-position found) cursor))
           (set index i)
           (set found? true))))
     index))
 
-(fn rebuild [state]
+(fn rebuild [state ?preserve-selection?]
   (let [search (search state)
         matches (collect-matches state search.query)]
     (set search.matches matches)
     (set search.index 0)
-    (if (> (length matches) 0)
+    (if ?preserve-selection?
+        (do
+          (when (> (length matches) 0)
+            (set search.index (first-index state matches)))
+          (set-status state))
+        (> (length matches) 0)
         (jump-to state (first-index state matches))
         (set-status state))))
 
@@ -192,5 +230,6 @@
  : next
  : previous
  : query
+ : rebuild
  : start
  : status}

@@ -1,0 +1,125 @@
+(fn path-parts [path]
+  (let [parts []]
+    (each [part (string.gmatch (or path "") "[^/]+")]
+      (table.insert parts part))
+    parts))
+
+(fn basename [path]
+  (or (string.match (or path "") "([^/]+)$") path))
+
+(fn new-node []
+  {:dirs {} :dir-order [] :files []})
+
+(fn child-dir [node name]
+  (let [child (. node.dirs name)]
+    (if child
+        child
+        (let [next (new-node)]
+          (tset node.dirs name next)
+          (table.insert node.dir-order name)
+          next))))
+
+(fn add-entry [root entry index]
+  (let [parts (path-parts entry.path)
+        count (length parts)]
+    (when (< 0 count)
+      (var node root)
+      (for [i 1 (- count 1)]
+        (set node (child-dir node (. parts i))))
+      (table.insert node.files
+                    {:entry entry :entry-index index :name (. parts count)}))))
+
+(fn single-dir-name [node]
+  (and (= 0 (length node.files)) (= 1 (length node.dir-order))
+       (. node.dir-order 1)))
+
+(fn compact-dir [node name]
+  (var label name)
+  (var child (. node.dirs name))
+  (var next-name (single-dir-name child))
+  (while next-name
+    (set label (.. label "/" next-name))
+    (set child (. child.dirs next-name))
+    (set next-name (single-dir-name child)))
+  (values label child))
+
+(fn old-name [entry]
+  (basename entry.old_path))
+
+(fn file-name [entry name]
+  (case entry.kind
+    "R" (.. name " <- " (old-name entry))
+    "C" (.. name " <- " (old-name entry))
+    _ name))
+
+(fn node-entries [node]
+  (let [entries []]
+    (each [_ dir-name (ipairs node.dir-order)]
+      (each [_ entry (ipairs (node-entries (. node.dirs dir-name)))]
+        (table.insert entries entry)))
+    (each [_ file (ipairs node.files)]
+      (table.insert entries file.entry))
+    entries))
+
+(fn render-node [node depth rows]
+  (each [_ dir-name (ipairs node.dir-order)]
+    (let [(label child) (compact-dir node dir-name)]
+      (table.insert rows
+                    {:type :folder
+                     :depth depth
+                     :name (.. label "/")
+                     :entries (node-entries child)})
+      (render-node child (+ depth 1) rows)))
+  (each [_ file (ipairs node.files)]
+    (table.insert rows
+                  {:type :file
+                   :depth depth
+                   :entry file.entry
+                   :entry-index file.entry-index
+                   :name (file-name file.entry file.name)})))
+
+(fn rows [entries]
+  (let [root (new-node)
+        out []]
+    (each [index entry (ipairs entries)]
+      (add-entry root entry index))
+    (render-node root 0 out)
+    out))
+
+(fn selected-row [rows selected]
+  (var found nil)
+  (each [index row (ipairs rows)]
+    (when (and (not found) (= row.entry-index selected))
+      (set found index)))
+  (or found 1))
+
+(fn clamp [n low high]
+  (math.max low (math.min high n)))
+
+(fn row-at [rows row-index]
+  (. rows row-index))
+
+(fn entry-index-at-row [rows row-index]
+  (let [row (row-at rows row-index)]
+    (when (and row (= row.type :file))
+      row.entry-index)))
+
+(fn move-row [rows selected-row delta]
+  (let [count (length rows)]
+    (if (= count 0)
+        1
+        (clamp (+ (or selected-row 1) delta) 1 count))))
+
+(fn first-row [_rows]
+  1)
+
+(fn last-row [rows]
+  (math.max 1 (length rows)))
+
+{: entry-index-at-row
+ : first-row
+ : last-row
+ : move-row
+ : rows
+ : row-at
+ : selected-row}

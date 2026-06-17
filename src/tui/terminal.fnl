@@ -79,14 +79,20 @@
   (io.flush)
   (colors.parse-background-response (read-osc-response)))
 
+(fn query-foreground-rgb []
+  (io.write ansi.esc "]10;?\7")
+  (io.flush)
+  (colors.parse-background-response (read-osc-response)))
+
 (fn raw-terminal [stty-state]
   (os.execute "stty raw -echo min 0 time 1 2>/dev/null")
-  (let [background-rgb (query-background-rgb)]
+  (let [foreground-rgb (query-foreground-rgb)
+        background-rgb (query-background-rgb)]
     (os.execute "stty raw -echo min 0 time 10 2>/dev/null")
     (io.write ansi.esc "[?1049h" ansi.esc "[?25l")
     (clear-screen)
     (io.flush)
-    (values stty-state background-rgb)))
+    (values stty-state background-rgb foreground-rgb)))
 
 (fn restore-terminal [stty-state]
   (io.write ansi.esc "[?25h" ansi.esc "[?1049l" ansi.esc "[0m")

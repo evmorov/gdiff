@@ -6,9 +6,19 @@
 (local search (require :app.search))
 (local sync (require :git.sync))
 (local theme (require :tui.theme))
+(local tree (require :app.tree))
+
+(fn tree-rows [state]
+  (tree.rows state.entries))
+
+(fn selected-tree-row [state]
+  (tree.row-at (tree-rows state) state.tree_selected_row))
 
 (fn selected-entry [state]
-  (. state.entries state.selected))
+  (if (= state.view_mode :tree)
+      (let [row (selected-tree-row state)]
+        (and row (= row.type :file) row.entry))
+      (. state.entries state.selected)))
 
 (fn clamp [n low high]
   (math.max low (math.min high n)))
@@ -17,6 +27,17 @@
   (let [before state.selected]
     (set state.selected selected)
     (when (not (= before state.selected))
+      (preview.reset-scroll state))))
+
+(fn set-tree-row-selection [state row-index]
+  (let [rows (tree-rows state)
+        before state.tree_selected_row
+        row-index (tree.move-row rows 1 (- row-index 1))]
+    (set state.tree_selected_row row-index)
+    (let [entry-index (tree.entry-index-at-row rows row-index)]
+      (when entry-index
+        (set state.selected entry-index)))
+    (when (not (= before state.tree_selected_row))
       (preview.reset-scroll state))))
 
 (fn reviewed-count [entries]
@@ -41,6 +62,7 @@
     "n" :search-next
     "N" :search-previous
     "r" :refresh
+    "`" :toggle-tree
     "y" :copy-path
     "p" :open-pr
     "<" :split-left
@@ -56,21 +78,23 @@
         (values nil key))))
 
 (fn read-msg [state raw-key]
-  (if (= raw-key :quit)
-      {:type :quit}
-      (search.active? state)
-      {:type :search-input :key raw-key}
-      (let [(pending-key action) (next-key state.pending-key raw-key)]
-        (if action
-            {:type action :pending-key pending-key}
-            {:type :pending-key :pending-key pending-key}))))
+  (let [(pending-key action) (next-key state.pending-key raw-key)]
+    (if (= raw-key :quit) {:type :quit}
+        (= action :toggle-tree) {:type :toggle-tree :pending-key pending-key}
+        (search.active? state) {:type :search-input :key raw-key}
+        action {:type action :pending-key pending-key}
+        {:type :pending-key :pending-key pending-key})))
 
 (fn move-selection [state delta]
   (let [entries state.entries
-        selected (if (= (length entries) 0)
-                     1
+        selected (if (= (length entries) 0) 1
+                     (= state.view_mode :tree) nil
                      (clamp (+ state.selected delta) 1 (length entries)))]
-    (set-selection state selected)))
+    (if (= state.view_mode :tree)
+        (set-tree-row-selection state
+                                (tree.move-row (tree-rows state)
+                                               state.tree_selected_row delta))
+        (set-selection state selected))))
 
 (fn set-notice [state action path]
   (set state.notice (.. action ": " path)))
@@ -78,11 +102,32 @@
 (fn reviewed-action [entry]
   (if entry.reviewed "Marked reviewed" "Unmarked reviewed"))
 
+(fn all-reviewed? [entries]
+  (let [count (length entries)]
+    (and (< 0 count)
+         (= count
+            (accumulate [reviewed 0 _ entry (ipairs entries)]
+              (if entry.reviewed (+ reviewed 1) reviewed))))))
+
+(fn toggle-folder-reviewed [state row]
+  (let [entries (or row.entries [])
+        review? (not (all-reviewed? entries))]
+    (each [_ entry (ipairs entries)]
+      (set entry.reviewed review?))
+    (set-notice state (if review?
+                          "Marked folder reviewed"
+                          "Unmarked folder reviewed")
+                row.name)))
+
 (fn toggle-reviewed [state]
-  (let [entry (selected-entry state)]
-    (when entry
-      (set entry.reviewed (not entry.reviewed))
-      (set-notice state (reviewed-action entry) entry.path)))
+  (let [row (and (= state.view_mode :tree) (selected-tree-row state))
+        entry (selected-entry state)]
+    (if (and row (= row.type :folder))
+        (toggle-folder-reviewed state row)
+        entry
+        (do
+          (set entry.reviewed (not entry.reviewed))
+          (set-notice state (reviewed-action entry) entry.path))))
   (commands.persist-reviewed))
 
 (fn toggle-all-reviewed [state]
@@ -97,11 +142,15 @@
     (commands.persist-reviewed)))
 
 (fn jump-top [state]
-  (set-selection state 1))
+  (if (= state.view_mode :tree)
+      (set-tree-row-selection state (tree.first-row (tree-rows state)))
+      (set-selection state 1)))
 
 (fn jump-bottom [state]
   (let [last (length state.entries)]
-    (set-selection state last)))
+    (if (= state.view_mode :tree)
+        (set-tree-row-selection state (tree.last-row (tree-rows state)))
+        (set-selection state last))))
 
 (fn cache-selected-preview [state]
   (preview.lines state (selected-entry state))
@@ -128,6 +177,21 @@
 
 (fn move-split [state delta]
   (set state.split_ratio (clamp (+ (or state.split_ratio 0.4) delta) 0.1 0.9)))
+
+(fn toggle-tree [state]
+  (if (= state.view_mode :tree)
+      (do
+        (let [entry-index (tree.entry-index-at-row (tree-rows state)
+                                                   state.tree_selected_row)]
+          (when entry-index
+            (set state.selected entry-index)))
+        (set state.view_mode :flat))
+      (do
+        (set state.view_mode :tree)
+        (set state.tree_selected_row
+             (tree.selected-row (tree-rows state) state.selected))))
+  (when (search.has-query? state)
+    (search.rebuild state true)))
 
 (fn refresh-and-sync [state]
   (set state.show_sync_notice? true)
@@ -159,6 +223,7 @@
         :clear-search search.clear
         :top jump-top
         :bottom jump-bottom
+        :toggle-tree toggle-tree
         :refresh refresh-and-sync
         :copy-path copy-selected-path
         :open-pr commands.open-linked-pr
@@ -235,6 +300,8 @@
    :preview_rows 1
    :preview_total 0
    :split_ratio 0.4
+   :view_mode :flat
+   :tree_selected_row nil
    :theme theme.default
    :preview_cache {}
    :preview_context (git.preview-context)

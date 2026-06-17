@@ -8,5 +8,6 @@
             :preview_warm_test
             :reviews-test
             :sync-test
+            :tree-test
             :tui-test
             :update-test])

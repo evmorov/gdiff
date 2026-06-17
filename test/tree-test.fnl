@@ -10,7 +10,7 @@
 
 (fn simple-row [row]
   (if (= row.type :folder)
-      {:type row.type :depth row.depth :name row.name}
+      {:type row.type :depth row.depth :name row.name :path row.path}
       {:type row.type
        :depth row.depth
        :name row.name
@@ -27,16 +27,19 @@
                          (entry "M" "spec/lib/direct_spec.rb")
                          (entry "M"
                                 "spec/lib/tasks/helpers/commit_validator_spec.rb")])]
-    (faith.= [{:type :folder :depth 0 :name "script/"}
+    (faith.= [{:type :folder :depth 0 :name "script/" :path "script"}
               {:type :file :depth 1 :name "shorthand_branch.sh" :entry-index 1}
-              {:type :folder :depth 0 :name "spec/lib/"}
+              {:type :folder :depth 0 :name "spec/lib/" :path "spec/lib"}
               {:type :file :depth 1 :name "direct_spec.rb" :entry-index 3}
-              {:type :folder :depth 1 :name "epoxy/"}
+              {:type :folder :depth 1 :name "epoxy/" :path "spec/lib/epoxy"}
               {:type :file
                :depth 2
                :name "version_branch_validation_spec.rb"
                :entry-index 2}
-              {:type :folder :depth 1 :name "tasks/helpers/"}
+              {:type :folder
+               :depth 1
+               :name "tasks/helpers/"
+               :path "spec/lib/tasks/helpers"}
               {:type :file
                :depth 2
                :name "commit_validator_spec.rb"

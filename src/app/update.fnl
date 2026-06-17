@@ -129,9 +129,13 @@
       (commands.open-editor config entry))))
 
 (fn copy-selected-path [state]
-  (let [entry (selection.selected-entry state)]
-    (when entry
-      (commands.copy-path entry.path))))
+  (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))
+        entry (selection.selected-entry state)
+        path (if (and row (= row.type :folder))
+                 (.. row.path "/")
+                 (and entry entry.path))]
+    (when path
+      (commands.copy-path path))))
 
 (fn move-split [state delta]
   (set state.split_ratio (clamp (+ (or state.split_ratio 0.4) delta) 0.1 0.9)))

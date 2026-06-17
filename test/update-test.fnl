@@ -1,4 +1,5 @@
 (local faith (require :faith))
+(local clipboard (require :platform.clipboard))
 (local reviews (require :storage.reviews))
 (local update (require :app.update))
 
@@ -103,6 +104,22 @@
     (update.run-command state {} command)
     (faith.= "Copied: a.rb" state.notice)))
 
+(fn test-copy-path-copies_selected_tree_folder_path []
+  (let [state (state [(entry "M" "script/a.sh") (entry "M" "spec/b_spec.rb")])]
+    (set state.tree_selected_row 1)
+    (let [copied []
+          old-copy clipboard.copy]
+      (set clipboard.copy (fn [path]
+                            (table.insert copied path)
+                            true))
+      (let [(_ command) (update.update state {} (update.read-msg state "y"))
+            messages []]
+        (command #(table.insert messages $1) (fn [] state))
+        (set clipboard.copy old-copy)
+        (faith.= ["script/"] copied)
+        (faith.= {:type :copy-path-finished :path "script/" :ok? true}
+                 (. messages 1))))))
+
 (fn test-open-pr-finished-updates-notice []
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {}
@@ -117,6 +134,7 @@
     (faith.= "No linked PR for feature" state.notice)))
 
 {: test-command-dispatches-back-through-update
+ : test-copy-path-copies_selected_tree_folder_path
  : test-local-refresh_does_not_start_remote_sync
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-open-pr-finished-updates-notice

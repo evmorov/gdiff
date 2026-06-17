@@ -61,7 +61,12 @@
         (table.insert entries entry)))
     entries))
 
-(fn render-node [node depth rows]
+(fn join-path [prefix name]
+  (if (and prefix (< 0 (length prefix)))
+      (.. prefix "/" name)
+      name))
+
+(fn render-node [node depth rows ?prefix]
   (each [_ file (ipairs node.files)]
     (table.insert rows
                   {:type :file
@@ -75,8 +80,9 @@
                     {:type :folder
                      :depth depth
                      :name (.. label "/")
+                     :path (join-path ?prefix label)
                      :entries (node-entries child)})
-      (render-node child (+ depth 1) rows))))
+      (render-node child (+ depth 1) rows (join-path ?prefix label)))))
 
 (fn rows [entries]
   (let [root (new-node)

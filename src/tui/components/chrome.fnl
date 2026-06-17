@@ -1,13 +1,11 @@
 (local footer (require :tui.components.footer))
 (local header (require :tui.components.header))
-(local ansi (require :tui.ansi))
+(local hscroll (require :tui.components.hscroll))
 (local layout (require :tui.layout))
 (local nodes (require :tui.nodes))
 (local rule (require :tui.components.rule))
-(local scrollbar (require :tui.components.scrollbar))
 (local split (require :tui.components.split))
 (local surface (require :tui.surface))
-(local symbols (require :tui.symbols))
 (local theme (require :tui.theme))
 
 (fn split-divider-col [body cols]
@@ -27,36 +25,13 @@
 (fn bottom-rule [cols ?divider-col ?footer-cols]
   (rule.horizontal cols (when ?divider-col {?divider-col true}) ?footer-cols))
 
-(fn horizontal-scroll [x-scroll x-max-scroll visible]
-  (when (and (< 0 (or x-max-scroll 0)) (< 0 visible))
-    {:offset (or x-scroll 0) :visible visible :total (+ visible x-max-scroll)}))
-
-(fn horizontal-thumb [line start-col width x-scroll x-max-scroll]
-  (let [scroll (horizontal-scroll x-scroll x-max-scroll width)]
-    (if (scrollbar.visible? scroll width)
-        (let [out []
-              last-col (+ start-col width -1)]
-          (var i 1)
-          (var col 1)
-          (while (<= i (length line))
-            (let [(ch next-i) (ansi.next-char line i)
-                  relative-col (+ (- col start-col) 1)
-                  mark (and (>= col start-col) (<= col last-col)
-                            (scrollbar.marker scroll width relative-col
-                                              symbols.line.horizontal-scroll-thumb))]
-              (table.insert out (or mark ch))
-              (set i next-i)
-              (set col (+ col 1))))
-          (table.concat out ""))
-        line)))
-
-(fn horizontal-scrollbars [line body cols body-rows]
+(fn horizontal-scrollbars [line body cols _body-rows]
   (if (and body (= body.type :split))
       (let [(_left-cols right-cols divider-col) (split.widths cols body.ratio)
-            right-scroll? (scrollbar.visible? body.right.scroll body-rows)
+            right-scroll? (not (= nil body.right.scroll))
             right-width (if right-scroll? (- right-cols 1) right-cols)]
-        (horizontal-thumb line (+ divider-col 1) right-width
-                          body.right.x-scroll body.right.x-max-scroll))
+        (hscroll.thumb line (+ divider-col 1) right-width body.right.x-scroll
+                       body.right.x-max-scroll))
       line))
 
 (fn legacy-footer [view]
@@ -103,8 +78,6 @@
  : footer-rule-cols
  : footer-right-col
  : header-rule
- : horizontal-scroll
  : horizontal-scrollbars
- : horizontal-thumb
  : legacy-footer
  : styled-footer-text}

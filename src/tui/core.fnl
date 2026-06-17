@@ -8,6 +8,7 @@
 (local footer-view (require :tui.components.footer))
 (local frame (require :tui.frame))
 (local header-view (require :tui.components.header))
+(local hscroll (require :tui.components.hscroll))
 (local layout (require :tui.layout))
 (local lines-view (require :tui.components.lines))
 (local list-view (require :tui.components.list))
@@ -22,12 +23,14 @@
 (local surface (require :tui.surface))
 (local terminal (require :tui.terminal))
 (local theme (require :tui.theme))
+(local wrap (require :tui.wrap))
 
 {:color theme.color
  :components {:body body
               :chrome chrome
               :footer footer-view
               :header header-view
+              :hscroll hscroll
               :lines lines-view
               :list list-view
               :rule rule-view
@@ -58,4 +61,5 @@
  :terminal-size terminal.terminal-size
  :theme theme.new
  :truncate ansi.truncate
- :visible-length ansi.visible-length}
+ :visible-length ansi.visible-length
+ :wrap wrap}

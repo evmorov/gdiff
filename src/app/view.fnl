@@ -4,9 +4,9 @@
 (local search (require :app.search))
 (local selection (require :app.selection))
 (local sync (require :git.sync))
-(local ansi (require :tui.ansi))
 (local symbols (require :tui.symbols))
 (local tui (require :tui.core))
+(local wrap (require :tui.wrap))
 
 (fn status-color [entry]
   (case entry.kind
@@ -155,35 +155,9 @@
       []
       (preview.nonblocking-lines state selected-entry)))
 
-(fn wrap-line [line width]
-  (let [width (math.max 1 width)
-        line-width (tui.visible-length line)
-        continued-width (math.max 1 (- width 1))]
-    (if (<= line-width width)
-        [line]
-        (let [out []]
-          (var offset 0)
-          (while (< offset line-width)
-            (let [remaining (- line-width offset)
-                  continued? (> remaining width)
-                  chunk-width (if continued? continued-width width)
-                  chunk (ansi.window line offset chunk-width)]
-              (table.insert out (if continued?
-                                    (.. chunk symbols.line.wrap-arrow)
-                                    chunk))
-              (set offset (+ offset chunk-width))))
-          out))))
-
-(fn wrap-lines [lines width]
-  (let [out []]
-    (each [_ line (ipairs lines)]
-      (each [_ part (ipairs (wrap-line line width))]
-        (table.insert out part)))
-    out))
-
 (fn preview-display-lines [state lines width]
   (if state.preview_wrap?
-      (wrap-lines lines width)
+      (wrap.lines lines width)
       lines))
 
 (fn preview-scroll? [lines visible]

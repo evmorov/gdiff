@@ -45,8 +45,10 @@
   (faith.= :function (type tui.components.split.draw))
   (faith.= :function (type tui.components.list.draw))
   (faith.= :function (type tui.components.lines.draw))
+  (faith.= :function (type tui.components.hscroll.thumb))
   (faith.= :function (type tui.components.scrollbar.draw))
   (faith.= :function (type tui.components.screen.draw))
+  (faith.= :function (type tui.wrap.lines))
   (faith.= tui.components.screen (tui.renderer.component-for {:type :screen}))
   (faith.= :function (type tui.surface.write-at)))
 
@@ -137,8 +139,8 @@
 
 (fn test-horizontal_scroll_is_visible_only_for_overflow []
   (faith.= {:offset 2 :visible 6 :total 10}
-           (tui.components.chrome.horizontal-scroll 2 4 6))
-  (faith.= nil (tui.components.chrome.horizontal-scroll 0 0 6)))
+           (tui.components.hscroll.scroll 2 4 6))
+  (faith.= nil (tui.components.hscroll.scroll 0 0 6)))
 
 (fn test-horizontal_scrollbar_uses_rule_thumb []
   (faith.= "▀" (tui.components.scrollbar.marker {:offset 0
@@ -151,6 +153,10 @@
         line (tui.components.chrome.horizontal-scrollbars "───┴──────"
                                                           body 10 3)]
     (faith.= "───┴▀▀▀▀──" line)))
+
+(fn test-wrap_marks_continued_visual_lines []
+  (faith.= ["abcdefghij↪" "klmnopqrst↪" "uvwxyz"]
+           (tui.wrap.lines ["abcdefghijklmnopqrstuvwxyz"] 11)))
 
 (fn test-scrollbar_only_visible_for_overflow []
   (faith.is (tui.components.scrollbar.visible? {:offset 0 :total 10 :visible 5}
@@ -229,6 +235,7 @@
  : test-horizontal_scroll_is_visible_only_for_overflow
  : test-horizontal_text_does_not_add_inline_indicators
  : test-horizontal_text_scrolls_without_inline_indicators
+ : test-wrap_marks_continued_visual_lines
  : test-layout-names_screen_regions
  : test-parses-terminal-background-response
  : test-render-context-carries-terminal-shape

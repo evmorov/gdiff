@@ -61,6 +61,17 @@
     (faith.= "> [ ] [R] spec/tardis/api/v2_spec.rb <- spec/tardis/api_spec.rb"
              (plain-row-text (. view.body.left.rows 1)))))
 
+(fn test-view-styles_reviewed_checkbox_brackets_as_muted []
+  (let [state (flat-state [(entry "M" "a.rb")])
+        first-entry (. state.entries 1)]
+    (set first-entry.reviewed true)
+    (let [view (app.view state 10 100)
+          text (. (. view.body.left.rows 1) :text)]
+      (faith.= "> [x] [M] a.rb" (tui.strip-ansi text))
+      (when (text:find "\27" 1 true)
+        (faith.is (text:find "\27[2m%[" 1))
+        (faith.is (text:find "\27[2m%]" 1))))))
+
 (fn test-backtick_toggles_tree_mode_without_clearing_search []
   (let [state (flat-state [(entry "A" "script/shorthand_branch.sh")
                            (entry "M"
@@ -372,6 +383,7 @@
  : test-startup-fetch-failure-shows-sync-notice
  : test-split-key-does-not-start-due-sync
  : test-space_on_tree_folder_toggles_descendant_files
+ : test-view-styles_reviewed_checkbox_brackets_as_muted
  : test-tree_mode_navigation_moves_between_folders_and_files
  : test-tree_search_matches_folders
  : test-tree_view_renders_collapsed_folders_and_file_rows

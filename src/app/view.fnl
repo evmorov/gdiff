@@ -21,7 +21,8 @@
 
 (fn reviewed-text [state entry]
   (if entry.reviewed
-      "[x]"
+      (.. (tui.color state.theme :muted "[") "x"
+          (tui.color state.theme :muted "]"))
       (tui.color state.theme :muted "[ ]")))
 
 (fn clamp [n low high]

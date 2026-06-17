@@ -82,7 +82,9 @@
     (set state.preview_scroll (clamp scroll 0 max-scroll))))
 
 (fn reset-scroll [state]
-  (set state.preview_scroll 0))
+  (set state.preview_scroll 0)
+  (set state.preview_x_scroll 0)
+  (set state.preview_x_max_scroll 0))
 
 (fn scroll [state entry delta]
   (set-scroll state entry (+ (or state.preview_scroll 0) delta)))
@@ -92,6 +94,21 @@
 
 (fn scroll-page-up [state entry]
   (scroll state entry (- (page-step state))))
+
+(fn scroll-horizontal [state delta]
+  (set state.preview_x_scroll
+       (clamp (+ (or state.preview_x_scroll 0) delta) 0
+              (or state.preview_x_max_scroll 0))))
+
+(fn max-line-width [lines]
+  (accumulate [width 0 _ line (ipairs (or lines []))]
+    (math.max width (tui.visible-length line))))
+
+(fn set-horizontal-scroll-limit [state lines width]
+  (let [max-scroll (math.max 0 (- (max-line-width lines) (math.max 0 width)))]
+    (set state.preview_x_max_scroll max-scroll)
+    (set state.preview_x_scroll
+         (clamp (or state.preview_x_scroll 0) 0 max-scroll))))
 
 (fn visible-lines [state entry visible ?opts]
   (let [visible (math.max 1 visible)
@@ -118,6 +135,8 @@
  : nonblocking-lines
  : reset-scroll
  : scroll-info
+ : scroll-horizontal
  : scroll-page-down
  : scroll-page-up
+ : set-horizontal-scroll-limit
  : visible-lines}

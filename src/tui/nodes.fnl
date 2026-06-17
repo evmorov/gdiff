@@ -4,7 +4,9 @@
 
 (defnode list [rows ?scroll] :list :rows rows :scroll ?scroll)
 
-(defnode lines [lines ?scroll] :lines :lines lines :scroll ?scroll)
+(defnode lines [lines ?scroll ?x-scroll] :lines :lines lines :scroll ?scroll
+  :x-scroll
+  ?x-scroll)
 
 (defnode split [left right ?ratio] :split :left left :right right :ratio ?ratio)
 

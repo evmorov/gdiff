@@ -113,6 +113,16 @@
 (fn test-truncate_preserves_whole_utf8_glyphs []
   (faith.= "a │..." (ansi.truncate "a │ b c" 6)))
 
+(fn test-crop_preserves_whole_utf8_glyphs []
+  (faith.= "│ b" (ansi.strip-ansi (ansi.crop "a │ b" 2 3))))
+
+(fn test-crop_keeps_ansi_style_context []
+  (let [text "\27[32mabcdef\27[0m"
+        cropped (ansi.crop text 2 3)]
+    (faith.= "cde" (ansi.strip-ansi cropped))
+    (when (ansi.color?)
+      (faith.is (cropped:find "\27[32m" 1 true)))))
+
 (fn test-split-component-calculates_widths []
   (let [(left right divider) (tui.components.split.widths 101 0.4)]
     (faith.= 40 left)
@@ -184,6 +194,8 @@
  : test-bottom-rule-connects_left_footer_separators
  : test-bottom-rule-crosses_body_divider_and_footer_separator
  : test-components-are-exposed-for-extension
+ : test-crop_keeps_ansi_style_context
+ : test-crop_preserves_whole_utf8_glyphs
  : test-footer-right-col_includes_leading_separator
  : test-footer-text-styles_separators_as_muted
  : test-header-rule-connects_body_divider

@@ -232,6 +232,22 @@
     (faith.match "r refresh/sync" header)
     (faith.= nil (header:find "R sync" 1 true))))
 
+(fn test-view-clamps_preview_horizontal_scroll_when_content_fits []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.preview_x_scroll 16)
+    (let [view (app.view state 10 100)]
+      (faith.= 0 view.body.right.x-scroll))))
+
+(fn test-view-passes_preview_horizontal_scroll_when_content_overflows []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        key (preview-key.for-entry "HEAD" selected)]
+    (tset state.preview_cache key ["abcdefghijklmnopqrstuvwxyz"])
+    (set state.preview_x_scroll 16)
+    (let [view (app.view state 10 30)]
+      (faith.= 8 view.body.right.x-scroll)
+      (faith.= 8 state.preview_x_max_scroll))))
+
 (fn test-view-adds-left-scroll-info-for-overflowing-file-list []
   (let [state (state [(entry "M" "1.rb")
                       (entry "M" "2.rb")
@@ -394,5 +410,7 @@
  : test-view-shows_reviewed_file_percent_in_footer_right
  : test-view-shows_diff_stats_in_footer_right
  : test-view-shows-single-refresh-sync-key
+ : test-view-clamps_preview_horizontal_scroll_when_content_fits
+ : test-view-passes_preview_horizontal_scroll_when_content_overflows
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

@@ -24,6 +24,8 @@
     :tick :tick
     "k" :up
     "j" :down
+    "h" :preview-left
+    "l" :preview-right
     "o" :open
     " " :toggle-reviewed
     "a" :toggle-all-reviewed
@@ -170,6 +172,8 @@
         :preview-down #(preview.scroll-page-down $1
                                                  (selection.selected-entry $1))
         :preview-up #(preview.scroll-page-up $1 (selection.selected-entry $1))
+        :preview-left #(preview.scroll-horizontal $1 -8)
+        :preview-right #(preview.scroll-horizontal $1 8)
         :search search.start
         :search-next search.next
         :search-previous search.previous
@@ -251,6 +255,8 @@
                :quit? false
                :selected selected
                :preview_scroll 0
+               :preview_x_scroll 0
+               :preview_x_max_scroll 0
                :preview_rows 1
                :preview_total 0
                :split_ratio 0.4

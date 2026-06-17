@@ -56,6 +56,7 @@
         items [state.revision_label
                "/ search"
                "C-d/C-u preview"
+               "h/l preview"
                "r refresh/sync"
                "` tree"
                "y copy"
@@ -139,7 +140,13 @@
         (tui.footer :warning warning summary)
         (tui.footer :notice state.notice summary))))
 
-(fn view [state rows _cols]
+(fn preview-content-width [state cols]
+  (let [(_left-cols right-cols) (tui.components.split.widths cols
+                                                             state.split_ratio)
+        scroll? (preview.scroll-info state)]
+    (math.max 0 (if scroll? (- right-cols 1) right-cols))))
+
+(fn view [state rows cols]
   (let [count (length state.entries)
         visible (body-row-count rows)
         selected-entry (selection.selected-entry state)
@@ -153,7 +160,11 @@
                           [])
                         (preview.visible-lines state selected-entry visible
                                                {:nonblocking? true}))
-        right (tui.lines right-lines (preview.scroll-info state))
+        _ (preview.set-horizontal-scroll-limit state right-lines
+                                               (preview-content-width state
+                                                                      cols))
+        right (tui.lines right-lines (preview.scroll-info state)
+                         state.preview_x_scroll)
         body (tui.split left right state.split_ratio)]
     (tui.screen (header-line state) body (footer state count))))
 

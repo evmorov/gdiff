@@ -57,4 +57,5 @@
  :suspend terminal.suspend
  :terminal-size terminal.terminal-size
  :theme theme.new
- :truncate ansi.truncate}
+ :truncate ansi.truncate
+ :visible-length ansi.visible-length}

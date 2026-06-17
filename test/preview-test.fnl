@@ -54,6 +54,17 @@
     (faith.= ["1" "2" "3" "4" "5"] (preview.visible-lines state entry 5))
     (faith.= nil (preview.scroll-info state))))
 
+(fn test-horizontal_scroll_limit_uses_visible_line_width []
+  (let [state (state)]
+    (set state.preview_x_scroll 20)
+    (preview.set-horizontal-scroll-limit state
+                                         ["short" "\27[32mabcdefghij\27[0m"] 6)
+    (faith.= 4 state.preview_x_max_scroll)
+    (faith.= 4 state.preview_x_scroll)
+    (preview.set-horizontal-scroll-limit state ["short"] 6)
+    (faith.= 0 state.preview_x_max_scroll)
+    (faith.= 0 state.preview_x_scroll)))
+
 (fn test-startup-can-cache-selected-preview-before-rendering []
   (setup-repo)
   (let [(entries err) (git.diff-entries "HEAD")
@@ -87,6 +98,7 @@
     (faith.match "%+after" (t.text (. state.preview_cache key)))))
 
 {: test-visible-lines-can-be-nonblocking-while-warming
+ : test-horizontal_scroll_limit_uses_visible_line_width
  : test-refresh-loaded-keeps-cache-and-caches-selected-preview
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering

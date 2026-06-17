@@ -29,9 +29,9 @@
       (row-view.render ctx (ansi.truncate row.text width) row.selected? width)
       (spaces width)))
 
-(fn right-text [line width]
+(fn right-text [line width x-scroll]
   (if (and line (> width 0))
-      (ansi.pad-right (ansi.truncate line width) width)
+      (ansi.pad-right (ansi.crop line x-scroll width) width)
       (spaces width)))
 
 (fn draw-row [screen-row
@@ -43,7 +43,8 @@
               row-index
               body-rows
               left-cols
-              right-cols]
+              right-cols
+              right-x-scroll]
   (let [left-scroll? (scrollbar.visible? left-scroll body-rows)
         left-content-cols (if left-scroll? (- left-cols 1) left-cols)
         right-scroll? (scrollbar.visible? right-scroll body-rows)
@@ -53,7 +54,7 @@
                      (scroll-marker ctx left-scroll row-index body-rows)
                      "")
                  (theme.color ctx.theme :muted symbols.line.vertical)
-                 (right-text right-line right-content-cols)
+                 (right-text right-line right-content-cols right-x-scroll)
                  (if right-scroll?
                      (scroll-marker ctx right-scroll row-index body-rows)
                      ""))]
@@ -65,9 +66,10 @@
         rows (list-view.rows node.left)
         preview (lines-view.rows node.right)
         left-scroll node.left.scroll
-        right-scroll node.right.scroll]
+        right-scroll node.right.scroll
+        right-x-scroll (or node.right.x-scroll 0)]
     (for [i 1 body.rows]
       (draw-row (layout.row body i) ctx (. rows i) (. preview i) left-scroll
-                right-scroll i body.rows left-cols right-cols))))
+                right-scroll i body.rows left-cols right-cols right-x-scroll))))
 
 {: draw : widths}

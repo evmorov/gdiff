@@ -97,6 +97,20 @@
     (update.update state {} (update.read-msg state ">"))
     (faith.= 0.9 state.split_ratio)))
 
+(fn test-h_l_scroll_preview_horizontally []
+  (let [state (state [(entry "M" "a.rb")])]
+    (update.update state {} (update.read-msg state "l"))
+    (faith.= 0 state.preview_x_scroll)
+    (set state.preview_x_max_scroll 12)
+    (update.update state {} (update.read-msg state "l"))
+    (faith.= 8 state.preview_x_scroll)
+    (update.update state {} (update.read-msg state "l"))
+    (faith.= 12 state.preview_x_scroll)
+    (update.update state {} (update.read-msg state "h"))
+    (faith.= 4 state.preview_x_scroll)
+    (update.update state {} (update.read-msg state "h"))
+    (faith.= 0 state.preview_x_scroll)))
+
 (fn test-command-dispatches-back-through-update []
   (let [state (state [(entry "M" "a.rb")])
         command (fn [dispatch _get-state]
@@ -135,6 +149,7 @@
 
 {: test-command-dispatches-back-through-update
  : test-copy-path-copies_selected_tree_folder_path
+ : test-h_l_scroll_preview_horizontally
  : test-local-refresh_does_not_start_remote_sync
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-open-pr-finished-updates-notice

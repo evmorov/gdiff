@@ -147,9 +147,33 @@
                   (set i next-i))))
           (.. out suffix (reset-code))))))
 
+(fn crop [s offset width]
+  (let [s (tostring (or s ""))
+        offset (math.max 0 (or offset 0))
+        width (math.max 0 (or width 0))]
+    (if (or (= offset 0) (= width 0))
+        (truncate s width)
+        (let [limit (+ offset width)]
+          (var i 1)
+          (var visible 0)
+          (var out "")
+          (while (and (< visible limit) (<= i (length s)))
+            (if (ansi-sequence? s i)
+                (let [last (ansi-sequence-end s i)
+                      code (s:sub i last)]
+                  (set out (.. out code))
+                  (set i (+ last 1)))
+                (let [(ch next-i) (next-char s i)]
+                  (when (>= visible offset)
+                    (set out (.. out ch)))
+                  (set visible (+ visible 1))
+                  (set i next-i))))
+          (truncate (.. out (reset-code)) width)))))
+
 {: apply-block-style
  : apply-style
  : color?
+ : crop
  : esc
  : highlight-matches
  : nl

@@ -5,6 +5,7 @@
              :vertical "│"
              :separator "│"
              :scroll-thumb "█"
-             :horizontal-scroll-thumb "▀"})
+             :horizontal-scroll-thumb "▀"
+             :wrap-arrow "↪"})
 
 {: line}

@@ -35,6 +35,7 @@
     "n" :search-next
     "N" :search-previous
     "r" :refresh
+    "w" :toggle-wrap
     "`" :toggle-tree
     "y" :copy-path
     "p" :open-pr
@@ -160,6 +161,11 @@
   (scroll-preview state (selection.selected-entry state)
                   (- (preview.page-step state))))
 
+(fn toggle-wrap [state]
+  (set state.preview_wrap? (not state.preview_wrap?))
+  (set state.preview_x_scroll 0)
+  (set state.preview_x_max_scroll 0))
+
 (fn toggle-tree [state]
   (selection.toggle-mode state)
   (when (search.has-query? state)
@@ -201,6 +207,7 @@
         :clear-search search.clear
         :top jump-top
         :bottom jump-bottom
+        :toggle-wrap toggle-wrap
         :toggle-tree toggle-tree
         :refresh refresh-and-sync
         :copy-path copy-selected-path
@@ -283,6 +290,7 @@
                :files_x_max_scroll 0
                :preview_rows 1
                :preview_total 0
+               :preview_wrap? false
                :split_ratio 0.4
                :view_mode :tree
                :tree_selected_row nil

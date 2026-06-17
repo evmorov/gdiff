@@ -4,6 +4,7 @@
 (local search (require :app.search))
 (local selection (require :app.selection))
 (local sync (require :git.sync))
+(local ansi (require :tui.ansi))
 (local symbols (require :tui.symbols))
 (local tui (require :tui.core))
 
@@ -56,7 +57,7 @@
         items [state.revision_label
                "/ search"
                "C-d/C-u preview"
-               "h/l preview"
+               "w wrap"
                "r refresh/sync"
                "` tree"
                "y copy"
@@ -154,6 +155,68 @@
       []
       (preview.nonblocking-lines state selected-entry)))
 
+(fn wrap-line [line width]
+  (let [width (math.max 1 width)
+        line-width (tui.visible-length line)
+        continued-width (math.max 1 (- width 1))]
+    (if (<= line-width width)
+        [line]
+        (let [out []]
+          (var offset 0)
+          (while (< offset line-width)
+            (let [remaining (- line-width offset)
+                  continued? (> remaining width)
+                  chunk-width (if continued? continued-width width)
+                  chunk (ansi.window line offset chunk-width)]
+              (table.insert out (if continued?
+                                    (.. chunk symbols.line.wrap-arrow)
+                                    chunk))
+              (set offset (+ offset chunk-width))))
+          out))))
+
+(fn wrap-lines [lines width]
+  (let [out []]
+    (each [_ line (ipairs lines)]
+      (each [_ part (ipairs (wrap-line line width))]
+        (table.insert out part)))
+    out))
+
+(fn preview-display-lines [state lines width]
+  (if state.preview_wrap?
+      (wrap-lines lines width)
+      lines))
+
+(fn preview-scroll? [lines visible]
+  (> (length lines) visible))
+
+(fn right-content-width [cols state scroll?]
+  (let [(_left-cols right-cols) (tui.components.split.widths cols
+                                                             state.split_ratio)]
+    (math.max 0 (if scroll? (- right-cols 1) right-cols))))
+
+(fn preview-lines-for-width [state lines visible cols]
+  (let [wide-width (right-content-width cols state false)
+        wide-lines (preview-display-lines state lines wide-width)
+        scroll? (preview-scroll? wide-lines visible)
+        width (right-content-width cols state scroll?)]
+    (if (and state.preview_wrap? scroll? (not (= width wide-width)))
+        (preview-display-lines state lines width)
+        wide-lines)))
+
+(fn set-preview-scroll [state lines visible]
+  (set state.preview_rows visible)
+  (set state.preview_total (length lines))
+  (let [max-scroll (math.max 0 (- (length lines) visible))]
+    (set state.preview_scroll (clamp (or state.preview_scroll 0) 0 max-scroll))))
+
+(fn visible-preview-lines [state lines visible]
+  (let [first (+ (or state.preview_scroll 0) 1)
+        last (math.min (length lines) (+ (or state.preview_scroll 0) visible))]
+    (if (> first last)
+        []
+        (fcollect [i first last]
+          (. lines i)))))
+
 (fn view [state rows cols]
   (let [count (length state.entries)
         visible (body-row-count rows)
@@ -162,16 +225,18 @@
                                      state.revision selected-entry)
         left (body-left state visible)
         right-all-lines (preview-horizontal-lines state selected-entry)
-        right-lines (if (and (= state.view_mode :tree) (not selected-entry))
-                        (do
-                          (set state.preview_scroll 0)
-                          (set state.preview_total 0)
-                          [])
-                        (preview.visible-lines state selected-entry visible
-                                               {:nonblocking? true}))
-        _ (preview.set-horizontal-scroll-limit state right-all-lines
-                                               (preview-content-width state
-                                                                      cols))
+        right-display-lines (if (and (= state.view_mode :tree)
+                                     (not selected-entry))
+                                []
+                                (preview-lines-for-width state right-all-lines
+                                                         visible cols))
+        _ (set-preview-scroll state right-display-lines visible)
+        right-lines (visible-preview-lines state right-display-lines visible)
+        _ (if state.preview_wrap?
+              (preview.set-horizontal-scroll-limit state [] 0)
+              (preview.set-horizontal-scroll-limit state right-all-lines
+                                                   (preview-content-width state
+                                                                          cols)))
         right (tui.lines right-lines (preview.scroll-info state)
                          state.preview_x_scroll state.preview_x_max_scroll)
         body (tui.split left right state.split_ratio)]

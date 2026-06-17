@@ -16,6 +16,7 @@
 (fn test-read-msg-turns-raw-key-into-message-data []
   (let [state (state [(entry "M" "a.rb")])]
     (faith.= {:type :toggle-all-reviewed} (update.read-msg state "a"))
+    (faith.= {:type :toggle-wrap} (update.read-msg state "w"))
     (faith.= {:type :open-pr} (update.read-msg state "p"))))
 
 (fn test-read-msg-keeps-pending-g-in-state []
@@ -139,6 +140,17 @@
     (update.update state {} (update.read-msg state "\21"))
     (faith.= true state.skip_next_draw?)))
 
+(fn test-w_toggles_preview_wrap_and_resets_horizontal_scroll []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.preview_x_scroll 8)
+    (set state.preview_x_max_scroll 12)
+    (update.update state {} (update.read-msg state "w"))
+    (faith.= true state.preview_wrap?)
+    (faith.= 0 state.preview_x_scroll)
+    (faith.= 0 state.preview_x_max_scroll)
+    (update.update state {} (update.read-msg state "w"))
+    (faith.= false state.preview_wrap?)))
+
 (fn test-command-dispatches-back-through-update []
   (let [state (state [(entry "M" "a.rb")])
         command (fn [dispatch _get-state]
@@ -190,4 +202,5 @@
  : test-uppercase-r-does-not-attach-to-startup-sync
  : test-uppercase-r-does-not-start-sync
  : test-unknown-key-clears-pending-g
+ : test-w_toggles_preview_wrap_and_resets_horizontal_scroll
  : test-update-returns-command-for-review-persistence}

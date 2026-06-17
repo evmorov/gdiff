@@ -230,6 +230,8 @@
         view (app.view state 10 100)
         header (tui.strip-ansi view.header)]
     (faith.match "r refresh/sync" header)
+    (faith.match "w wrap" header)
+    (faith.= nil (header:find "h/l preview" 1 true))
     (faith.= nil (header:find "R sync" 1 true))))
 
 (fn test-view-clamps_preview_horizontal_scroll_when_content_fits []
@@ -260,6 +262,20 @@
       (faith.= 9 view.body.right.x-scroll)
       (faith.= 9 view.body.right.x-max-scroll)
       (faith.= 9 state.preview_x_max_scroll))))
+
+(fn test-view-wraps_preview_lines_when_enabled []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        key (preview-key.for-entry "HEAD" selected)]
+    (tset state.preview_cache key ["abcdefghijklmnopqrstuvwxyz"])
+    (set state.preview_wrap? true)
+    (set state.preview_x_scroll 10)
+    (let [view (app.view state 6 20)]
+      (faith.= "abcdefghij↪\nklmnopqrst↪" (t.text view.body.right.lines))
+      (faith.= 0 view.body.right.x-scroll)
+      (faith.= 0 view.body.right.x-max-scroll)
+      (faith.= 3 state.preview_total)
+      (faith.= 0 state.preview_x_scroll))))
 
 (fn test-view-clamps_file_horizontal_scroll_when_file_rows_fit []
   (let [state (state [(entry "M" "a.rb")])]
@@ -445,5 +461,6 @@
  : test-view-keeps_file_list_horizontal_scroll_disabled
  : test-view-passes_preview_horizontal_scroll_when_content_overflows
  : test-view-uses_whole_preview_for_horizontal_scroll_limit
+ : test-view-wraps_preview_lines_when_enabled
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

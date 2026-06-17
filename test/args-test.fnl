@@ -13,6 +13,11 @@
     (faith.= "code --wait" options.editor)
     (faith.= "HEAD" revision)))
 
+(fn test-no_revision_defers_to_default_revision_lookup []
+  (let [(_options revision err) (args.parse [])]
+    (faith.= nil err)
+    (faith.= nil revision)))
+
 (fn test-parses-two-revisions-as-triple-dot-range []
   (let [(_options revision err) (args.parse ["main" "feature"])]
     (faith.= nil err)
@@ -41,6 +46,7 @@
 {: test-parses-editor-and-revision
  : test-parses-explicit-triple-dot-range
  : test-parses-inline-editor
+ : test-no_revision_defers_to_default_revision_lookup
  : test-parses-two-revisions-as-triple-dot-range
  : test-rejects-extra-revision
  : test-rejects-two-dot-range

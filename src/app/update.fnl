@@ -142,6 +142,9 @@
 (fn move-split [state delta]
   (set state.split_ratio (clamp (+ (or state.split_ratio 0.4) delta) 0.1 0.9)))
 
+(fn scroll-horizontal [state delta]
+  (preview.scroll-horizontal state delta))
+
 (fn toggle-tree [state]
   (selection.toggle-mode state)
   (when (search.has-query? state)
@@ -172,8 +175,8 @@
         :preview-down #(preview.scroll-page-down $1
                                                  (selection.selected-entry $1))
         :preview-up #(preview.scroll-page-up $1 (selection.selected-entry $1))
-        :preview-left #(preview.scroll-horizontal $1 -8)
-        :preview-right #(preview.scroll-horizontal $1 8)
+        :preview-left #(scroll-horizontal $1 -8)
+        :preview-right #(scroll-horizontal $1 8)
         :search search.start
         :search-next search.next
         :search-previous search.previous
@@ -257,6 +260,8 @@
                :preview_scroll 0
                :preview_x_scroll 0
                :preview_x_max_scroll 0
+               :files_x_scroll 0
+               :files_x_max_scroll 0
                :preview_rows 1
                :preview_total 0
                :split_ratio 0.4

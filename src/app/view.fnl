@@ -128,9 +128,12 @@
   (let [rows (display-rows state)
         count (length rows)
         selected (display-selected-row state rows)
-        (first-row last-row) (viewport selected count visible)]
-    (tui.list (visible-rows state rows first-row last-row)
-              (list-scroll-info first-row count visible))))
+        (first-row last-row) (viewport selected count visible)
+        visible-rows (visible-rows state rows first-row last-row)
+        scroll (list-scroll-info first-row count visible)]
+    (set state.files_x_scroll 0)
+    (set state.files_x_max_scroll 0)
+    (tui.list visible-rows scroll 0 0)))
 
 (fn footer [state count]
   (let [prompt (search.status state)
@@ -164,7 +167,7 @@
                                                (preview-content-width state
                                                                       cols))
         right (tui.lines right-lines (preview.scroll-info state)
-                         state.preview_x_scroll)
+                         state.preview_x_scroll state.preview_x_max_scroll)
         body (tui.split left right state.split_ratio)]
     (tui.screen (header-line state) body (footer state count))))
 

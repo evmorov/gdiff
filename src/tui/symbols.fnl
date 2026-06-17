@@ -4,6 +4,7 @@
              :join-up "┴"
              :vertical "│"
              :separator "│"
-             :scroll-thumb "█"})
+             :scroll-thumb "█"
+             :horizontal-scroll-thumb "▀"})
 
 {: line}

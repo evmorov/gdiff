@@ -246,7 +246,25 @@
     (set state.preview_x_scroll 16)
     (let [view (app.view state 10 30)]
       (faith.= 8 view.body.right.x-scroll)
+      (faith.= 8 view.body.right.x-max-scroll)
       (faith.= 8 state.preview_x_max_scroll))))
+
+(fn test-view-clamps_file_horizontal_scroll_when_file_rows_fit []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.files_x_scroll 8)
+    (let [view (app.view state 10 80)]
+      (faith.= 0 view.body.left.x-scroll)
+      (faith.= 0 state.files_x_max_scroll))))
+
+(fn test-view-keeps_file_list_horizontal_scroll_disabled []
+  (let [state (state [(entry "M"
+                             "really/long/path/that/does/not/fit/in/the/list.rb")])]
+    (set state.files_x_scroll 100)
+    (let [view (app.view state 10 30)]
+      (faith.= 0 view.body.left.x-scroll)
+      (faith.= 0 view.body.left.x-max-scroll)
+      (faith.= 0 state.files_x_scroll)
+      (faith.= 0 state.files_x_max_scroll))))
 
 (fn test-view-adds-left-scroll-info-for-overflowing-file-list []
   (let [state (state [(entry "M" "1.rb")
@@ -411,6 +429,8 @@
  : test-view-shows_diff_stats_in_footer_right
  : test-view-shows-single-refresh-sync-key
  : test-view-clamps_preview_horizontal_scroll_when_content_fits
+ : test-view-clamps_file_horizontal_scroll_when_file_rows_fit
+ : test-view-keeps_file_list_horizontal_scroll_disabled
  : test-view-passes_preview_horizontal_scroll_when_content_overflows
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

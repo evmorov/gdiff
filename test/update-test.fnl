@@ -101,15 +101,21 @@
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {} (update.read-msg state "l"))
     (faith.= 0 state.preview_x_scroll)
+    (faith.= 0 state.files_x_scroll)
     (set state.preview_x_max_scroll 12)
+    (set state.files_x_max_scroll 20)
     (update.update state {} (update.read-msg state "l"))
     (faith.= 8 state.preview_x_scroll)
+    (faith.= 0 state.files_x_scroll)
     (update.update state {} (update.read-msg state "l"))
     (faith.= 12 state.preview_x_scroll)
+    (faith.= 0 state.files_x_scroll)
     (update.update state {} (update.read-msg state "h"))
     (faith.= 4 state.preview_x_scroll)
+    (faith.= 0 state.files_x_scroll)
     (update.update state {} (update.read-msg state "h"))
-    (faith.= 0 state.preview_x_scroll)))
+    (faith.= 0 state.preview_x_scroll)
+    (faith.= 0 state.files_x_scroll)))
 
 (fn test-command-dispatches-back-through-update []
   (let [state (state [(entry "M" "a.rb")])

@@ -11,12 +11,13 @@
   (let [width (or ?width ctx.cols)
         body (layout.body ctx)
         scroll? (scrollbar.visible? node.scroll body.rows)
-        content-width (if scroll? (- width 1) width)]
+        content-width (if scroll? (- width 1) width)
+        x-scroll (or node.x-scroll 0)]
     (for [i 1 body.rows]
       (let [row (. (rows node) i)]
         (surface.clear-row (layout.row body i))
         (when (and row (> content-width 0))
-          (row-view.draw ctx (ansi.truncate row.text content-width)
+          (row-view.draw ctx (ansi.crop row.text x-scroll content-width)
                          row.selected? content-width))
         (when scroll?
           (scrollbar.draw ctx node.scroll i (layout.row body i) width body.rows))

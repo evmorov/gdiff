@@ -18,9 +18,9 @@
         start (+ 1 (math.floor (/ (* max-start scroll.offset) max-offset)))]
     (values start (+ start size -1))))
 
-(fn marker [scroll height row]
+(fn marker [scroll height row ?thumb]
   (let [(start finish) (thumb-range scroll height)]
-    (if (and (>= row start) (<= row finish)) thumb)))
+    (if (and (>= row start) (<= row finish)) (or ?thumb thumb))))
 
 (fn draw [ctx scroll row screen-row col height]
   (when (visible? scroll height)

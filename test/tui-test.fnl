@@ -129,6 +129,23 @@
     (faith.= 60 right)
     (faith.= 41 divider)))
 
+(fn test-horizontal_text_does_not_add_inline_indicators []
+  (faith.= "abcdef" (tui.components.split.horizontal-text "abcdefghij" 6 0 4)))
+
+(fn test-horizontal_text_scrolls_without_inline_indicators []
+  (faith.= "cdefgh" (tui.components.split.horizontal-text "abcdefghij" 6 2 4)))
+
+(fn test-horizontal_scroll_is_visible_only_for_overflow []
+  (faith.= {:offset 2 :visible 6 :total 10}
+           (tui.components.chrome.horizontal-scroll 2 4 6))
+  (faith.= nil (tui.components.chrome.horizontal-scroll 0 0 6)))
+
+(fn test-horizontal_scrollbar_uses_rule_thumb []
+  (faith.= "▀" (tui.components.scrollbar.marker {:offset 0
+                                                   :total 10
+                                                   :visible 5}
+                                                  5 1 "▀")))
+
 (fn test-scrollbar_only_visible_for_overflow []
   (faith.is (tui.components.scrollbar.visible? {:offset 0 :total 10 :visible 5}
                                                5))
@@ -201,6 +218,10 @@
  : test-header-rule-connects_body_divider
  : test-header-rule-connects_top_bar_separators
  : test-header-rule-crosses_top_bar_separator_and_body_divider
+ : test-horizontal_scrollbar_uses_rule_thumb
+ : test-horizontal_scroll_is_visible_only_for_overflow
+ : test-horizontal_text_does_not_add_inline_indicators
+ : test-horizontal_text_scrolls_without_inline_indicators
  : test-layout-names_screen_regions
  : test-parses-terminal-background-response
  : test-render-context-carries-terminal-shape

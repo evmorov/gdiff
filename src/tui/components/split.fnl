@@ -24,14 +24,19 @@
         (theme.color ctx.theme :muted mark)
         " ")))
 
-(fn left-text [ctx row width]
+(fn horizontal-text [text width x-scroll _x-max-scroll]
+  (ansi.pad-right (ansi.window text x-scroll width) width))
+
+(fn left-text [ctx row width x-scroll x-max-scroll]
   (if (and row (> width 0))
-      (row-view.render ctx (ansi.truncate row.text width) row.selected? width)
+      (row-view.render ctx
+                       (horizontal-text row.text width x-scroll x-max-scroll)
+                       row.selected? width)
       (spaces width)))
 
-(fn right-text [line width x-scroll]
+(fn right-text [line width x-scroll x-max-scroll]
   (if (and line (> width 0))
-      (ansi.pad-right (ansi.crop line x-scroll width) width)
+      (horizontal-text line width x-scroll x-max-scroll)
       (spaces width)))
 
 (fn draw-row [screen-row
@@ -44,17 +49,22 @@
               body-rows
               left-cols
               right-cols
-              right-x-scroll]
+              left-x-scroll
+              left-x-max-scroll
+              right-x-scroll
+              right-x-max-scroll]
   (let [left-scroll? (scrollbar.visible? left-scroll body-rows)
         left-content-cols (if left-scroll? (- left-cols 1) left-cols)
         right-scroll? (scrollbar.visible? right-scroll body-rows)
         right-content-cols (if right-scroll? (- right-cols 1) right-cols)
-        line (.. (left-text ctx left-row left-content-cols)
+        line (.. (left-text ctx left-row left-content-cols left-x-scroll
+                            left-x-max-scroll)
                  (if left-scroll?
                      (scroll-marker ctx left-scroll row-index body-rows)
                      "")
                  (theme.color ctx.theme :muted symbols.line.vertical)
-                 (right-text right-line right-content-cols right-x-scroll)
+                 (right-text right-line right-content-cols right-x-scroll
+                             right-x-max-scroll)
                  (if right-scroll?
                      (scroll-marker ctx right-scroll row-index body-rows)
                      ""))]
@@ -66,10 +76,14 @@
         rows (list-view.rows node.left)
         preview (lines-view.rows node.right)
         left-scroll node.left.scroll
+        left-x-scroll (or node.left.x-scroll 0)
+        left-x-max-scroll (or node.left.x-max-scroll 0)
         right-scroll node.right.scroll
-        right-x-scroll (or node.right.x-scroll 0)]
+        right-x-scroll (or node.right.x-scroll 0)
+        right-x-max-scroll (or node.right.x-max-scroll 0)]
     (for [i 1 body.rows]
       (draw-row (layout.row body i) ctx (. rows i) (. preview i) left-scroll
-                right-scroll i body.rows left-cols right-cols right-x-scroll))))
+                right-scroll i body.rows left-cols right-cols left-x-scroll
+                left-x-max-scroll right-x-scroll right-x-max-scroll))))
 
-{: draw : widths}
+{: draw : horizontal-text : widths}

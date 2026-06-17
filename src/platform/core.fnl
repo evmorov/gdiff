@@ -14,6 +14,14 @@
   (let [s (or s "")]
     (or (s:match "^%s*(.-)%s*$") "")))
 
+(fn first-number [s]
+  (let [s (or s "")]
+    (tonumber (s:match "([0-9]+)"))))
+
+(fn cpu-count []
+  (or (first-number (read-command "getconf _NPROCESSORS_ONLN 2>/dev/null"))
+      (first-number (read-command "sysctl -n hw.ncpu 2>/dev/null")) 1))
+
 (fn read-file [path]
   (let [f (io.open path "r")]
     (when f
@@ -60,6 +68,7 @@
 
 {: background-command
  : background-shell-command
+ : cpu-count
  : ensure-dir
  : file-exists?
  : read-command

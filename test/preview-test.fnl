@@ -65,6 +65,19 @@
     (faith.= 0 state.preview_x_max_scroll)
     (faith.= 0 state.preview_x_scroll)))
 
+(fn test-asset-preview-is-cheap-and-cached-without_git_diff []
+  (let [entry {:status "M" :kind "M" :path "icons/logo.svg" :reviewed false}
+        state (state)
+        old-preview-output git.preview-output]
+    (set git.preview-output
+         (fn [...]
+           (error "asset preview should not call git diff")))
+    (let [lines (preview.lines state entry)]
+      (set git.preview-output old-preview-output)
+      (faith.= "Asset preview skipped: icons/logo.svg" (t.text lines))
+      (faith.= lines
+               (. state.preview_cache (preview-key.for-entry "HEAD" entry))))))
+
 (fn test-startup-can-cache-selected-preview-before-rendering []
   (setup-repo)
   (let [(entries err) (git.diff-entries "HEAD")
@@ -98,6 +111,7 @@
     (faith.match "%+after" (t.text (. state.preview_cache key)))))
 
 {: test-visible-lines-can-be-nonblocking-while-warming
+ : test-asset-preview-is-cheap-and-cached-without_git_diff
  : test-horizontal_scroll_limit_uses_visible_line_width
  : test-refresh-loaded-keeps-cache-and-caches-selected-preview
  : test-scroll-info-only-appears-when-preview-overflows

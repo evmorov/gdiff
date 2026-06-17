@@ -127,6 +127,18 @@
     (faith.= ["1" "2" "3" "4" "5" "6"]
              (paths (preview-warm.side-priority-entries entries)))))
 
+(fn entries [count]
+  (fcollect [i 1 count]
+    (entry "M" (.. i ".rb"))))
+
+(fn test-worker-count-scales-with-cpu-and-entry-count []
+  (faith.= 0 (preview-warm.worker-count [] 8))
+  (faith.= 1 (preview-warm.worker-count (entries 1) 8))
+  (faith.= 2 (preview-warm.worker-count (entries 6) 8))
+  (faith.= 3 (preview-warm.worker-count (entries 20) 8))
+  (faith.= 2 (preview-warm.worker-count (entries 100) 4))
+  (faith.= 6 (preview-warm.worker-count (entries 100) 16)))
+
 (fn test-start-with-no-missing-entries-cleans-existing-warmer []
   (t.reset-workdir)
   (t.mkdir "warm")
@@ -184,4 +196,5 @@
  : test-update-imports-all-previews-and-cleans-temp-dir
  : test-update-imports-ready-previews-in-small-batches
  : test-update-imports-ready-previews-out-of-order
+ : test-worker-count-scales-with-cpu-and-entry-count
  : test-worker-command-loads-runtime-and-macro-paths}

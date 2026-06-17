@@ -1,4 +1,5 @@
 (local git (require :git.core))
+(local assets (require :preview.assets))
 (local preview-key (require :preview.key))
 (local sys (require :platform.core))
 (local tui (require :tui.core))
@@ -35,6 +36,9 @@
         lines
         [(tui.color state.theme :muted "No preview for this file.")])))
 
+(fn asset-lines [state entry]
+  [(tui.color state.theme :muted (.. "Asset preview skipped: " entry.path))])
+
 (fn lines [state entry]
   (if (not entry)
       [(tui.color state.theme :muted "No file selected.")]
@@ -42,6 +46,10 @@
             cached (. state.preview_cache key)]
         (if cached
             cached
+            (assets.asset? entry)
+            (let [lines (asset-lines state entry)]
+              (tset state.preview_cache key lines)
+              lines)
             (let [(output ok filtered?) (git.preview-output state.preview_context
                                                             state.revision entry)
                   lines (if ok

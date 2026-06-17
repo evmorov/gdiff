@@ -15,8 +15,8 @@
 (fn manifest-path [dir]
   (.. dir "/manifest.fnl"))
 
-(local max-workers 4)
-(local edge-batch-size (* max-workers 2))
+(local max-workers 6)
+(local edge-batch-size 8)
 (local max-checks-per-update 64)
 (local max-imports-per-update 8)
 
@@ -27,6 +27,7 @@
   {:dir nil
    :count 0
    :remaining 0
+   :workers 0
    :scan-index 1
    :imported {}
    :key-index {}
@@ -38,6 +39,7 @@
   (set state.dir nil)
   (set state.count 0)
   (set state.remaining 0)
+  (set state.workers 0)
   (set state.scan-index 1)
   (set state.imported {})
   (set state.key-index {})
@@ -79,8 +81,25 @@
         (tset keys i entry-key)))
     (values indexes keys)))
 
-(fn worker-count [entries]
-  (math.min max-workers (length entries)))
+(fn cpu-worker-budget [?cpu-count]
+  (let [cpus (or ?cpu-count (sys.cpu-count))]
+    (if (<= cpus 2) 1
+        (<= cpus 4) 2
+        (<= cpus 8) 3
+        (<= cpus 12) 4
+        max-workers)))
+
+(fn entry-worker-budget [count]
+  (if (<= count 1) 1
+      (< count 8) 2
+      (< count 32) 3
+      max-workers))
+
+(fn worker-count [entries ?cpu-count]
+  (let [count (length entries)]
+    (if (<= count 0) 0
+        (math.min count (cpu-worker-budget ?cpu-count)
+                  (entry-worker-budget count)))))
 
 (fn start-workers [src-dir manifest dir count]
   (for [i 1 count]
@@ -99,9 +118,11 @@
             (set state.dir dir)
             (set state.count (length entries))
             (set state.remaining (length entries))
+            (set state.workers 0)
             (set state.scan-index 1)
             (set state.imported {})
             (let [workers (worker-count entries)]
+              (set state.workers workers)
               (if (< 0 workers)
                   (start-workers src-dir manifest dir workers)
                   (cleanup state)))))))))
@@ -177,4 +198,5 @@
  : side-priority-entries
  : start
  : update
+ : worker-count
  : worker-command}

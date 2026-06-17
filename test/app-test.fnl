@@ -249,6 +249,18 @@
       (faith.= 8 view.body.right.x-max-scroll)
       (faith.= 8 state.preview_x_max_scroll))))
 
+(fn test-view-uses_whole_preview_for_horizontal_scroll_limit []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        key (preview-key.for-entry "HEAD" selected)]
+    (tset state.preview_cache key ["short" "tiny" "abcdefghijklmnopqrstuvwxyz"])
+    (set state.preview_x_scroll 100)
+    (let [view (app.view state 6 30)]
+      (faith.= "short\ntiny" (t.text view.body.right.lines))
+      (faith.= 9 view.body.right.x-scroll)
+      (faith.= 9 view.body.right.x-max-scroll)
+      (faith.= 9 state.preview_x_max_scroll))))
+
 (fn test-view-clamps_file_horizontal_scroll_when_file_rows_fit []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.files_x_scroll 8)
@@ -432,5 +444,6 @@
  : test-view-clamps_file_horizontal_scroll_when_file_rows_fit
  : test-view-keeps_file_list_horizontal_scroll_disabled
  : test-view-passes_preview_horizontal_scroll_when_content_overflows
+ : test-view-uses_whole_preview_for_horizontal_scroll_limit
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

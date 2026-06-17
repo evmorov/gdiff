@@ -149,6 +149,11 @@
         scroll? (preview.scroll-info state)]
     (math.max 0 (if scroll? (- right-cols 1) right-cols))))
 
+(fn preview-horizontal-lines [state selected-entry]
+  (if (and (= state.view_mode :tree) (not selected-entry))
+      []
+      (preview.nonblocking-lines state selected-entry)))
+
 (fn view [state rows cols]
   (let [count (length state.entries)
         visible (body-row-count rows)
@@ -156,6 +161,7 @@
         _ (preview-warm.import-entry state.preview_warm state.preview_cache
                                      state.revision selected-entry)
         left (body-left state visible)
+        right-all-lines (preview-horizontal-lines state selected-entry)
         right-lines (if (and (= state.view_mode :tree) (not selected-entry))
                         (do
                           (set state.preview_scroll 0)
@@ -163,7 +169,7 @@
                           [])
                         (preview.visible-lines state selected-entry visible
                                                {:nonblocking? true}))
-        _ (preview.set-horizontal-scroll-limit state right-lines
+        _ (preview.set-horizontal-scroll-limit state right-all-lines
                                                (preview-content-width state
                                                                       cols))
         right (tui.lines right-lines (preview.scroll-info state)

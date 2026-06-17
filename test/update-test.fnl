@@ -142,6 +142,7 @@
 
 (fn test-w_toggles_preview_wrap_and_resets_horizontal_scroll []
   (let [state (state [(entry "M" "a.rb")])]
+    (set state.preview_wrap? false)
     (set state.preview_x_scroll 8)
     (set state.preview_x_max_scroll 12)
     (update.update state {} (update.read-msg state "w"))

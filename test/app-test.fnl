@@ -245,6 +245,7 @@
         state (state [selected])
         key (preview-key.for-entry "HEAD" selected)]
     (tset state.preview_cache key ["abcdefghijklmnopqrstuvwxyz"])
+    (set state.preview_wrap? false)
     (set state.preview_x_scroll 16)
     (let [view (app.view state 10 30)]
       (faith.= 8 view.body.right.x-scroll)
@@ -256,6 +257,7 @@
         state (state [selected])
         key (preview-key.for-entry "HEAD" selected)]
     (tset state.preview_cache key ["short" "tiny" "abcdefghijklmnopqrstuvwxyz"])
+    (set state.preview_wrap? false)
     (set state.preview_x_scroll 100)
     (let [view (app.view state 6 30)]
       (faith.= "short\ntiny" (t.text view.body.right.lines))

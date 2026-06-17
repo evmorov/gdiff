@@ -100,7 +100,7 @@
 
 (fn folder-row-text [state descriptor selected?]
   (.. (row-prefix state selected? descriptor.depth)
-      (tui.color state.theme :folder (search.highlight state descriptor.name))))
+      (search.highlight state descriptor.name)))
 
 (fn selected-row? [state descriptor row-index]
   (selection.selected-row? state descriptor row-index))

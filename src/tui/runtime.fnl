@@ -4,8 +4,8 @@
 
 (fn run [program]
   (let [stty-state (terminal.saved-stty)]
-    (let [(_ background-rgb foreground-rgb) (terminal.raw-terminal stty-state)]
-      (set program.state.theme (theme.new background-rgb foreground-rgb)))
+    (let [(_ background-rgb) (terminal.raw-terminal stty-state)]
+      (set program.state.theme (theme.new background-rgb)))
     (let [(ok err) (pcall (fn []
                             (set program.state.stty-state stty-state)
                             (var running true)

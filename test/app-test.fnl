@@ -104,8 +104,10 @@
     (let [view (app.view state 12 100)
           rows view.body.left.rows]
       (faith.= "  script/" (plain-row-text (. rows 1)))
+      (faith.= "  script/" (. (. rows 1) :text))
       (faith.= ">   [ ] [A] shorthand_branch.sh" (plain-row-text (. rows 2)))
       (faith.= "  spec/lib/" (plain-row-text (. rows 3)))
+      (faith.= "  spec/lib/" (. (. rows 3) :text))
       (faith.= "    epoxy/" (plain-row-text (. rows 4)))
       (faith.= "      [ ] [M] version_branch_validation_spec.rb"
                (plain-row-text (. rows 5)))

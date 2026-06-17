@@ -146,9 +146,10 @@
                                 8)]
     (faith.= "> a.rb  " (ansi.strip-ansi row))
     (when (row:find ansi.esc 1 true)
+      (faith.is (row:find "\27[1m" 1 true))
       (faith.= nil (row:find "48;5;" 1 true))
       (faith.is (row:find "\27[48;2;" 1 true))
-      (faith.is (row:find "\27[0m\27[48;2;" 1 true)))))
+      (faith.is (row:find "\27[0m\27[1m\27[48;2;" 1 true)))))
 
 (fn test-selected-row-does-not-guess-without-background []
   (let [t (theme.new nil)
@@ -156,6 +157,8 @@
                                       "a.rb")
                                 8)]
     (faith.= "> a.rb  " (ansi.strip-ansi row))
+    (when (row:find ansi.esc 1 true)
+      (faith.is (row:find "\27[1m" 1 true)))
     (faith.= nil (row:find "48;" 1 true))
     (faith.= nil (row:find "\27[2;7m" 1 true))))
 
@@ -174,25 +177,6 @@
     (faith.= "abc" (ansi.strip-ansi text))
     (faith.= nil (style:find "48;" 1 true))))
 
-(fn test-folder-style-uses-derived-foreground []
-  (let [t (theme.new {:r 16 :g 24 :b 32} {:r 240 :g 244 :b 248})
-        style (theme.style-for t :folder)
-        text (theme.color t :folder "script/")]
-    (faith.= "script/" (ansi.strip-ansi text))
-    (faith.is (style:find "\27[38;2;" 1 true))
-    (faith.is (style:find "\27[38;2;184;189;194m" 1 true))
-    (faith.= nil (style:find "\27[2m" 1 true))))
-
-(fn test-folder-style-guards_against_near_background_foreground []
-  (let [t (theme.new {:r 16 :g 24 :b 32} {:r 16 :g 24 :b 32})
-        style (theme.style-for t :folder)]
-    (faith.is (style:find "\27[38;2;202;204;206m" 1 true))))
-
-(fn test-folder-style-does-not_guess_without_terminal_colors []
-  (let [t (theme.new nil)
-        text (theme.color t :folder "script/")]
-    (faith.= "script/" text)))
-
 {: test-empty-footer-is-nil
  : test-bottom-rule-connects_footer_right_separator
  : test-bottom-rule-connects_all_footer_right_separators
@@ -202,9 +186,6 @@
  : test-components-are-exposed-for-extension
  : test-footer-right-col_includes_leading_separator
  : test-footer-text-styles_separators_as_muted
- : test-folder-style-does-not_guess_without_terminal_colors
- : test-folder-style-guards_against_near_background_foreground
- : test-folder-style-uses-derived-foreground
  : test-header-rule-connects_body_divider
  : test-header-rule-connects_top_bar_separators
  : test-header-rule-crosses_top_bar_separator_and_body_divider

@@ -13,23 +13,19 @@
                     :search-match "\27[1;4m"
                     :search-match-end "\27[22;24m"})
 
-(fn styles [?background-rgb ?foreground-rgb]
-  (let [search-background (colors.background-style ?background-rgb 0.28)
-        folder-foreground (colors.foreground-style ?foreground-rgb
-                                                   ?background-rgb 0.25)]
+(fn styles [?background-rgb]
+  (let [search-background (colors.background-style ?background-rgb 0.28)]
     (if search-background
         (doto (collect [role style (pairs base-styles)]
                 (values role style))
-          (tset :folder folder-foreground)
           (tset :search-match (.. search-background "\27[1m"))
           (tset :search-match-end ansi.reset-style))
-        (doto (collect [role style (pairs base-styles)]
-                (values role style))
-          (tset :folder folder-foreground)))))
+        base-styles)))
 
-(fn new [?background-rgb ?foreground-rgb]
-  {:styles (styles ?background-rgb ?foreground-rgb)
-   :selected-row (colors.background-style ?background-rgb 0.08)})
+(fn new [?background-rgb]
+  {:styles (styles ?background-rgb)
+   :selected-row (.. "\27[1m" (or (colors.background-style ?background-rgb 0.08)
+                                  ""))})
 
 (local default-theme (new nil))
 

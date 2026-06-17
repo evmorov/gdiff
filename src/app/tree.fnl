@@ -54,14 +54,21 @@
 
 (fn node-entries [node]
   (let [entries []]
+    (each [_ file (ipairs node.files)]
+      (table.insert entries file.entry))
     (each [_ dir-name (ipairs node.dir-order)]
       (each [_ entry (ipairs (node-entries (. node.dirs dir-name)))]
         (table.insert entries entry)))
-    (each [_ file (ipairs node.files)]
-      (table.insert entries file.entry))
     entries))
 
 (fn render-node [node depth rows]
+  (each [_ file (ipairs node.files)]
+    (table.insert rows
+                  {:type :file
+                   :depth depth
+                   :entry file.entry
+                   :entry-index file.entry-index
+                   :name (file-name file.entry file.name)}))
   (each [_ dir-name (ipairs node.dir-order)]
     (let [(label child) (compact-dir node dir-name)]
       (table.insert rows
@@ -69,14 +76,7 @@
                      :depth depth
                      :name (.. label "/")
                      :entries (node-entries child)})
-      (render-node child (+ depth 1) rows)))
-  (each [_ file (ipairs node.files)]
-    (table.insert rows
-                  {:type :file
-                   :depth depth
-                   :entry file.entry
-                   :entry-index file.entry-index
-                   :name (file-name file.entry file.name)})))
+      (render-node child (+ depth 1) rows))))
 
 (fn rows [entries]
   (let [root (new-node)

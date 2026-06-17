@@ -24,11 +24,13 @@
   (let [rows (tree.rows [(entry "A" "script/shorthand_branch.sh")
                          (entry "M"
                                 "spec/lib/epoxy/version_branch_validation_spec.rb")
+                         (entry "M" "spec/lib/direct_spec.rb")
                          (entry "M"
                                 "spec/lib/tasks/helpers/commit_validator_spec.rb")])]
     (faith.= [{:type :folder :depth 0 :name "script/"}
               {:type :file :depth 1 :name "shorthand_branch.sh" :entry-index 1}
               {:type :folder :depth 0 :name "spec/lib/"}
+              {:type :file :depth 1 :name "direct_spec.rb" :entry-index 3}
               {:type :folder :depth 1 :name "epoxy/"}
               {:type :file
                :depth 2
@@ -38,7 +40,7 @@
               {:type :file
                :depth 2
                :name "commit_validator_spec.rb"
-               :entry-index 3}] (simple-rows rows))))
+               :entry-index 4}] (simple-rows rows))))
 
 (fn test-selected-row_maps_entry_index_to_tree_row []
   (let [rows (tree.rows [(entry "A" "script/a.sh")
@@ -56,8 +58,8 @@
     (faith.= 2 (tree.move-row rows 1 1))
     (faith.= 5 (tree.move-row rows 4 1))
     (faith.= 4 (tree.move-row rows 5 -1))
-    (faith.= 2 (tree.entry-index-at-row rows 2))
-    (faith.= nil (tree.entry-index-at-row rows 1))))
+    (faith.= 1 (tree.entry-index-at-row rows 1))
+    (faith.= nil (tree.entry-index-at-row rows 2))))
 
 {: test-selected-row_maps_entry_index_to_tree_row
  : test-tree_selection_moves_in_rendered_row_order

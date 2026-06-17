@@ -1,6 +1,5 @@
 (local entry-view (require :app.entry))
-(local preview (require :preview.core))
-(local tree (require :app.tree))
+(local selection (require :app.selection))
 (local tui (require :tui.core))
 
 (local separator " │ ")
@@ -41,7 +40,7 @@
   (let [matches []]
     (when (> (length query) 0)
       (if (= state.view_mode :tree)
-          (each [row-index row (ipairs (tree.rows state.entries))]
+          (each [row-index row (ipairs (selection.tree-rows state))]
             (let [found (tree-match query row-index row)]
               (when found
                 (table.insert matches found))))
@@ -52,9 +51,7 @@
     matches))
 
 (fn cursor-position [state]
-  (if (= state.view_mode :tree)
-      (or state.tree_selected_row 1)
-      state.selected))
+  (selection.cursor-position state))
 
 (fn match-position [found]
   (or found.tree-row found.entry))
@@ -83,17 +80,9 @@
         (set found? true)))
     index))
 
-(fn set-tree-match [state found]
-  (set state.tree_selected_row found.tree-row)
-  (when found.entry
-    (set state.selected found.entry)))
-
 (fn apply-match [state found]
   (when found
-    (if found.tree-row
-        (set-tree-match state found)
-        (set state.selected found.entry))
-    (preview.reset-scroll state)))
+    (selection.set-match state found)))
 
 (fn jump-to [state index]
   (let [search (search state)

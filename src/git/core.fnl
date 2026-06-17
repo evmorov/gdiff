@@ -38,17 +38,49 @@
   (.. "git diff --numstat --find-renames --find-copies "
       (sys.shell-quote revision) " 2>&1"))
 
+(fn trim [s]
+  (or (and s (s:match "^%s*(.-)%s*$")) ""))
+
+(fn insert-unique [items value]
+  (when (and value (< 0 (length value)))
+    (var found? false)
+    (each [_ item (ipairs items)]
+      (when (= item value)
+        (set found? true)))
+    (when (not found?)
+      (table.insert items value))))
+
+(fn rename-target-path [path]
+  (let [(prefix _before after suffix) (path:match "^(.-){(.-) => (.-)}(.*)$")]
+    (if prefix
+        (.. prefix after suffix)
+        (let [target (path:match "^.- => (.-)$")]
+          (and target (trim target))))))
+
+(fn numstat-paths [path]
+  (let [paths []]
+    (insert-unique paths path)
+    (insert-unique paths (rename-target-path path))
+    paths))
+
+(fn add-file-stats [files path additions deletions]
+  (each [_ path (ipairs (numstat-paths path))]
+    (tset files path {:additions additions :deletions deletions})))
+
 (fn parse-numstat [text]
-  (accumulate [stats {:additions 0 :deletions 0} line (string.gmatch (or text
-                                                                         "")
-                                                                     "[^\r\n]+")]
+  (accumulate [stats {:additions 0 :deletions 0 :files {}} line (string.gmatch (or text
+                                                                                   "")
+                                                                               "[^\r\n]+")]
     (let [parts (split-tabs line)
           additions (tonumber (. parts 1))
-          deletions (tonumber (. parts 2))]
+          deletions (tonumber (. parts 2))
+          path (. parts 3)]
       (when additions
         (set stats.additions (+ stats.additions additions)))
       (when deletions
         (set stats.deletions (+ stats.deletions deletions)))
+      (when (and path additions deletions)
+        (add-file-stats stats.files path additions deletions))
       stats)))
 
 (fn revision-exists? [revision]

@@ -42,7 +42,23 @@
   (setup-changed-repo)
   (let [(stats err) (git.diff-stats "HEAD")]
     (faith.= nil err)
-    (faith.= {:additions 2 :deletions 2} stats)))
+    (faith.= 2 stats.additions)
+    (faith.= 2 stats.deletions)
+    (faith.= {:additions 1 :deletions 0} (. stats.files "added.txt"))
+    (faith.= {:additions 1 :deletions 1} (. stats.files "modified.txt"))))
+
+(fn test-diff-stats-indexes_renamed_files_by_new_path []
+  (t.init-repo)
+  (t.mkdir "spec/tardis")
+  (t.write-file "spec/tardis/api_spec.rb" "old\n")
+  (t.commit-all "initial")
+  (t.sh "mkdir -p spec/tardis/api")
+  (t.sh "git mv spec/tardis/api_spec.rb spec/tardis/api/v2_spec.rb")
+  (t.write-file "spec/tardis/api/v2_spec.rb" "old\nnew\n")
+  (let [(stats err) (git.diff-stats "HEAD")]
+    (faith.= nil err)
+    (faith.= {:additions 1 :deletions 0}
+             (. stats.files "spec/tardis/api/v2_spec.rb"))))
 
 (fn test-default-revision-prefers-main []
   (t.init-repo)
@@ -89,5 +105,6 @@
  : test-comparison-revision-expands-single-revision
  : test-comparison-revision-keeps-explicit-range
  : test-diff-entries-reports-working-tree-changes
+ : test-diff-stats-indexes_renamed_files_by_new_path
  : test-diff-stats-reports_total_additions_and_deletions
  : test-linked-pr-url-command-quotes-branch}

@@ -37,6 +37,11 @@
   (accumulate [count 0 _ entry (ipairs entries)]
     (if entry.reviewed (+ count 1) count)))
 
+(fn percentage [part total]
+  (if (<= total 0)
+      0
+      (math.floor (+ 0.5 (* (/ part total) 100)))))
+
 (fn body-row-count [rows]
   (math.max 1 (- rows 4)))
 
@@ -71,7 +76,9 @@
         separator (.. " " (tui.color state.theme :muted symbols.line.separator)
                       " ")
         stats state.diff_stats
-        items [(.. reviewed "/" count " reviewed")]]
+        reviewed-percent (percentage reviewed count)
+        items [(.. reviewed "/" count " files")
+               (.. reviewed-percent "% reviewed")]]
     (when stats
       (table.insert items
                     (.. (tui.color state.theme :status-added

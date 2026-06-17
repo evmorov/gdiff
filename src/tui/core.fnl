@@ -13,12 +13,14 @@
 (local lines-view (require :tui.components.lines))
 (local list-view (require :tui.components.list))
 (local nodes (require :tui.nodes))
+(local pane (require :tui.components.pane))
 (local renderer (require :tui.renderer))
 (local rule-view (require :tui.components.rule))
 (local row-view (require :tui.components.row))
 (local runtime (require :tui.runtime))
 (local scrollbar (require :tui.components.scrollbar))
 (local screen-view (require :tui.components.screen))
+(local split-row-view (require :tui.components.split_row))
 (local split-view (require :tui.components.split))
 (local surface (require :tui.surface))
 (local terminal (require :tui.terminal))
@@ -33,10 +35,12 @@
               :hscroll hscroll
               :lines lines-view
               :list list-view
+              :pane pane
               :rule rule-view
               :row row-view
               :scrollbar scrollbar
               :screen screen-view
+              :split-row split-row-view
               :split split-view}
  :context context.new
  :context-body-rows context.body-rows

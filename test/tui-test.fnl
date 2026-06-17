@@ -46,8 +46,10 @@
   (faith.= :function (type tui.components.list.draw))
   (faith.= :function (type tui.components.lines.draw))
   (faith.= :function (type tui.components.hscroll.thumb))
+  (faith.= :function (type tui.components.pane.window-text))
   (faith.= :function (type tui.components.scrollbar.draw))
   (faith.= :function (type tui.components.screen.draw))
+  (faith.= :function (type tui.components.split-row.line))
   (faith.= :function (type tui.wrap.lines))
   (faith.= tui.components.screen (tui.renderer.component-for {:type :screen}))
   (faith.= :function (type tui.surface.write-at)))
@@ -136,6 +138,25 @@
 
 (fn test-horizontal_text_scrolls_without_inline_indicators []
   (faith.= "cdefgh" (tui.components.split.horizontal-text "abcdefghij" 6 2 4)))
+
+(fn test-pane_content_width_reserves_scrollbar_column []
+  (faith.= 9 (tui.components.pane.content-width 10
+                                                {:offset 0
+                                                 :visible 5
+                                                 :total 10}
+                                                5))
+  (faith.= 10 (tui.components.pane.content-width 10
+                                                 {:offset 0
+                                                  :visible 10
+                                                  :total 10}
+                                                 5)))
+
+(fn test-split_row_composes_panes_and_divider []
+  (let [ctx (tui.context 10 20)
+        row (tui.row "left" false)
+        line (tui.components.split-row.line ctx row "right" nil nil 1 5 8 11 0
+                                            0)]
+    (faith.= "left    │right      " (tui.strip-ansi line))))
 
 (fn test-horizontal_scroll_is_visible_only_for_overflow []
   (faith.= {:offset 2 :visible 6 :total 10}
@@ -238,10 +259,12 @@
  : test-wrap_marks_continued_visual_lines
  : test-layout-names_screen_regions
  : test-parses-terminal-background-response
+ : test-pane_content_width_reserves_scrollbar_column
  : test-render-context-carries-terminal-shape
  : test-renderer-dispatches_registered_components
  : test-screen-builds-declarative-view-tree
  : test-split-component-calculates_widths
+ : test-split_row_composes_panes_and_divider
  : test-scrollbar_only_visible_for_overflow
  : test-scrollbar_thumb_tracks_offset
  : test-search-match-does-not-guess-background

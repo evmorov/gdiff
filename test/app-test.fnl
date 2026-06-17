@@ -20,6 +20,12 @@
     (set state.sync.next_at (+ (os.time) 999))
     state))
 
+(fn flat-state [entries]
+  (let [state (state entries)]
+    (set state.view_mode :flat)
+    (set state.tree_selected_row nil)
+    state))
+
 (fn plain-row-text [row]
   (tui.strip-ansi row.text))
 
@@ -34,9 +40,9 @@
     (faith.= {} (reviews.paths state.entries))))
 
 (fn test-search-next-is-relative-to-current-cursor []
-  (let [state (state [(entry "M" "api/v1.rb")
-                      (entry "M" "api/v2.rb")
-                      (entry "M" "api/v3.rb")])]
+  (let [state (flat-state [(entry "M" "api/v1.rb")
+                           (entry "M" "api/v2.rb")
+                           (entry "M" "api/v3.rb")])]
     (app.handle-key state {} "/")
     (app.handle-key state {} "a")
     (app.handle-key state {} :enter)
@@ -49,18 +55,18 @@
     (faith.= 2 state.selected)))
 
 (fn test-view-renders-renames-with-short-status []
-  (let [state (state [(entry "R" "spec/tardis/api/v2_spec.rb"
-                             "spec/tardis/api_spec.rb")])
+  (let [state (flat-state [(entry "R" "spec/tardis/api/v2_spec.rb"
+                                  "spec/tardis/api_spec.rb")])
         view (app.view state 10 100)]
     (faith.= "> [ ] [R] spec/tardis/api/v2_spec.rb <- spec/tardis/api_spec.rb"
              (plain-row-text (. view.body.left.rows 1)))))
 
 (fn test-backtick_toggles_tree_mode_without_clearing_search []
-  (let [state (state [(entry "A" "script/shorthand_branch.sh")
-                      (entry "M"
-                             "spec/lib/epoxy/version_branch_validation_spec.rb")
-                      (entry "M"
-                             "spec/lib/tasks/helpers/commit_validator_spec.rb")])]
+  (let [state (flat-state [(entry "A" "script/shorthand_branch.sh")
+                           (entry "M"
+                                  "spec/lib/epoxy/version_branch_validation_spec.rb")
+                           (entry "M"
+                                  "spec/lib/tasks/helpers/commit_validator_spec.rb")])]
     (app.handle-key state {} "/")
     (app.handle-key state {} "s")
     (faith.= true state.search.active?)
@@ -74,7 +80,7 @@
     (faith.= "s" state.search.query)))
 
 (fn test-backtick_preserves_selected_file_with_search []
-  (let [state (state [(entry "M" "alpha/file.rb") (entry "M" "z.rb")])]
+  (let [state (flat-state [(entry "M" "alpha/file.rb") (entry "M" "z.rb")])]
     (app.handle-key state {} "/")
     (app.handle-key state {} "a")
     (app.handle-key state {} :enter)
@@ -95,7 +101,6 @@
                              "spec/lib/epoxy/version_branch_validation_spec.rb")
                       (entry "M"
                              "spec/lib/tasks/helpers/commit_validator_spec.rb")])]
-    (app.handle-key state {} "`")
     (let [view (app.view state 12 100)
           rows view.body.left.rows]
       (faith.= "  script/" (plain-row-text (. rows 1)))
@@ -113,7 +118,6 @@
                       (entry "A" "script/shorthand_branch.sh")
                       (entry "M"
                              "spec/lib/epoxy/version_branch_validation_spec.rb")])]
-    (app.handle-key state {} "`")
     (faith.= 1 state.selected)
     (faith.= 1 state.tree_selected_row)
     (app.handle-key state {} "g")
@@ -141,7 +145,6 @@
                              "spec/lib/epoxy/version_branch_validation_spec.rb")
                       (entry "M"
                              "spec/lib/tasks/helpers/commit_validator_spec.rb")])]
-    (app.handle-key state {} "`")
     (faith.= 2 state.tree_selected_row)
     (app.handle-key state {} "j")
     (faith.= 3 state.tree_selected_row)
@@ -156,7 +159,6 @@
   (let [state (state [(entry "A" "script/shorthand_branch.sh")
                       (entry "M"
                              "spec/lib/epoxy/version_branch_validation_spec.rb")])]
-    (app.handle-key state {} "`")
     (app.handle-key state {} "/")
     (app.handle-key state {} "e")
     (app.handle-key state {} "p")
@@ -227,11 +229,11 @@
     (faith.= {:offset 0 :total 5 :visible 2} view.body.left.scroll)))
 
 (fn test-view-keeps_last_file_above_bottom_divider []
-  (let [state (state [(entry "M" "1.rb")
-                      (entry "M" "2.rb")
-                      (entry "M" "3.rb")
-                      (entry "M" "4.rb")
-                      (entry "M" "5.rb")])]
+  (let [state (flat-state [(entry "M" "1.rb")
+                           (entry "M" "2.rb")
+                           (entry "M" "3.rb")
+                           (entry "M" "4.rb")
+                           (entry "M" "5.rb")])]
     (set state.selected 5)
     (let [view (app.view state 6 100)
           rows view.body.left.rows]

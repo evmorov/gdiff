@@ -146,6 +146,12 @@
                                                    :visible 5}
                                                   5 1 "▀")))
 
+(fn test-horizontal_scrollbar_is_composed_into_bottom_rule []
+  (let [body (tui.split (tui.list []) (tui.lines [] nil 0 4) 0.4)
+        line (tui.components.chrome.horizontal-scrollbars "───┴──────"
+                                                          body 10 3)]
+    (faith.= "───┴▀▀▀▀──" line)))
+
 (fn test-scrollbar_only_visible_for_overflow []
   (faith.is (tui.components.scrollbar.visible? {:offset 0 :total 10 :visible 5}
                                                5))
@@ -219,6 +225,7 @@
  : test-header-rule-connects_top_bar_separators
  : test-header-rule-crosses_top_bar_separator_and_body_divider
  : test-horizontal_scrollbar_uses_rule_thumb
+ : test-horizontal_scrollbar_is_composed_into_bottom_rule
  : test-horizontal_scroll_is_visible_only_for_overflow
  : test-horizontal_text_does_not_add_inline_indicators
  : test-horizontal_text_scrolls_without_inline_indicators

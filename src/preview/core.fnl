@@ -75,11 +75,17 @@
   (math.max 0 (- (length (lines state entry)) (row-count state))))
 
 (fn set-scroll [state entry scroll]
-  (set state.preview_scroll (clamp scroll 0 (max-scroll state entry))))
+  (let [before (or state.preview_scroll 0)
+        after (clamp scroll 0 (max-scroll state entry))]
+    (set state.preview_scroll after)
+    (not (= before after))))
 
 (fn set-scroll-for-lines [state lines scroll]
-  (let [max-scroll (math.max 0 (- (length lines) (row-count state)))]
-    (set state.preview_scroll (clamp scroll 0 max-scroll))))
+  (let [before (or state.preview_scroll 0)
+        max-scroll (math.max 0 (- (length lines) (row-count state)))
+        after (clamp scroll 0 max-scroll)]
+    (set state.preview_scroll after)
+    (not (= before after))))
 
 (fn reset-scroll [state]
   (set state.preview_scroll 0)
@@ -96,9 +102,10 @@
   (scroll state entry (- (page-step state))))
 
 (fn scroll-horizontal [state delta]
-  (set state.preview_x_scroll
-       (clamp (+ (or state.preview_x_scroll 0) delta) 0
-              (or state.preview_x_max_scroll 0))))
+  (let [before (or state.preview_x_scroll 0)
+        after (clamp (+ before delta) 0 (or state.preview_x_max_scroll 0))]
+    (set state.preview_x_scroll after)
+    (not (= before after))))
 
 (fn max-line-width [lines]
   (accumulate [width 0 _ line (ipairs (or lines []))]
@@ -133,7 +140,9 @@
 
 {: lines
  : nonblocking-lines
+ : page-step
  : reset-scroll
+ : scroll
  : scroll-info
  : scroll-horizontal
  : scroll-page-down

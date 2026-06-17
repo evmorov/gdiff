@@ -1,5 +1,6 @@
 (local faith (require :faith))
 (local clipboard (require :platform.clipboard))
+(local preview-key (require :preview.key))
 (local reviews (require :storage.reviews))
 (local update (require :app.update))
 
@@ -99,23 +100,44 @@
 
 (fn test-h_l_scroll_preview_horizontally []
   (let [state (state [(entry "M" "a.rb")])]
-    (update.update state {} (update.read-msg state "l"))
+    (let [(_ command) (update.update state {} (update.read-msg state "l"))]
+      (faith.= :function (type command)))
     (faith.= 0 state.preview_x_scroll)
+    (faith.= true state.skip_next_draw?)
     (faith.= 0 state.files_x_scroll)
     (set state.preview_x_max_scroll 12)
     (set state.files_x_max_scroll 20)
     (update.update state {} (update.read-msg state "l"))
     (faith.= 8 state.preview_x_scroll)
+    (faith.= false state.skip_next_draw?)
     (faith.= 0 state.files_x_scroll)
     (update.update state {} (update.read-msg state "l"))
     (faith.= 12 state.preview_x_scroll)
+    (faith.= false state.skip_next_draw?)
     (faith.= 0 state.files_x_scroll)
+    (update.update state {} (update.read-msg state "l"))
+    (faith.= 12 state.preview_x_scroll)
+    (faith.= true state.skip_next_draw?)
     (update.update state {} (update.read-msg state "h"))
     (faith.= 4 state.preview_x_scroll)
+    (faith.= false state.skip_next_draw?)
     (faith.= 0 state.files_x_scroll)
     (update.update state {} (update.read-msg state "h"))
     (faith.= 0 state.preview_x_scroll)
+    (faith.= false state.skip_next_draw?)
+    (update.update state {} (update.read-msg state "h"))
+    (faith.= 0 state.preview_x_scroll)
+    (faith.= true state.skip_next_draw?)
     (faith.= 0 state.files_x_scroll)))
+
+(fn test-preview_page_scroll_sets_skip_draw_when_clamped []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        key (preview-key.for-entry "HEAD" selected)]
+    (set state.preview_rows 2)
+    (tset state.preview_cache key ["1" "2"])
+    (update.update state {} (update.read-msg state "\21"))
+    (faith.= true state.skip_next_draw?)))
 
 (fn test-command-dispatches-back-through-update []
   (let [state (state [(entry "M" "a.rb")])
@@ -159,6 +181,7 @@
  : test-local-refresh_does_not_start_remote_sync
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-open-pr-finished-updates-notice
+ : test-preview_page_scroll_sets_skip_draw_when_clamped
  : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data
  : test-start-command-starts-remote-sync-quietly

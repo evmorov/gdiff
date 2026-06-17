@@ -10,7 +10,12 @@
                             (set program.state.stty-state stty-state)
                             (var running true)
                             (while running
-                              (draw.draw program.view program.state)
+                              (let [skip? (and program.state.skip_next_draw?
+                                               (not program.state.force_next_draw?))]
+                                (set program.state.skip_next_draw? false)
+                                (set program.state.force_next_draw? false)
+                                (when (not skip?)
+                                  (draw.draw program.view program.state)))
                               (set running
                                    (program.update program.state
                                                    (terminal.read-key program.state))))))]

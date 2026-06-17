@@ -143,7 +143,22 @@
   (set state.split_ratio (clamp (+ (or state.split_ratio 0.4) delta) 0.1 0.9)))
 
 (fn scroll-horizontal [state delta]
-  (preview.scroll-horizontal state delta))
+  (let [changed? (preview.scroll-horizontal state delta)]
+    (set state.skip_next_draw? (not changed?))
+    changed?))
+
+(fn scroll-preview [state entry delta]
+  (let [changed? (preview.scroll state entry delta)]
+    (set state.skip_next_draw? (not changed?))
+    changed?))
+
+(fn scroll-preview-page-down [state]
+  (scroll-preview state (selection.selected-entry state)
+                  (preview.page-step state)))
+
+(fn scroll-preview-page-up [state]
+  (scroll-preview state (selection.selected-entry state)
+                  (- (preview.page-step state))))
 
 (fn toggle-tree [state]
   (selection.toggle-mode state)
@@ -155,6 +170,9 @@
   (set state.notice "Syncing remote...")
   (commands.batch (commands.sync-start) (commands.refresh)))
 
+(fn command-or-none [value]
+  (if (= (type value) :function) value commands.none))
+
 (fn update-remote-sync [state]
   (let [running? state.sync.running?]
     (sync.update state.sync)
@@ -164,7 +182,8 @@
         (if sync-notice (set state.notice sync-notice)
             state.show_sync_notice? (set state.notice "Remote in sync"))))
     (when (and running? (not state.sync.running?))
-      (set state.show_sync_notice? false))))
+      (set state.show_sync_notice? false)
+      (set state.force_next_draw? true))))
 
 (local action-handlers
        {:up #(move-selection $1 -1)
@@ -172,9 +191,8 @@
         :open open-selected
         :toggle-reviewed toggle-reviewed
         :toggle-all-reviewed toggle-all-reviewed
-        :preview-down #(preview.scroll-page-down $1
-                                                 (selection.selected-entry $1))
-        :preview-up #(preview.scroll-page-up $1 (selection.selected-entry $1))
+        :preview-down scroll-preview-page-down
+        :preview-up scroll-preview-page-up
         :preview-left #(scroll-horizontal $1 -8)
         :preview-right #(scroll-horizontal $1 8)
         :search search.start
@@ -191,6 +209,7 @@
         :split-right #(move-split $1 0.05)})
 
 (fn update [state config msg]
+  (set state.skip_next_draw? false)
   (let [msg-type (and (= (type msg) :table) msg.type)
         command (case msg-type
                   :quit (do
@@ -226,7 +245,7 @@
                       (set state.pending-key msg.pending-key)
                       (let [handler (. action-handlers msg-type)]
                         (if handler
-                            (or (handler state config) commands.none)
+                            (command-or-none (handler state config))
                             commands.none))))]
     (values state command)))
 
@@ -240,12 +259,12 @@
       state)
 
     (when command
-      (command dispatch get-state))
+      ((command-or-none command) dispatch get-state))
     (while (> (length queue) 0)
       (let [msg (table.remove queue 1)
             (_ next-command) (update state config msg)]
         (when next-command
-          (next-command dispatch get-state)))))
+          ((command-or-none next-command) dispatch get-state)))))
   state)
 
 (fn init [revision entries review-store review-scope src-dir ?diff-stats]
@@ -276,11 +295,14 @@
                :search (search.new-state)
                :sync (sync.new-state revision)
                :show_sync_notice? false
+               :skip_next_draw? false
+               :force_next_draw? false
                :pending-key nil}]
     (selection.set-initial-tree-row state)
     state))
 
 (fn handle-key [state config raw-key]
+  (set state.force_next_draw? false)
   (update-remote-sync state)
   (when (= raw-key :tick)
     (preview-warm.update state.preview_warm state.preview_cache))

@@ -1,183 +1,11 @@
+(local actions (require :app.actions))
+(local command-runner (require :app.command_runner))
 (local commands (require :app.commands))
-(local git (require :git.core))
-(local preview (require :preview.core))
+(local input (require :app.input))
 (local preview-warm (require :preview.warm))
-(local reviews (require :storage.reviews))
 (local search (require :app.search))
-(local selection (require :app.selection))
+(local app-state (require :app.state))
 (local sync (require :git.sync))
-(local theme (require :tui.theme))
-
-(fn clamp [n low high]
-  (math.max low (math.min high n)))
-
-(fn reviewed-count [entries]
-  (accumulate [count 0 _ entry (ipairs entries)]
-    (if entry.reviewed (+ count 1) count)))
-
-(fn event-key [key]
-  (case key
-    :up :up
-    :down :down
-    :enter :open
-    :quit :quit
-    :tick :tick
-    "k" :up
-    "j" :down
-    "h" :preview-left
-    "l" :preview-right
-    "o" :open
-    " " :toggle-reviewed
-    "a" :toggle-all-reviewed
-    "\4" :preview-down
-    "\21" :preview-up
-    "/" :search
-    "n" :search-next
-    "N" :search-previous
-    "r" :refresh
-    "w" :toggle-wrap
-    "`" :toggle-tree
-    "y" :copy-path
-    "p" :open-pr
-    "<" :split-left
-    ">" :split-right
-    "G" :bottom
-    "q" :clear-search
-    _ key))
-
-(fn next-key [?pending-key key]
-  (let [key (event-key key)]
-    (if (and (= ?pending-key "g") (= key "g")) (values nil :top)
-        (= key "g") (values "g" nil)
-        (values nil key))))
-
-(fn read-msg [state raw-key]
-  (let [(pending-key action) (next-key state.pending-key raw-key)]
-    (if (= raw-key :quit) {:type :quit}
-        (= action :toggle-tree) {:type :toggle-tree :pending-key pending-key}
-        (search.active? state) {:type :search-input :key raw-key}
-        action {:type action :pending-key pending-key}
-        {:type :pending-key :pending-key pending-key})))
-
-(fn move-selection [state delta]
-  (selection.move state delta))
-
-(fn set-notice [state action path]
-  (set state.notice (.. action ": " path)))
-
-(fn reviewed-action [entry]
-  (if entry.reviewed "Marked reviewed" "Unmarked reviewed"))
-
-(fn all-reviewed? [entries]
-  (let [count (length entries)]
-    (and (< 0 count)
-         (= count
-            (accumulate [reviewed 0 _ entry (ipairs entries)]
-              (if entry.reviewed (+ reviewed 1) reviewed))))))
-
-(fn toggle-folder-reviewed [state row]
-  (let [entries (or row.entries [])
-        review? (not (all-reviewed? entries))]
-    (each [_ entry (ipairs entries)]
-      (set entry.reviewed review?))
-    (set-notice state (if review?
-                          "Marked folder reviewed"
-                          "Unmarked folder reviewed")
-                row.name)))
-
-(fn toggle-reviewed [state]
-  (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))
-        entry (selection.selected-entry state)]
-    (if (and row (= row.type :folder))
-        (toggle-folder-reviewed state row)
-        entry
-        (do
-          (set entry.reviewed (not entry.reviewed))
-          (set-notice state (reviewed-action entry) entry.path))))
-  (commands.persist-reviewed))
-
-(fn toggle-all-reviewed [state]
-  (let [entries state.entries
-        reviewed (reviewed-count entries)
-        review? (< reviewed (length entries))]
-    (each [_ entry (ipairs entries)]
-      (set entry.reviewed review?))
-    (set state.notice (if review?
-                          "Marked all reviewed"
-                          "Unmarked all reviewed"))
-    (commands.persist-reviewed)))
-
-(fn jump-top [state]
-  (selection.top state))
-
-(fn jump-bottom [state]
-  (selection.bottom state))
-
-(fn cache-selected-preview [state]
-  (preview.lines state (selection.selected-entry state))
-  state)
-
-(fn apply-refresh [state entries reviewed diff-stats]
-  (set state.entries (reviews.apply entries reviewed))
-  (set state.diff_stats diff-stats)
-  (preview.reset-scroll state)
-  (move-selection state 0)
-  (cache-selected-preview state)
-  (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed)))
-
-(fn open-selected [state config]
-  (let [entry (selection.selected-entry state)]
-    (when entry
-      (set-notice state "Opening" entry.path)
-      (commands.open-editor config entry))))
-
-(fn copy-selected-path [state]
-  (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))
-        entry (selection.selected-entry state)
-        path (if (and row (= row.type :folder))
-                 (.. row.path "/")
-                 (and entry entry.path))]
-    (when path
-      (commands.copy-path path))))
-
-(fn move-split [state delta]
-  (set state.split_ratio (clamp (+ (or state.split_ratio 0.4) delta) 0.1 0.9)))
-
-(fn scroll-horizontal [state delta]
-  (let [changed? (preview.scroll-horizontal state delta)]
-    (set state.skip_next_draw? (not changed?))
-    changed?))
-
-(fn scroll-preview [state entry delta]
-  (let [changed? (preview.scroll state entry delta)]
-    (set state.skip_next_draw? (not changed?))
-    changed?))
-
-(fn scroll-preview-page-down [state]
-  (scroll-preview state (selection.selected-entry state)
-                  (preview.page-step state)))
-
-(fn scroll-preview-page-up [state]
-  (scroll-preview state (selection.selected-entry state)
-                  (- (preview.page-step state))))
-
-(fn toggle-wrap [state]
-  (set state.preview_wrap? (not state.preview_wrap?))
-  (set state.preview_x_scroll 0)
-  (set state.preview_x_max_scroll 0))
-
-(fn toggle-tree [state]
-  (selection.toggle-mode state)
-  (when (search.has-query? state)
-    (search.rebuild state true)))
-
-(fn refresh-and-sync [state]
-  (set state.show_sync_notice? true)
-  (set state.notice "Syncing remote...")
-  (commands.batch (commands.sync-start) (commands.refresh)))
-
-(fn command-or-none [value]
-  (if (= (type value) :function) value commands.none))
 
 (fn update-remote-sync [state]
   (let [running? state.sync.running?]
@@ -190,30 +18,6 @@
     (when (and running? (not state.sync.running?))
       (set state.show_sync_notice? false)
       (set state.force_next_draw? true))))
-
-(local action-handlers
-       {:up #(move-selection $1 -1)
-        :down #(move-selection $1 1)
-        :open open-selected
-        :toggle-reviewed toggle-reviewed
-        :toggle-all-reviewed toggle-all-reviewed
-        :preview-down scroll-preview-page-down
-        :preview-up scroll-preview-page-up
-        :preview-left #(scroll-horizontal $1 -8)
-        :preview-right #(scroll-horizontal $1 8)
-        :search search.start
-        :search-next search.next
-        :search-previous search.previous
-        :clear-search search.clear
-        :top jump-top
-        :bottom jump-bottom
-        :toggle-wrap toggle-wrap
-        :toggle-tree toggle-tree
-        :refresh refresh-and-sync
-        :copy-path copy-selected-path
-        :open-pr commands.open-linked-pr
-        :split-left #(move-split $1 -0.05)
-        :split-right #(move-split $1 0.05)})
 
 (fn update [state config msg]
   (set state.skip_next_draw? false)
@@ -234,11 +38,11 @@
                                                 "Could not save reviewed marks")
                                            commands.none)
                   :copy-path-finished (do
-                                        (set-notice state
-                                                    (if msg.ok?
-                                                        "Copied"
-                                                        "Copy failed")
-                                                    msg.path)
+                                        (actions.set-notice state
+                                                            (if msg.ok?
+                                                                "Copied"
+                                                                "Copy failed")
+                                                            msg.path)
                                         commands.none)
                   :open-pr-finished (do
                                       (set state.notice
@@ -246,90 +50,44 @@
                                                (.. "Opened PR: " msg.url)
                                                (or msg.error "No linked PR")))
                                       commands.none)
-                  :refresh-loaded (apply-refresh state msg.entries msg.reviewed
-                                                 msg.diff_stats)
+                  :refresh-loaded (actions.apply-refresh state msg.entries
+                                                         msg.reviewed
+                                                         msg.diff_stats)
                   _ (do
                       (set state.pending-key msg.pending-key)
-                      (let [handler (. action-handlers msg-type)]
-                        (if handler
-                            (command-or-none (handler state config))
-                            commands.none))))]
+                      (command-runner.command-or-none (actions.handle state
+                                                                      config
+                                                                      msg-type))))]
     (values state command)))
 
 (fn run-command [state config command]
-  (let [queue []]
-    (fn dispatch [msg]
-      (when msg
-        (table.insert queue msg)))
-
-    (fn get-state []
-      state)
-
-    (when command
-      ((command-or-none command) dispatch get-state))
-    (while (> (length queue) 0)
-      (let [msg (table.remove queue 1)
-            (_ next-command) (update state config msg)]
-        (when next-command
-          ((command-or-none next-command) dispatch get-state)))))
-  state)
+  (command-runner.run state config update command))
 
 (fn init [revision entries review-store review-scope src-dir ?diff-stats]
-  (let [selected 1
-        state {:revision revision
-               :src_dir src-dir
-               :revision_label (git.comparison-label revision)
-               :entries entries
-               :diff_stats ?diff-stats
-               :quit? false
-               :selected selected
-               :preview_scroll 0
-               :preview_x_scroll 0
-               :preview_x_max_scroll 0
-               :files_x_scroll 0
-               :files_x_max_scroll 0
-               :preview_rows 1
-               :preview_total 0
-               :preview_wrap? true
-               :split_ratio 0.4
-               :view_mode :tree
-               :tree_selected_row nil
-               :theme theme.default
-               :preview_cache {}
-               :preview_context (git.preview-context)
-               :preview_warm (preview-warm.new-state)
-               :review_store review-store
-               :review_scope review-scope
-               :search (search.new-state)
-               :sync (sync.new-state revision)
-               :show_sync_notice? false
-               :skip_next_draw? false
-               :force_next_draw? false
-               :pending-key nil}]
-    (selection.set-initial-tree-row state)
-    state))
+  (app-state.init revision entries review-store review-scope src-dir
+                  ?diff-stats))
 
 (fn handle-key [state config raw-key]
   (set state.force_next_draw? false)
   (update-remote-sync state)
   (when (= raw-key :tick)
     (preview-warm.update state.preview_warm state.preview_cache))
-  (let [(_ command) (update state config (read-msg state raw-key))]
+  (let [(_ command) (update state config (input.read-msg state raw-key))]
     (run-command state config command))
   (not state.quit?))
 
 (fn start-command [state]
-  (cache-selected-preview state)
+  (actions.cache-selected-preview state)
   (commands.batch (commands.warm-preview-cache) (commands.sync-start)))
 
 (fn start [state]
   (run-command state {} (start-command state)))
 
-{: cache-selected-preview
+{:cache-selected-preview actions.cache-selected-preview
  : handle-key
  : init
  :new-state init
- : read-msg
+ :read-msg input.read-msg
  : run-command
  : start
  : start-command

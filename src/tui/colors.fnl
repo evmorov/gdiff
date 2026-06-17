@@ -1,5 +1,4 @@
-(fn clamp [n low high]
-  (math.max low (math.min high n)))
+(local math-util (require :util.math))
 
 (fn round [n]
   (math.floor (+ n 0.5)))
@@ -22,7 +21,7 @@
   (/ (+ (* rgb.r 0.2126) (* rgb.g 0.7152) (* rgb.b 0.0722)) 255))
 
 (fn mix-channel [channel target amount]
-  (clamp (round (+ channel (* (- target channel) amount))) 0 255))
+  (math-util.clamp (round (+ channel (* (- target channel) amount))) 0 255))
 
 (fn nearby-background [rgb ?amount]
   (when rgb

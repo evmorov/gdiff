@@ -6,6 +6,7 @@
 (local body (require :tui.components.body))
 (local chrome (require :tui.components.chrome))
 (local footer-view (require :tui.components.footer))
+(local footer-layout (require :tui.components.footer_layout))
 (local frame (require :tui.frame))
 (local header-view (require :tui.components.header))
 (local hscroll (require :tui.components.hscroll))
@@ -31,6 +32,7 @@
  :components {:body body
               :chrome chrome
               :footer footer-view
+              :footer-layout footer-layout
               :header header-view
               :hscroll hscroll
               :lines lines-view

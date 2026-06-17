@@ -1,0 +1,12 @@
+(fn set-fields [target & assignments]
+  (assert target "expected target table")
+  (assert (< 0 (length assignments)) "expected field assignments")
+  (let [forms []]
+    (each [_ assignment (ipairs assignments)]
+      (assert (= 2 (length assignment)) "expected [field value]")
+      (table.insert forms
+                    `(set (. ,target ,(. assignment 1)) ,(. assignment 2))))
+    `(do
+       ,(unpack forms))))
+
+{: set-fields}

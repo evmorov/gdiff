@@ -1,12 +1,23 @@
+(fn field-pairs [fields]
+  (if (= :table (type (. fields 1)))
+      fields
+      (do
+        (assert (= 0 (% (length fields) 2)) "expected field key/value pairs")
+        (let [pairs []]
+          (for [i 1 (length fields) 2]
+            (table.insert pairs [(. fields i) (. fields (+ i 1))]))
+          pairs))))
+
 (fn defnode [name args node-type & fields]
   (assert name "expected node constructor name")
   (assert args "expected node constructor arguments")
   (assert node-type "expected node type")
-  (assert (= 0 (% (length fields) 2)) "expected field key/value pairs")
   (let [node (gensym "node")
-        setters []]
-    (for [i 1 (length fields) 2]
-      (table.insert setters `(tset ,node ,(. fields i) ,(. fields (+ i 1)))))
+        setters []
+        fields (field-pairs fields)]
+    (each [_ field (ipairs fields)]
+      (assert (= 2 (length field)) "expected [field value]")
+      (table.insert setters `(tset ,node ,(. field 1) ,(. field 2))))
     `(fn ,name
        ,args
        (let [,node {:type ,node-type}]

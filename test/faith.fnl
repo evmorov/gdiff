@@ -121,8 +121,8 @@
   (or (= x y) (and (= (type x) :table (type y)) (table= x y equal?))))
 
 (fn diff-report [expv gotv]
-  (let [exp-file (os.tmpname "faithdiff1")
-        got-file (os.tmpname "faithdiff2")]
+  (let [exp-file (os.tmpname)
+        got-file (os.tmpname)]
     (with-open [f (io.open exp-file :w)]
       (f:write expv))
     (with-open [f (io.open got-file :w)]

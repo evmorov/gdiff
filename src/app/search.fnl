@@ -1,8 +1,8 @@
-(local entry-view (require :app.entry))
+(local matcher (require :app.search_match))
+(local nav (require :app.search_nav))
 (local selection (require :app.selection))
+(local search-status (require :app.search_status))
 (local tui (require :tui.core))
-
-(local separator " │ ")
 
 (fn new-state []
   {:active? false :query "" :matches [] :index 0})
@@ -19,66 +19,14 @@
 (fn has-query? [state]
   (> (length (query state)) 0))
 
-(fn contains? [text query]
-  (let [plain (tui.strip-ansi text)]
-    (not (= nil (plain:find query 1 true)))))
-
-(fn path-match [query entry-index entry]
-  (if (contains? (entry-view.path-text entry) query)
-      {:entry entry-index}))
-
-(fn tree-label [row]
-  (if (= row.type :folder)
-      row.name
-      (or row.name (entry-view.path-text row.entry))))
-
-(fn tree-match [query row-index row]
-  (if (contains? (tree-label row) query)
-      {:tree-row row-index :entry row.entry-index}))
-
-(fn collect-matches [state query]
-  (let [matches []]
-    (when (> (length query) 0)
-      (if (= state.view_mode :tree)
-          (each [row-index row (ipairs (selection.tree-rows state))]
-            (let [found (tree-match query row-index row)]
-              (when found
-                (table.insert matches found))))
-          (each [entry-index entry (ipairs state.entries)]
-            (let [found (path-match query entry-index entry)]
-              (when found
-                (table.insert matches found))))))
-    matches))
-
 (fn cursor-position [state]
   (selection.cursor-position state))
 
-(fn match-position [found]
-  (or found.tree-row found.entry))
-
 (fn set-status [state]
-  (let [search (search state)
-        count (length search.matches)]
-    (set state.notice
-         (if search.active?
-             (.. "/" search.query separator count " match"
-                 (if (= count 1) "" "es") separator "enter finish" separator
-                 "esc clear")
-             (and (> (length search.query) 0)
-                  (if (= count 0)
-                      (.. "No matches for '" search.query "'")
-                      (.. "Search: " search.index "/" count " " search.query
-                          separator "n/N next/prev" separator "q clear")))))))
+  (set state.notice (search-status.notice (search state))))
 
 (fn first-index [state matches]
-  (let [cursor (cursor-position state)]
-    (var index 1)
-    (var found? false)
-    (each [i found (ipairs matches)]
-      (when (and (not found?) (>= (match-position found) cursor))
-        (set index i)
-        (set found? true)))
-    index))
+  (nav.first-at-or-after (cursor-position state) matches))
 
 (fn apply-match [state found]
   (when found
@@ -96,30 +44,14 @@
     (set-status state)))
 
 (fn next-index-from-selection [state matches]
-  (let [cursor (cursor-position state)]
-    (var index 1)
-    (var found? false)
-    (each [i found (ipairs matches)]
-      (when (and (not found?) (> (match-position found) cursor))
-        (set index i)
-        (set found? true)))
-    index))
+  (nav.first-after (cursor-position state) matches))
 
 (fn previous-index-from-selection [state matches]
-  (let [count (length matches)
-        cursor (cursor-position state)]
-    (var index count)
-    (var found? false)
-    (for [i count 1 -1]
-      (let [found (. matches i)]
-        (when (and found (not found?) (< (match-position found) cursor))
-          (set index i)
-          (set found? true))))
-    index))
+  (nav.last-before (cursor-position state) matches))
 
 (fn rebuild [state ?preserve-selection?]
   (let [search (search state)
-        matches (collect-matches state search.query)]
+        matches (matcher.collect-matches state search.query)]
     (set search.matches matches)
     (set search.index 0)
     (if ?preserve-selection?
@@ -202,13 +134,7 @@
       text))
 
 (fn status [state]
-  (let [search (search state)]
-    (if search.active?
-        (let [count (length search.matches)]
-          (.. "/" search.query separator count " match"
-              (if (= count 1) "" "es") separator "enter finish" separator
-              "esc clear"))
-        nil)))
+  (search-status.prompt (search state)))
 
 {: active?
  : clear

@@ -2,13 +2,11 @@
 (local search (require :app.search))
 (local selection (require :app.selection))
 (local tui (require :tui.core))
-
-(fn clamp [n low high]
-  (math.max low (math.min high n)))
+(local math-util (require :util.math))
 
 (fn viewport [selected count visible]
-  (let [top (clamp (- selected (math.floor (/ visible 2))) 1
-                   (math.max 1 (- count visible -1)))
+  (let [top (math-util.clamp (- selected (math.floor (/ visible 2))) 1
+                             (math.max 1 (- count visible -1)))
         bottom (math.min count (+ top visible -1))]
     (values top bottom)))
 

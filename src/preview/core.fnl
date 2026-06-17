@@ -1,60 +1,29 @@
 (local git (require :git.core))
 (local assets (require :preview.assets))
+(local format (require :preview.format))
 (local preview-key (require :preview.key))
 (local sys (require :platform.core))
 (local tui (require :tui.core))
+(local math-util (require :util.math))
 
-(fn clamp [n low high]
-  (math.max low (math.min high n)))
-
-(fn line-color [line]
-  (let [first (line:sub 1 1)]
-    (if (or (line:match "^diff ") (line:match "^index ")
-            (line:match "^%-%-%- ") (line:match "^%+%+%+ "))
-        :muted
-        (= first "+")
-        :status-added
-        (= first "-")
-        :status-deleted
-        (= first "@")
-        :status-renamed
-        nil)))
-
-(fn color-line [state line]
-  (let [line (or line "")
-        color (line-color line)]
-    (if color
-        (tui.color state.theme color line)
-        line)))
-
-(fn lines-from-output [state output filtered?]
-  (let [lines (icollect [line (string.gmatch (or output "") "[^\r\n]+")]
-                (if filtered?
-                    line
-                    (color-line state line)))]
-    (if (> (length lines) 0)
-        lines
-        [(tui.color state.theme :muted "No preview for this file.")])))
-
-(fn asset-lines [state entry]
-  [(tui.color state.theme :muted (.. "Asset preview skipped: " entry.path))])
+(import-macros {: set-fields} :state.macros)
 
 (fn lines [state entry]
   (if (not entry)
-      [(tui.color state.theme :muted "No file selected.")]
+      (format.no-selection state)
       (let [key (preview-key.for-entry state.revision entry)
             cached (. state.preview_cache key)]
         (if cached
             cached
             (assets.asset? entry)
-            (let [lines (asset-lines state entry)]
+            (let [lines (format.asset state entry)]
               (tset state.preview_cache key lines)
               lines)
             (let [(output ok filtered?) (git.preview-output state.preview_context
                                                             state.revision entry)
                   lines (if ok
-                            (lines-from-output state output filtered?)
-                            [(tui.color state.theme :warning (sys.trim output))])]
+                            (format.output-lines state output filtered?)
+                            (format.warning state (sys.trim output)))]
               (tset state.preview_cache key lines)
               lines)))))
 
@@ -62,11 +31,11 @@
   (and state.preview_warm state.preview_warm.dir))
 
 (fn loading-lines [state]
-  [(tui.color state.theme :muted "Loading preview...")])
+  (format.loading state))
 
 (fn nonblocking-lines [state entry]
   (if (not entry)
-      [(tui.color state.theme :muted "No file selected.")]
+      (format.no-selection state)
       (let [key (preview-key.for-entry state.revision entry)
             cached (. state.preview_cache key)]
         (if cached cached
@@ -84,21 +53,20 @@
 
 (fn set-scroll [state entry scroll]
   (let [before (or state.preview_scroll 0)
-        after (clamp scroll 0 (max-scroll state entry))]
+        after (math-util.clamp scroll 0 (max-scroll state entry))]
     (set state.preview_scroll after)
     (not (= before after))))
 
 (fn set-scroll-for-lines [state lines scroll]
   (let [before (or state.preview_scroll 0)
         max-scroll (math.max 0 (- (length lines) (row-count state)))
-        after (clamp scroll 0 max-scroll)]
+        after (math-util.clamp scroll 0 max-scroll)]
     (set state.preview_scroll after)
     (not (= before after))))
 
 (fn reset-scroll [state]
-  (set state.preview_scroll 0)
-  (set state.preview_x_scroll 0)
-  (set state.preview_x_max_scroll 0))
+  (set-fields state [:preview_scroll 0] [:preview_x_scroll 0]
+              [:preview_x_max_scroll 0]))
 
 (fn scroll [state entry delta]
   (set-scroll state entry (+ (or state.preview_scroll 0) delta)))
@@ -111,7 +79,8 @@
 
 (fn scroll-horizontal [state delta]
   (let [before (or state.preview_x_scroll 0)
-        after (clamp (+ before delta) 0 (or state.preview_x_max_scroll 0))]
+        after (math-util.clamp (+ before delta) 0
+                               (or state.preview_x_max_scroll 0))]
     (set state.preview_x_scroll after)
     (not (= before after))))
 
@@ -121,17 +90,16 @@
 
 (fn set-horizontal-scroll-limit [state lines width]
   (let [max-scroll (math.max 0 (- (max-line-width lines) (math.max 0 width)))]
-    (set state.preview_x_max_scroll max-scroll)
-    (set state.preview_x_scroll
-         (clamp (or state.preview_x_scroll 0) 0 max-scroll))))
+    (set-fields state [:preview_x_max_scroll max-scroll]
+                [:preview_x_scroll
+                 (math-util.clamp (or state.preview_x_scroll 0) 0 max-scroll)])))
 
 (fn visible-lines [state entry visible ?opts]
   (let [visible (math.max 1 visible)
         lines (if (and ?opts ?opts.nonblocking?)
                   (nonblocking-lines state entry)
                   (lines state entry))]
-    (set state.preview_rows visible)
-    (set state.preview_total (length lines))
+    (set-fields state [:preview_rows visible] [:preview_total (length lines)])
     (set-scroll-for-lines state lines (or state.preview_scroll 0))
     (let [first (+ state.preview_scroll 1)
           last (math.min (length lines) (+ state.preview_scroll visible))]

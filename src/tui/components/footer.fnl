@@ -1,65 +1,17 @@
 (local ansi (require :tui.ansi))
+(local footer-layout (require :tui.components.footer_layout))
+(local footer-text (require :tui.components.footer_text))
 (local layout (require :tui.layout))
-(local rule (require :tui.components.rule))
 (local symbols (require :tui.symbols))
 (local surface (require :tui.surface))
 (local theme (require :tui.theme))
 
-(fn right-text [right cols]
-  (when right
-    (ansi.truncate right (math.max 0 (- cols 2)))))
-
-(fn right-col [cols right]
-  (when right
-    (let [right (right-text right cols)]
-      (math.max 1 (- cols (ansi.visible-length right) 1)))))
-
-(fn left-width [cols right]
-  (if right
-      (math.max 0 (- cols (ansi.visible-length (right-text right cols)) 3))
-      cols))
-
-(fn rule-cols [cols left right]
-  (when (or left right)
-    (let [cols* {}
-          left (when left (ansi.truncate left (left-width cols right)))
-          right (right-text right cols)
-          right-col* (right-col cols right)]
-      (each [col _ (pairs (rule.separator-cols left 1))]
-        (tset cols* col true))
-      (when right-col*
-        (tset cols* right-col* true)
-        (each [col _ (pairs (rule.separator-cols right (+ right-col* 2)))]
-          (tset cols* col true)))
-      cols*)))
-
-(fn text-style [ctx footer text]
-  (case footer.type
-    :warning (theme.color ctx.theme :warning text)
-    :notice (theme.color ctx.theme :notice text)
-    :prompt (theme.color ctx.theme :notice text)
-    _ text))
-
-(fn styled-text [ctx footer text]
-  (var out "")
-  (var chunk "")
-
-  (fn flush-chunk []
-    (when (> (length chunk) 0)
-      (set out (.. out (text-style ctx footer chunk)))
-      (set chunk "")))
-
-  (var i 1)
-  (while (<= i (length text))
-    (let [(ch next-i) (ansi.next-char text i)]
-      (if (= ch symbols.line.separator)
-          (do
-            (flush-chunk)
-            (set out (.. out (theme.color ctx.theme :muted ch))))
-          (set chunk (.. chunk ch)))
-      (set i next-i)))
-  (flush-chunk)
-  out)
+(local left-width footer-layout.left-width)
+(local right-col footer-layout.right-col)
+(local right-text footer-layout.right-text)
+(local rule-cols footer-layout.rule-cols)
+(local styled-text footer-text.styled)
+(local text-style footer-text.text-style)
 
 (fn draw-right [ctx right]
   (when right

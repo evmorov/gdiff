@@ -1,3 +1,5 @@
+(local math-util (require :util.math))
+
 (fn path-parts [path]
   (let [parts []]
     (each [part (string.gmatch (or path "") "[^/]+")]
@@ -99,9 +101,6 @@
       (set found index)))
   (or found 1))
 
-(fn clamp [n low high]
-  (math.max low (math.min high n)))
-
 (fn row-at [rows row-index]
   (. rows row-index))
 
@@ -114,7 +113,7 @@
   (let [count (length rows)]
     (if (= count 0)
         1
-        (clamp (+ (or selected-row 1) delta) 1 count))))
+        (math-util.clamp (+ (or selected-row 1) delta) 1 count))))
 
 (fn first-row [_rows]
   1)

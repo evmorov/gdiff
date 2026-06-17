@@ -1,10 +1,8 @@
 (local preview (require :preview.core))
 (local selection (require :app.selection))
 (local tui (require :tui.core))
+(local math-util (require :util.math))
 (local wrap (require :tui.wrap))
-
-(fn clamp [n low high]
-  (math.max low (math.min high n)))
 
 (fn content-width [state cols scroll?]
   (let [(_left-cols right-cols) (tui.components.split.widths cols
@@ -37,7 +35,8 @@
   (set state.preview_rows visible)
   (set state.preview_total (length lines))
   (let [max-scroll (math.max 0 (- (length lines) visible))]
-    (set state.preview_scroll (clamp (or state.preview_scroll 0) 0 max-scroll))))
+    (set state.preview_scroll
+         (math-util.clamp (or state.preview_scroll 0) 0 max-scroll))))
 
 (fn visible-lines [state lines visible]
   (let [first (+ (or state.preview_scroll 0) 1)

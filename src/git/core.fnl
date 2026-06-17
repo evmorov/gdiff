@@ -1,87 +1,9 @@
+(local commands (require :git.commands))
+(local parse (require :git.parse))
 (local sys (require :platform.core))
 
-(fn split-tabs [line]
-  (icollect [part (string.gmatch line "([^\t]+)")]
-    part))
-
-(fn entry [status path ?old-path]
-  {:status status
-   :kind (status:sub 1 1)
-   :path path
-   :old_path ?old-path
-   :reviewed false})
-
-(fn entry-from-name-status-line [line]
-  (let [parts (split-tabs line)
-        status (. parts 1)
-        kind (and status (status:sub 1 1))
-        path (. parts 2)
-        new-path (. parts 3)
-        path-entry #(entry status path)]
-    (case kind
-      "A" (path-entry)
-      "M" (path-entry)
-      "D" (path-entry)
-      "R" (entry "R" new-path path)
-      "C" (entry "R" new-path path)
-      _ nil)))
-
-(fn parse-name-status [text]
-  (icollect [line (string.gmatch (or text "") "[^\r\n]+")]
-    (entry-from-name-status-line line)))
-
-(fn diff-command [revision]
-  (.. "git diff --name-status --find-renames --find-copies "
-      (sys.shell-quote revision) " 2>&1"))
-
-(fn diff-stats-command [revision]
-  (.. "git diff --numstat --find-renames --find-copies "
-      (sys.shell-quote revision) " 2>&1"))
-
-(fn trim [s]
-  (or (and s (s:match "^%s*(.-)%s*$")) ""))
-
-(fn insert-unique [items value]
-  (when (and value (< 0 (length value)))
-    (var found? false)
-    (each [_ item (ipairs items)]
-      (when (= item value)
-        (set found? true)))
-    (when (not found?)
-      (table.insert items value))))
-
-(fn rename-target-path [path]
-  (let [(prefix _before after suffix) (path:match "^(.-){(.-) => (.-)}(.*)$")]
-    (if prefix
-        (.. prefix after suffix)
-        (let [target (path:match "^.- => (.-)$")]
-          (and target (trim target))))))
-
-(fn numstat-paths [path]
-  (let [paths []]
-    (insert-unique paths path)
-    (insert-unique paths (rename-target-path path))
-    paths))
-
-(fn add-file-stats [files path additions deletions]
-  (each [_ path (ipairs (numstat-paths path))]
-    (tset files path {:additions additions :deletions deletions})))
-
-(fn parse-numstat [text]
-  (accumulate [stats {:additions 0 :deletions 0 :files {}} line (string.gmatch (or text
-                                                                                   "")
-                                                                               "[^\r\n]+")]
-    (let [parts (split-tabs line)
-          additions (tonumber (. parts 1))
-          deletions (tonumber (. parts 2))
-          path (. parts 3)]
-      (when additions
-        (set stats.additions (+ stats.additions additions)))
-      (when deletions
-        (set stats.deletions (+ stats.deletions deletions)))
-      (when (and path additions deletions)
-        (add-file-stats stats.files path additions deletions))
-      stats)))
+(local diff-stats-command commands.diff-stats-command)
+(local linked-pr-url-command commands.linked-pr-url-command)
 
 (fn revision-exists? [revision]
   (let [cmd (.. "git rev-parse --verify --quiet "
@@ -131,10 +53,6 @@
         right
         current-branch)))
 
-(fn linked-pr-url-command [branch]
-  (.. "gh pr view " (sys.shell-quote branch)
-      " --json url --jq .url 2>/dev/null"))
-
 (fn linked-pr-url [revision]
   (let [branch (comparison-right revision)]
     (if (= branch "HEAD")
@@ -145,42 +63,31 @@
               (values url nil)
               (values nil (.. "No linked PR for " branch)))))))
 
-(fn preview-command [revision entry color]
-  (.. "git diff --no-ext-diff --color=" color " --find-renames --find-copies "
-      (sys.shell-quote revision) " -- " (sys.shell-quote entry.path)))
-
-(fn plain-preview-command [revision entry]
-  (.. (preview-command revision entry "never") " 2>&1"))
-
-(fn filtered-preview-command [revision entry filter]
-  (.. (preview-command revision entry "always") " 2>/dev/null | " filter
-      " 2>/dev/null"))
-
 (fn diff-entries [revision]
-  (let [(output ok _kind _code) (sys.read-command (diff-command revision))]
+  (let [(output ok _kind _code) (sys.read-command (commands.diff-command revision))]
     (if ok
-        (values (parse-name-status output) nil)
+        (values (parse.parse-name-status output) nil)
         (values nil (sys.trim output)))))
 
 (fn diff-stats [revision]
-  (let [(output ok _kind _code) (sys.read-command (diff-stats-command revision))]
+  (let [(output ok _kind _code) (sys.read-command (commands.diff-stats-command revision))]
     (if ok
-        (values (parse-numstat output) nil)
+        (values (parse.parse-numstat output) nil)
         (values nil (sys.trim output)))))
 
 (fn preview-output [context revision entry]
   (let [filter context.diff-filter]
     (if filter
-        (let [(output ok _kind _code) (sys.read-command (filtered-preview-command revision
-                                                                                  entry
-                                                                                  filter))]
+        (let [(output ok _kind _code) (sys.read-command (commands.filtered-preview-command revision
+                                                                                           entry
+                                                                                           filter))]
           (if ok
               (values output true true)
-              (let [(output ok _kind _code) (sys.read-command (plain-preview-command revision
-                                                                                     entry))]
+              (let [(output ok _kind _code) (sys.read-command (commands.plain-preview-command revision
+                                                                                              entry))]
                 (values output ok false))))
-        (let [(output ok _kind _code) (sys.read-command (plain-preview-command revision
-                                                                               entry))]
+        (let [(output ok _kind _code) (sys.read-command (commands.plain-preview-command revision
+                                                                                        entry))]
           (values output ok false)))))
 
 (fn repo-root []

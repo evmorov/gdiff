@@ -158,6 +158,16 @@
                                             0)]
     (faith.= "left    │right      " (tui.strip-ansi line))))
 
+(fn test-split_row_measure_reserves_scrollbar_column []
+  (faith.= {:content-cols 9 :scroll? true}
+           (tui.components.split-row.pane-measure 10
+                                                  {:offset 0
+                                                   :visible 5
+                                                   :total 10}
+                                                  5))
+  (faith.= {:content-cols 10 :scroll? nil}
+           (tui.components.split-row.pane-measure 10 nil 5)))
+
 (fn test-horizontal_scroll_is_visible_only_for_overflow []
   (faith.= {:offset 2 :visible 6 :total 10}
            (tui.components.hscroll.scroll 2 4 6))
@@ -265,6 +275,7 @@
  : test-screen-builds-declarative-view-tree
  : test-split-component-calculates_widths
  : test-split_row_composes_panes_and_divider
+ : test-split_row_measure_reserves_scrollbar_column
  : test-scrollbar_only_visible_for_overflow
  : test-scrollbar_thumb_tracks_offset
  : test-search-match-does-not-guess-background

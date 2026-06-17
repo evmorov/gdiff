@@ -1,11 +1,8 @@
+(local review (require :app.review))
 (local search (require :app.search))
 (local sync (require :git.sync))
 (local symbols (require :tui.symbols))
 (local tui (require :tui.core))
-
-(fn reviewed-count [entries]
-  (accumulate [count 0 _ entry (ipairs entries)]
-    (if entry.reviewed (+ count 1) count)))
 
 (fn percentage [part total]
   (if (<= total 0)
@@ -31,7 +28,7 @@
     (table.concat items (separator state))))
 
 (fn footer-summary [state count]
-  (let [reviewed (reviewed-count state.entries)
+  (let [reviewed (review.count state.entries)
         stats state.diff_stats
         reviewed-percent (percentage reviewed count)
         items [(.. reviewed "/" count " files")
@@ -53,4 +50,4 @@
         (tui.footer :warning warning summary)
         (tui.footer :notice state.notice summary))))
 
-{: footer : footer-summary : header : percentage : reviewed-count}
+{: footer : footer-summary : header : percentage}

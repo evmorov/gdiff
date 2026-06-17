@@ -1,6 +1,8 @@
 (local faith (require :faith))
 (local git (require :git.core))
+(local assets (require :preview.assets))
 (local preview (require :preview.core))
+(local preview-format (require :preview.format))
 (local preview-key (require :preview.key))
 (local t (require :test-helper))
 (local update (require :app.update))
@@ -65,6 +67,22 @@
     (faith.= 0 state.preview_x_max_scroll)
     (faith.= 0 state.preview_x_scroll)))
 
+(fn test-asset-detection-covers-image_and_icon_extensions []
+  (faith.= true (assets.asset? {:path "icons/logo.SVG"}))
+  (faith.= true (assets.asset? {:path "favicon.ico"}))
+  (faith.= true (assets.asset? {:path "screenshots/page.png"}))
+  (faith.= false (assets.asset? {:path "src/app.fnl"})))
+
+(fn test-preview_format_colors_diff_lines []
+  (let [state (state)
+        lines (preview-format.output-lines state
+                                           "diff --git a b\n+added\n-context"
+                                           false)
+        text (t.text lines)]
+    (faith.match "diff %-%-git a b" text)
+    (faith.match "%+added" text)
+    (faith.match "%-context" text)))
+
 (fn test-asset-preview-is-cheap-and-cached-without_git_diff []
   (let [entry {:status "M" :kind "M" :path "icons/logo.svg" :reviewed false}
         state (state)
@@ -111,8 +129,10 @@
     (faith.match "%+after" (t.text (. state.preview_cache key)))))
 
 {: test-visible-lines-can-be-nonblocking-while-warming
+ : test-asset-detection-covers-image_and_icon_extensions
  : test-asset-preview-is-cheap-and-cached-without_git_diff
  : test-horizontal_scroll_limit_uses_visible_line_width
+ : test-preview_format_colors_diff_lines
  : test-refresh-loaded-keeps-cache-and-caches-selected-preview
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering

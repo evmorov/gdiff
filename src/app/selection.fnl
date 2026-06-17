@@ -1,8 +1,6 @@
 (local preview (require :preview.core))
 (local tree (require :app.tree))
-
-(fn clamp [n low high]
-  (math.max low (math.min high n)))
+(local math-util (require :util.math))
 
 (fn flat-rows [entries]
   (icollect [index entry (ipairs entries)]
@@ -61,10 +59,11 @@
       (set-tree-row state
                     (tree.move-row (tree-rows state) state.tree_selected_row
                                    delta))
-      (set-file state (if (= (length state.entries) 0)
-                          1
-                          (clamp (+ state.selected delta) 1
-                                 (length state.entries))))))
+      (set-file state
+                (if (= (length state.entries) 0)
+                    1
+                    (math-util.clamp (+ state.selected delta) 1
+                                     (length state.entries))))))
 
 (fn top [state]
   (if (= state.view_mode :tree)

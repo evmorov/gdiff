@@ -93,6 +93,13 @@
       (.. (tui.color state.theme (status-color kind) (.. "[" kind "]")) " ")
       "    "))
 
+(fn folder-status-kind [entries]
+  (let [first-kind (and (. entries 1) (. (. entries 1) :kind))]
+    (if (not first-kind) nil
+        (accumulate [same? true _ entry (ipairs entries)]
+          (and same? (= first-kind entry.kind))) first-kind
+        "M")))
+
 (fn split-lines [output]
   (icollect [line (string.gmatch (or output "") "[^\r\n]+")]
     line))
@@ -198,6 +205,11 @@
                   (render-listing-lines state folder record.output statuses
                                         orders)
                   (render-synthetic-lines state folder statuses orders))]
+    (table.insert lines 1 "")
+    (table.insert lines 1 (.. (marker state
+                                      (folder-status-kind (or row.entries
+                                                              state.entries)))
+                              folder "/"))
     lines))
 
 (fn ensure-cache [state]
@@ -223,6 +235,7 @@
  : direct-child
  : direct-file-child
  : direct-statuses
+ : folder-status-kind
  : listing-entry
  : lines
  : render-lines}

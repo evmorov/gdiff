@@ -278,7 +278,9 @@
   (let [state (real-preview-state)]
     (select-folder state "lib/tardis/docker")
     (let [view (app.view state 12 100)]
-      (faith.= (table.concat ["[M] api.rb"
+      (faith.= (table.concat ["[M] lib/tardis/docker/"
+                              ""
+                              "[M] api.rb"
                               "[D] web.rb"
                               "[D] views/"
                               "[D] workers/"] "\n")

@@ -3,8 +3,10 @@
 (local editor (require :platform.editor))
 (local faith (require :faith))
 (local fennel (require :fennel))
+(local git (require :git.core))
 (local preview-key (require :preview.key))
 (local reviews (require :storage.reviews))
+(local selection (require :app.selection))
 (local sys (require :platform.core))
 (local t (require :test-helper))
 (local tui (require :tui.core))
@@ -30,6 +32,38 @@
 
 (fn plain-row-text [row]
   (tui.strip-ansi row.text))
+
+(fn folder-row-index [state path]
+  (var found nil)
+  (each [index row (ipairs (selection.rows state))]
+    (when (and (not found) (= row.type :folder) (= row.path path))
+      (set found index)))
+  found)
+
+(fn select-folder [state path]
+  (let [index (folder-row-index state path)]
+    (faith.is index (.. "missing folder row: " path))
+    (set state.tree_selected_row index)))
+
+(fn setup-real-folder-preview-repo []
+  (t.init-repo)
+  (t.mkdir "lib/tardis/docker/views")
+  (t.mkdir "lib/tardis/docker/workers")
+  (t.write-file "lib/tardis/docker/views/index.rb" "view\n")
+  (t.write-file "lib/tardis/docker/workers/app.rb" "app\n")
+  (t.write-file "lib/tardis/docker/workers/sidekiq.rb" "sidekiq\n")
+  (t.write-file "lib/tardis/docker/web.rb" "web\n")
+  (t.write-file "lib/tardis/docker/api.rb" "api\n")
+  (t.commit-all "initial")
+  (t.sh "rm -rf lib/tardis/docker/views")
+  (t.sh "rm -rf lib/tardis/docker/workers")
+  (t.sh "rm lib/tardis/docker/web.rb")
+  (t.write-file "lib/tardis/docker/api.rb" "api\nchanged\n"))
+
+(fn real-preview-state []
+  (let [(entries err) (git.diff-entries "HEAD")]
+    (faith.= nil err)
+    (state entries)))
 
 (fn test-a-toggles-all-reviewed-and-A-does-nothing []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
@@ -227,6 +261,28 @@
     (faith.= 3 state.tree_selected_row)
     (let [view (app.view state 10 100)]
       (faith.is (. view.body.right.lines 1)))))
+
+(fn test-view-folder_preview_for_real_deleted_folders []
+  (setup-real-folder-preview-repo)
+  (let [state (real-preview-state)]
+    (select-folder state "lib/tardis/docker")
+    (let [view (app.view state 12 100)
+          text (t.text view.body.right.lines)]
+      (faith.match "%[M%] api%.rb" text)
+      (faith.match "%[D%] views/" text)
+      (faith.match "%[D%] workers/" text)
+      (faith.not-match "ls:" text))))
+
+(fn test-view-folder_preview_sorts_like_left_tree_for_real_repo []
+  (setup-real-folder-preview-repo)
+  (let [state (real-preview-state)]
+    (select-folder state "lib/tardis/docker")
+    (let [view (app.view state 12 100)]
+      (faith.= (table.concat ["[M] api.rb"
+                              "[D] web.rb"
+                              "[D] views/"
+                              "[D] workers/"] "\n")
+               (t.text view.body.right.lines)))))
 
 (fn test-view-moves_file_counts_to_footer_right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
@@ -510,6 +566,8 @@
  : test-view-clamps_preview_horizontal_scroll_when_content_fits
  : test-view-clamps_file_horizontal_scroll_when_file_rows_fit
  : test-view-keeps_file_list_horizontal_scroll_disabled
+ : test-view-folder_preview_for_real_deleted_folders
+ : test-view-folder_preview_sorts_like_left_tree_for_real_repo
  : test-view-passes_preview_horizontal_scroll_when_content_overflows
  : test-view-uses_whole_preview_for_horizontal_scroll_limit
  : test-view-wraps_preview_lines_when_enabled

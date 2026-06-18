@@ -46,39 +46,42 @@
       right
       left))
 
+(fn record-order [orders counts info]
+  (when (not (. orders info.name))
+    (let [section (if info.folder? 2 1)]
+      (tset counts section (+ (. counts section) 1))
+      (tset orders info.name {:section section :order (. counts section)}))))
+
+(fn record-status [statuses entry info]
+  (tset statuses info.name
+        (stronger-kind (. statuses info.name)
+                       (child-status-kind entry info.rest))))
+
+(fn record-deleted-status [deleted entry info]
+  (let [status (or (. deleted info.name)
+                   {:folder? info.folder? :all-deleted? true})]
+    (set status.folder? (or status.folder? info.folder?))
+    (when (not (= entry.kind "D"))
+      (set status.all-deleted? false))
+    (tset deleted info.name status)))
+
+(fn folder-plan [folder entries]
+  (let [statuses {}
+        deleted {}
+        orders {}
+        counts {1 0 2 0}
+        children []]
+    (each [_ entry (ipairs (or entries []))]
+      (let [info (child-info folder entry.path)]
+        (when info
+          (table.insert children {:entry entry :info info})
+          (record-order orders counts info)
+          (record-status statuses entry info)
+          (record-deleted-status deleted entry info))))
+    {:statuses statuses :deleted deleted :orders orders :children children}))
+
 (fn direct-statuses [folder entries]
-  (let [statuses {}]
-    (each [_ entry (ipairs (or entries []))]
-      (let [info (child-info folder entry.path)]
-        (when info
-          (tset statuses info.name
-                (stronger-kind (. statuses info.name)
-                               (child-status-kind entry info.rest))))))
-    statuses))
-
-(fn deleted-children [folder entries]
-  (let [statuses {}]
-    (each [_ entry (ipairs (or entries []))]
-      (let [info (child-info folder entry.path)]
-        (when info
-          (let [status (or (. statuses info.name)
-                           {:folder? info.folder? :all-deleted? true})]
-            (set status.folder? (or status.folder? info.folder?))
-            (when (not (= entry.kind "D"))
-              (set status.all-deleted? false))
-            (tset statuses info.name status)))))
-    statuses))
-
-(fn child-orders [folder entries]
-  (let [orders {}
-        counts {1 0 2 0}]
-    (each [_ entry (ipairs (or entries []))]
-      (let [info (child-info folder entry.path)]
-        (when (and info (not (. orders info.name)))
-          (let [section (if info.folder? 2 1)]
-            (tset counts section (+ (. counts section) 1))
-            (tset orders info.name {:section section :order (. counts section)})))))
-    orders))
+  (. (folder-plan folder entries) :statuses))
 
 (fn status-color [kind]
   (case kind
@@ -118,7 +121,7 @@
       (.. entry.name "/")
       entry.name))
 
-(fn collect-listing-entries [output]
+(fn listing-entries [output]
   (let [seen {}
         entries []]
     (each [_ line (ipairs (split-lines output))]
@@ -129,22 +132,21 @@
             (table.insert entries entry)))))
     (values entries seen)))
 
-(fn add-deleted-entries [entries seen folder source-entries]
-  (each [name status (pairs (deleted-children folder source-entries))]
+(fn add-missing-deleted [entries seen deleted]
+  (each [name status (pairs deleted)]
     (when (and status.all-deleted? (not (. seen name)))
       (tset seen name true)
       (table.insert entries {:name name :folder? status.folder? :deleted? true})))
   entries)
 
-(fn synthetic-entries [folder source-entries]
+(fn entries-from-plan [plan]
   (let [entries []
-        seen {}
-        deleted (deleted-children folder source-entries)]
-    (each [_ entry (ipairs (or source-entries []))]
-      (let [info (child-info folder entry.path)]
+        seen {}]
+    (each [_ child (ipairs (or plan.children []))]
+      (let [info child.info]
         (when (and info (not (. seen info.name)))
           (tset seen info.name true)
-          (let [status (. deleted info.name)
+          (let [status (. plan.deleted info.name)
                 deleted? (and status status.all-deleted?)]
             (table.insert entries
                           {:name info.name
@@ -179,41 +181,39 @@
         (.. (marker state "D") (display-name entry))
         (.. (marker state kind) (display-name entry)))))
 
-(fn render-listing-lines [state folder output statuses orders]
-  (let [(entries seen) (collect-listing-entries output)
-        entries (sort-entries (add-deleted-entries entries seen folder
-                                                   state.entries)
-                              orders)]
-    (if (= 0 (length entries))
-        [(.. (marker state nil)
-             (tui.color state.theme :muted "No folder entries."))]
-        (icollect [_ entry (ipairs entries)]
-          (render-entry state statuses entry)))))
+(fn display-entries [record plan]
+  (if record.ok?
+      (let [(entries seen) (listing-entries record.output)]
+        (add-missing-deleted entries seen plan.deleted))
+      (entries-from-plan plan)))
 
-(fn render-synthetic-lines [state folder statuses orders]
-  (let [entries (sort-entries (synthetic-entries folder state.entries) orders)]
+(fn empty-message [state record]
+  (let [message (if record.ok? "No folder entries." "Folder not found.")]
+    (.. (marker state nil) (tui.color state.theme :muted message))))
+
+(fn render-entry-lines [state record plan]
+  (let [entries (sort-entries (display-entries record plan) plan.orders)]
     (if (= 0 (length entries))
-        [(.. (marker state nil)
-             (tui.color state.theme :muted "Folder not found."))]
+        [(empty-message state record)]
         (icollect [_ entry (ipairs entries)]
-          (render-entry state statuses entry)))))
+          (render-entry state plan.statuses entry)))))
+
+(fn header-lines [state folder entries]
+  (let [header (.. (marker state (folder-status-kind entries)) folder "/")
+        divider (string.rep symbols.line.horizontal (tui.visible-length header))]
+    [header (tui.color state.theme :muted divider)]))
+
+(fn prepend-header [lines state row]
+  (each [i line (ipairs (header-lines state row.path
+                                      (or row.entries state.entries)))]
+    (table.insert lines i line))
+  lines)
 
 (fn render-lines [state row record]
   (let [folder row.path
-        statuses (direct-statuses folder state.entries)
-        orders (child-orders folder state.entries)
-        lines (if record.ok?
-                  (render-listing-lines state folder record.output statuses
-                                        orders)
-                  (render-synthetic-lines state folder statuses orders))]
-    (let [header (.. (marker state
-                             (folder-status-kind (or row.entries state.entries)))
-                     folder "/")
-          divider (string.rep symbols.line.horizontal
-                              (tui.visible-length header))]
-      (table.insert lines 1 (tui.color state.theme :muted divider))
-      (table.insert lines 1 header))
-    lines))
+        plan (folder-plan folder state.entries)
+        lines (render-entry-lines state record plan)]
+    (prepend-header lines state row)))
 
 (fn ensure-cache [state]
   (when (not state.folder_preview_cache)

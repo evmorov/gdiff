@@ -25,6 +25,7 @@
                :split_ratio 0.4
                :view_mode :tree
                :tree_selected_row nil
+               :folder_preview_cache {}
                :theme theme.default
                :preview_cache {}
                :preview_context (git.preview-context)

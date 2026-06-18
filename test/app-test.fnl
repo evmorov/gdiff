@@ -140,7 +140,7 @@
     (app.handle-key state {} "j")
     (faith.= 2 state.tree_selected_row)
     (let [view (app.view state 10 100)]
-      (faith.= nil (. view.body.right.lines 1)))
+      (faith.is (. view.body.right.lines 1)))
     (app.handle-key state {} "j")
     (faith.= 3 state.tree_selected_row)
     (faith.= 2 state.selected)
@@ -196,7 +196,7 @@
     (faith.= :tree state.view_mode)
     (faith.= 3 state.tree_selected_row)
     (let [view (app.view state 10 100)]
-      (faith.= nil (. view.body.right.lines 1)))))
+      (faith.is (. view.body.right.lines 1)))))
 
 (fn test-view-moves_file_counts_to_footer_right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]

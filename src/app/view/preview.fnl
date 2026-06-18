@@ -1,4 +1,5 @@
 (local preview (require :preview.core))
+(local folder-preview (require :preview.folder))
 (local selection (require :app.selection))
 (local tui (require :tui.core))
 (local math-util (require :util.math))
@@ -9,9 +10,9 @@
                                                              state.split_ratio)]
     (math.max 0 (if scroll? (- right-cols 1) right-cols))))
 
-(fn raw-lines [state selected-entry]
-  (if (and (= state.view_mode :tree) (not selected-entry))
-      []
+(fn raw-lines [state selected-entry selected-row]
+  (if (and (= state.view_mode :tree) selected-row (= selected-row.type :folder))
+      (folder-preview.lines state selected-row)
       (preview.nonblocking-lines state selected-entry)))
 
 (fn display-lines [state lines width]
@@ -58,10 +59,10 @@
 
 (fn body [state visible cols]
   (let [selected-entry (selection.selected-entry state)
-        raw (raw-lines state selected-entry)
-        display (if (and (= state.view_mode :tree) (not selected-entry))
-                    []
-                    (lines-for-width state raw visible cols))
+        selected-row (and (= state.view_mode :tree)
+                          (selection.selected-tree-row state))
+        raw (raw-lines state selected-entry selected-row)
+        display (lines-for-width state raw visible cols)
         _ (set-scroll state display visible)
         visible-lines (visible-lines state display visible)
         _ (update-horizontal-scroll state raw cols)]

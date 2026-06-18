@@ -10,6 +10,7 @@
             :search_nav_test
             :search_status_test
             :preview-test
+            :preview_folder_test
             :preview_warm_test
             :preview_warm_plan_test
             :preview_workers_test

@@ -128,11 +128,25 @@
     (faith.= ["old preview"] (. state.preview_cache old-key))
     (faith.match "%+after" (t.text (. state.preview_cache key)))))
 
+(fn test-refresh-loaded-clears-folder-preview-cache []
+  (setup-repo)
+  (let [(entries err) (git.diff-entries "HEAD")
+        state (update.init "HEAD" entries {:version 1 :reviews {}} "scope"
+                           "src")]
+    (faith.= nil err)
+    (set state.folder_preview_cache.src {:ok? true :output "cached"})
+    (faith.= 1 (t.count-pairs state.folder_preview_cache))
+    (update.update state {} {:type :refresh-loaded
+                             :entries entries
+                             :reviewed {}})
+    (faith.= 0 (t.count-pairs state.folder_preview_cache))))
+
 {: test-visible-lines-can-be-nonblocking-while-warming
  : test-asset-detection-covers-image_and_icon_extensions
  : test-asset-preview-is-cheap-and-cached-without_git_diff
  : test-horizontal_scroll_limit_uses_visible_line_width
  : test-preview_format_colors_diff_lines
+ : test-refresh-loaded-clears-folder-preview-cache
  : test-refresh-loaded-keeps-cache-and-caches-selected-preview
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering

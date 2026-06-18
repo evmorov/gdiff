@@ -50,6 +50,7 @@
 (fn apply-refresh [state entries reviewed diff-stats]
   (set state.entries (reviews.apply entries reviewed))
   (set state.diff_stats diff-stats)
+  (set state.folder_preview_cache {})
   (preview.reset-scroll state)
   (move-selection state 0)
   (cache-selected-preview state)

@@ -15,26 +15,29 @@
     ranges))
 
 (fn apply [s ranges start-code end-code]
-  (var out "")
-  (var i 1)
-  (var visible 1)
-  (var range-index 1)
-  (while (<= i (length s))
-    (let [range (. ranges range-index)]
-      (when (and range (= visible range.first))
-        (set out (.. out start-code)))
-      (if (txt.ansi-sequence? s i)
-          (let [last (txt.ansi-sequence-end s i)]
-            (set out (.. out (s:sub i last)))
-            (set i (+ last 1)))
-          (let [(ch next-i) (txt.next-char s i)]
-            (set out (.. out ch))
-            (when (and range (= visible range.last))
-              (set out (.. out end-code))
-              (set range-index (+ range-index 1)))
-            (set visible (+ visible 1))
-            (set i next-i)))))
-  out)
+  (let [out []]
+    (fn append [part]
+      (table.insert out part))
+
+    (var i 1)
+    (var visible 1)
+    (var range-index 1)
+    (while (<= i (length s))
+      (let [range (. ranges range-index)]
+        (when (and range (= visible range.first))
+          (append start-code))
+        (if (txt.ansi-sequence? s i)
+            (let [last (txt.ansi-sequence-end s i)]
+              (append (s:sub i last))
+              (set i (+ last 1)))
+            (let [(ch next-i) (txt.next-char s i)]
+              (append ch)
+              (when (and range (= visible range.last))
+                (append end-code)
+                (set range-index (+ range-index 1)))
+              (set visible (+ visible 1))
+              (set i next-i)))))
+    (table.concat out)))
 
 (fn highlight [s query start-code end-code]
   (let [s (tostring (or s ""))

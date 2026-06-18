@@ -65,6 +65,13 @@
       (set status.all-deleted? false))
     (tset deleted info.name status)))
 
+(fn folder-status-kind [entries]
+  (let [first-kind (and (. entries 1) (. (. entries 1) :kind))]
+    (if (not first-kind) nil
+        (accumulate [same? true _ entry (ipairs entries)]
+          (and same? (= first-kind entry.kind))) first-kind
+        "M")))
+
 (fn folder-plan [folder entries]
   (let [statuses {}
         deleted {}
@@ -78,7 +85,11 @@
           (record-order orders counts info)
           (record-status statuses entry info)
           (record-deleted-status deleted entry info))))
-    {:statuses statuses :deleted deleted :orders orders :children children}))
+    {:statuses statuses
+     :deleted deleted
+     :orders orders
+     :children children
+     :folder-kind (folder-status-kind entries)}))
 
 (fn direct-statuses [folder entries]
   (. (folder-plan folder entries) :statuses))
@@ -96,13 +107,6 @@
   (if kind
       (.. (tui.color state.theme (status-color kind) (.. "[" kind "]")) " ")
       "    "))
-
-(fn folder-status-kind [entries]
-  (let [first-kind (and (. entries 1) (. (. entries 1) :kind))]
-    (if (not first-kind) nil
-        (accumulate [same? true _ entry (ipairs entries)]
-          (and same? (= first-kind entry.kind))) first-kind
-        "M")))
 
 (fn split-lines [output]
   (icollect [line (string.gmatch (or output "") "[^\r\n]+")]
@@ -131,6 +135,22 @@
             (tset seen entry.name true)
             (table.insert entries entry)))))
     (values entries seen)))
+
+(fn copy-listing-entries [entries]
+  (icollect [_ entry (ipairs (or entries []))]
+    {:name entry.name :folder? entry.folder? :deleted? entry.deleted?}))
+
+(fn copy-seen [seen]
+  (collect [name value (pairs (or seen {}))]
+    (values name value)))
+
+(fn parsed-listing [record]
+  (when record.ok?
+    (when (not record.listing)
+      (let [(entries seen) (listing-entries record.output)]
+        (set record.listing {:entries entries :seen seen})))
+    (values (copy-listing-entries record.listing.entries)
+            (copy-seen record.listing.seen))))
 
 (fn add-missing-deleted [entries seen deleted]
   (each [name status (pairs deleted)]
@@ -183,7 +203,7 @@
 
 (fn display-entries [record plan]
   (if record.ok?
-      (let [(entries seen) (listing-entries record.output)]
+      (let [(entries seen) (parsed-listing record)]
         (add-missing-deleted entries seen plan.deleted))
       (entries-from-plan plan)))
 
@@ -198,22 +218,36 @@
         (icollect [_ entry (ipairs entries)]
           (render-entry state plan.statuses entry)))))
 
-(fn header-lines [state folder entries]
-  (let [header (.. (marker state (folder-status-kind entries)) folder "/")
+(fn header-lines [state folder entries ?kind]
+  (let [header (.. (marker state (or ?kind (folder-status-kind entries)))
+                   folder "/")
         divider (string.rep symbols.line.horizontal (tui.visible-length header))]
     [header (tui.color state.theme :muted divider)]))
 
-(fn prepend-header [lines state row]
-  (each [i line (ipairs (header-lines state row.path
-                                      (or row.entries state.entries)))]
-    (table.insert lines i line))
-  lines)
+(fn with-header [lines state row plan]
+  (let [out []]
+    (each [_ line (ipairs (header-lines state row.path
+                                        (or row.entries state.entries)
+                                        plan.folder-kind))]
+      (table.insert out line))
+    (each [_ line (ipairs lines)]
+      (table.insert out line))
+    out))
+
+(fn plan-entries [state row]
+  (or row.entries state.entries))
+
+(fn folder-plan-for [state row]
+  (if row.entries
+      (or row.folder_plan (let [plan (folder-plan row.path row.entries)]
+                            (set row.folder_plan plan)
+                            plan))
+      (folder-plan row.path state.entries)))
 
 (fn render-lines [state row record]
-  (let [folder row.path
-        plan (folder-plan folder state.entries)
+  (let [plan (folder-plan-for state row)
         lines (render-entry-lines state record plan)]
-    (prepend-header lines state row)))
+    (with-header lines state row plan)))
 
 (fn ensure-cache [state]
   (when (not state.folder_preview_cache)
@@ -247,8 +281,12 @@
  : direct-file-child
  : direct-statuses
  : folder-status-kind
+ : folder-plan-for
  : listing-entry
+ : parsed-listing
  : load-record
  : lines
+ : plan-entries
  : record-for
- : render-lines}
+ : render-lines
+ : with-header}

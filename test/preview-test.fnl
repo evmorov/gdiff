@@ -56,6 +56,19 @@
     (faith.= ["1" "2" "3" "4" "5"] (preview.visible-lines state entry 5))
     (faith.= nil (preview.scroll-info state))))
 
+(fn test-scroll_uses_rendered_preview_total_without_loading_diff []
+  (let [entry {:status "M" :kind "M" :path "missing.rb" :reviewed false}
+        state (state)
+        old-preview-output git.preview-output]
+    (set state.preview_rows 10)
+    (set state.preview_total 100)
+    (set git.preview-output
+         (fn [...]
+           (error "scroll should not load preview lines")))
+    (faith.= true (preview.scroll state entry 5))
+    (set git.preview-output old-preview-output)
+    (faith.= 5 state.preview_scroll)))
+
 (fn test-horizontal_scroll_limit_uses_visible_line_width []
   (let [state (state)]
     (set state.preview_x_scroll 20)
@@ -66,6 +79,15 @@
     (preview.set-horizontal-scroll-limit state ["short"] 6)
     (faith.= 0 state.preview_x_max_scroll)
     (faith.= 0 state.preview_x_scroll)))
+
+(fn test-horizontal_width_cache_follows_current_lines_table []
+  (let [state (state)
+        first ["abcdef"]
+        second ["abcdefghijkl"]]
+    (faith.= 6 (preview.cached-max-line-width state first))
+    (faith.= 6 (preview.cached-max-line-width state first))
+    (faith.= 12 (preview.cached-max-line-width state second))
+    (faith.= second state.preview_width_lines)))
 
 (fn test-apply-horizontal-scroll-limit_uses_split_width []
   (let [state (state)]
@@ -183,6 +205,26 @@
     (faith.= 1 state.preview_scroll)
     (faith.= ["b" "c"] (preview.visible-display-lines state ["a" "b" "c"] 2))))
 
+(fn test-display-lines-for-width-caches_stable_layout []
+  (let [state (state)
+        lines ["abcdefghijklmnopqrstuvwxyz"]]
+    (set state.preview_wrap? true)
+    (set state.split_ratio 0.5)
+    (let [first (preview.display-lines-for-width state lines 2 10)
+          second (preview.display-lines-for-width state lines 2 10)]
+      (faith.= first second)
+      (faith.= first state.preview_display_cache.display))))
+
+(fn test-display-lines-for-width-invalidates_when_layout_changes []
+  (let [state (state)
+        lines ["abcdefghijklmnopqrstuvwxyz"]]
+    (set state.preview_wrap? true)
+    (set state.split_ratio 0.5)
+    (let [first (preview.display-lines-for-width state lines 2 10)
+          second (preview.display-lines-for-width state lines 2 20)]
+      (faith.not= first second)
+      (faith.= 20 state.preview_display_cache.cols))))
+
 (fn test-visible_count_never_drops_below_one []
   (faith.= 1 (preview.visible-count nil))
   (faith.= 1 (preview.visible-count 0))
@@ -194,11 +236,15 @@
  : test-apply-horizontal-scroll-limit_uses_split_width
  : test-asset-detection-covers-image_and_icon_extensions
  : test-asset-preview-is-cheap-and-cached-without_git_diff
+ : test-display-lines-for-width-caches_stable_layout
+ : test-display-lines-for-width-invalidates_when_layout_changes
+ : test-horizontal_width_cache_follows_current_lines_table
  : test-horizontal_scroll_limit_uses_visible_line_width
  : test-preview_format_colors_diff_lines
  : test-refresh-loaded-clears-folder-preview-cache
  : test-refresh-loaded-keeps-cache-and-caches-selected-preview
  : test-selection-lines-renders-folder_rows_through_preview_core
+ : test-scroll_uses_rendered_preview_total_without_loading_diff
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
  : test-visible_count_never_drops_below_one

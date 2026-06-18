@@ -1,4 +1,7 @@
 (local esc "\27")
+(local esc-byte 27)
+(local left-bracket-byte 91)
+(local ascii-limit 128)
 
 (fn pattern-quote [s]
   (s:gsub "([^%w])" "%%%1"))
@@ -14,7 +17,11 @@
   (if done? j i))
 
 (fn ansi-sequence? [s i]
-  (and (= (s:sub i i) esc) (= (s:sub (+ i 1) (+ i 1)) "[")))
+  (and (= (string.byte s i) esc-byte)
+       (= (string.byte s (+ i 1)) left-bracket-byte)))
+
+(fn ascii-byte? [byte]
+  (and byte (< byte ascii-limit)))
 
 (fn utf8-char-end [s i]
   (let [byte (string.byte s i)
@@ -37,11 +44,16 @@
     (var i 1)
     (var len 0)
     (while (<= i (length s))
-      (if (ansi-sequence? s i)
-          (set i (+ (ansi-sequence-end s i) 1))
-          (let [(_ next-i) (next-char s i)]
-            (set len (+ len 1))
-            (set i next-i))))
+      (let [byte (string.byte s i)]
+        (if (ansi-sequence? s i)
+            (set i (+ (ansi-sequence-end s i) 1))
+            (ascii-byte? byte)
+            (do
+              (set len (+ len 1))
+              (set i (+ i 1)))
+            (let [next-i (+ (utf8-char-end s i) 1)]
+              (set len (+ len 1))
+              (set i next-i)))))
     len))
 
 (fn pad-right [s width]
@@ -53,18 +65,27 @@
 (fn strip-ansi [s]
   (let [s (tostring (or s ""))]
     (var i 1)
-    (var out "")
-    (while (<= i (length s))
-      (if (ansi-sequence? s i)
-          (set i (+ (ansi-sequence-end s i) 1))
-          (let [(ch next-i) (next-char s i)]
-            (set out (.. out ch))
-            (set i next-i))))
-    out))
+    (let [out []]
+      (while (<= i (length s))
+        (let [byte (string.byte s i)]
+          (if (ansi-sequence? s i)
+              (set i (+ (ansi-sequence-end s i) 1))
+              (ascii-byte? byte)
+              (do
+                (table.insert out (s:sub i i))
+                (set i (+ i 1)))
+              (let [(ch next-i) (next-char s i)]
+                (table.insert out ch)
+                (set i next-i)))))
+      (table.concat out))))
 
 {: ansi-sequence-end
  : ansi-sequence?
+ : ascii-byte?
+ :ascii-limit ascii-limit
  : esc
+ :esc-byte esc-byte
+ :left-bracket-byte left-bracket-byte
  : next-char
  : pad-right
  : pattern-quote

@@ -64,6 +64,15 @@
     (faith.= 1 (tree.entry-index-at-row rows 1))
     (faith.= nil (tree.entry-index-at-row rows 2))))
 
+(fn test-folder_rows_keep_descendant_entries []
+  (let [first (entry "M" "src/a.rb")
+        second (entry "A" "src/nested/b.rb")
+        rows (tree.rows [first second])
+        folder (. rows 1)]
+    (faith.= "src/" folder.name)
+    (faith.= [first second] folder.entries)))
+
 {: test-selected-row_maps_entry_index_to_tree_row
  : test-tree_selection_moves_in_rendered_row_order
+ : test-folder_rows_keep_descendant_entries
  : test-tree_rows_collapse_single_directory_chains}

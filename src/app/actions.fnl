@@ -39,6 +39,7 @@
 
 (fn apply-refresh [state entries reviewed diff-stats]
   (set state.entries (reviews.apply entries reviewed))
+  (selection.invalidate-rows state)
   (set state.diff_stats diff-stats)
   (set state.folder_preview_cache {})
   (preview.reset-scroll state)

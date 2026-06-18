@@ -1,10 +1,9 @@
 (local entry-view (require :app.entry))
 (local selection (require :app.selection))
-(local tui (require :tui.core))
 
 (fn contains? [text query]
-  (let [plain (tui.strip-ansi text)]
-    (not (= nil (plain:find query 1 true)))))
+  (let [text (or text "")]
+    (not (= nil (text:find query 1 true)))))
 
 (fn path-match [query entry-index entry]
   (if (contains? (entry-view.path-text entry) query)

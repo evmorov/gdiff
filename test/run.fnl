@@ -14,6 +14,8 @@
             :search_nav_test
             :search_plan_test
             :search_status_test
+            :selection_cache_test
+            :selection_context_test
             :selection_plan_test
             :preview-test
             :preview_folder_test

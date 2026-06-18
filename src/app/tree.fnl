@@ -10,7 +10,7 @@
   (or (string.match (or path "") "([^/]+)$") path))
 
 (fn new-node []
-  {:dirs {} :dir-order [] :files []})
+  {:dirs {} :dir-order [] :entries [] :files []})
 
 (fn child-dir [node name]
   (let [child (. node.dirs name)]
@@ -27,7 +27,8 @@
     (when (< 0 count)
       (var node root)
       (for [i 1 (- count 1)]
-        (set node (child-dir node (. parts i))))
+        (set node (child-dir node (. parts i)))
+        (table.insert node.entries entry))
       (table.insert node.files
                     {:entry entry :entry-index index :name (. parts count)}))))
 
@@ -55,13 +56,7 @@
     _ name))
 
 (fn node-entries [node]
-  (let [entries []]
-    (each [_ file (ipairs node.files)]
-      (table.insert entries file.entry))
-    (each [_ dir-name (ipairs node.dir-order)]
-      (each [_ entry (ipairs (node-entries (. node.dirs dir-name)))]
-        (table.insert entries entry)))
-    entries))
+  node.entries)
 
 (fn join-path [prefix name]
   (if (and prefix (< 0 (length prefix)))

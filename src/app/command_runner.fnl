@@ -5,6 +5,8 @@
 
 (fn run [state config update command]
   (let [queue []]
+    (var head 1)
+
     (fn dispatch [msg]
       (when msg
         (table.insert queue msg)))
@@ -14,9 +16,10 @@
 
     (when command
       ((command-or-none command) dispatch get-state))
-    (while (> (length queue) 0)
-      (let [msg (table.remove queue 1)
+    (while (<= head (length queue))
+      (let [msg (. queue head)
             (_ next-command) (update state config msg)]
+        (set head (+ head 1))
         (when next-command
           ((command-or-none next-command) dispatch get-state)))))
   state)

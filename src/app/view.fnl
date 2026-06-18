@@ -11,10 +11,10 @@
 (fn view [state rows cols]
   (let [count (length state.entries)
         visible (body-row-count rows)
-        selected-entry (selection.selected-entry state)
-        _ (preview.prepare-entry state selected-entry)
+        selected (selection.selected-context state)
+        _ (preview.prepare-entry state selected.entry)
         left (left-view.body state visible)
-        right (preview-view.body state visible cols)
+        right (preview-view.body state visible cols selected)
         body (tui.split left right state.split_ratio)]
     (tui.screen (chrome.header state) body (chrome.footer state count))))
 

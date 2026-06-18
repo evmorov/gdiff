@@ -90,6 +90,50 @@
                             "[M] nested/"] "\n")
              (t.text (folder.render-lines state row record)))))
 
+(fn test-render-lines_uses_row_descendants_when_available []
+  (let [state (state [(entry "M" "other/noise.rb")
+                      (entry "D" "src/unrelated-from-state.rb")])
+        row {:path "src" :entries [(entry "A" "src/kept.rb")]}
+        record {:ok? true
+                :output (table.concat ["total 0"
+                                       "-rw-r--r--  1 u  g   1 Jan  1 00:00 kept.rb"
+                                       "-rw-r--r--  1 u  g   1 Jan  1 00:00 unrelated-from-state.rb"]
+                                      "\n")}]
+    (faith.= (table.concat ["[A] src/"
+                            "────────"
+                            "[A] kept.rb"
+                            "    unrelated-from-state.rb"]
+                           "\n")
+             (t.text (folder.render-lines state row record)))))
+
+(fn test-parsed-listing_returns_fresh_copies_from_cached_parse []
+  (let [record {:ok? true
+                :output "total 0\n-rw-r--r--  1 u  g  1 Jan  1 00:00 a.rb\n"}
+        (entries seen) (folder.parsed-listing record)]
+    (set (. entries 1 :name) "changed.rb")
+    (tset seen "a.rb" nil)
+    (let [(again again-seen) (folder.parsed-listing record)]
+      (faith.= "a.rb" (. again 1 :name))
+      (faith.= true (. again-seen "a.rb")))))
+
+(fn test-folder-plan-is-cached_on_rows_with_descendants []
+  (let [state (state [(entry "D" "src/from-state.rb")])
+        row {:path "src" :entries [(entry "A" "src/from-row.rb")]}
+        plan (folder.folder-plan-for state row)]
+    (faith.= plan row.folder_plan)
+    (faith.= "A" plan.folder-kind)
+    (set state.entries [(entry "M" "src/changed-state.rb")])
+    (faith.= plan (folder.folder-plan-for state row))
+    (faith.= "A" (. plan.statuses "from-row.rb"))
+    (faith.= nil (. plan.statuses "changed-state.rb"))))
+
+(fn test-folder-plan-without_row_descendants_tracks_state_entries []
+  (let [state (state [(entry "A" "src/a.rb")])
+        row {:path "src"}]
+    (faith.= "A" (. (folder.folder-plan-for state row) :statuses "a.rb"))
+    (set state.entries [(entry "M" "src/a.rb")])
+    (faith.= "M" (. (folder.folder-plan-for state row) :statuses "a.rb"))))
+
 (fn test-lines_caches_raw_listing_but_applies_current_statuses []
   (let [state (state [])
         row {:path "src"}
@@ -115,4 +159,8 @@
  : test-render-lines_synthesizes_deleted_folder_without_ls_error
  : test-render-lines_adds_missing_deleted_child_folder_to_live_parent
  : test-render-lines_synthesizes_missing_child_folder_as_deleted
- : test-render-lines_sorts_like_left_tree}
+ : test-render-lines_sorts_like_left_tree
+ : test-folder-plan-is-cached_on_rows_with_descendants
+ : test-folder-plan-without_row_descendants_tracks_state_entries
+ : test-parsed-listing_returns_fresh_copies_from_cached_parse
+ : test-render-lines_uses_row_descendants_when_available}

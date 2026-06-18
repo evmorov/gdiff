@@ -6,13 +6,34 @@
   (icollect [index entry (ipairs entries)]
     {:type :file :depth 0 :entry entry :entry-index index}))
 
+(fn row-cache [state]
+  (when (not state.row_cache)
+    (set state.row_cache {}))
+  state.row_cache)
+
+(fn cached-rows [state key build]
+  (let [cache (row-cache state)
+        rows (. cache key)]
+    (if rows
+        rows
+        (let [rows (build)]
+          (tset cache key rows)
+          rows))))
+
+(fn invalidate-rows [state]
+  (set state.row_cache nil)
+  state)
+
 (fn tree-rows [state]
-  (tree.rows state.entries))
+  (cached-rows state :tree #(tree.rows state.entries)))
+
+(fn cached-flat-rows [state]
+  (cached-rows state :flat #(flat-rows state.entries)))
 
 (fn rows [state]
   (if (= state.view_mode :tree)
       (tree-rows state)
-      (flat-rows state.entries)))
+      (cached-flat-rows state)))
 
 (fn selected-tree-row [state]
   (tree.row-at (tree-rows state) state.tree_selected_row))
@@ -23,12 +44,17 @@
         (and row (= row.type :file) row.entry))
       (. state.entries state.selected)))
 
+(fn selected-context [state]
+  (if (= state.view_mode :tree)
+      (let [row (selected-tree-row state)]
+        {:row row :entry (if (and row (= row.type :file)) row.entry)})
+      {:row nil :entry (. state.entries state.selected)}))
+
 (fn selected-row-index [state ?rows]
-  (selection-plan.selected-row-index state.view_mode state.tree_selected_row
-                                     state.selected
-                                     (tree.selected-row (or ?rows
-                                                            (tree-rows state))
-                                                        state.selected)))
+  (if (= state.view_mode :tree)
+      (or state.tree_selected_row
+          (tree.selected-row (or ?rows (tree-rows state)) state.selected))
+      state.selected))
 
 (fn selected-row? [state row row-index]
   (if (= state.view_mode :tree)
@@ -98,9 +124,11 @@
 {: bottom
  : cursor-position
  : flat-rows
+ : invalidate-rows
  : move
  : rows
  : selected-entry
+ : selected-context
  : selected-row?
  : selected-row-index
  : selected-tree-row

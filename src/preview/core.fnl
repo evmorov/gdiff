@@ -63,8 +63,8 @@
 (fn page-step [state]
   (math.max 1 (math.floor (/ (row-count state) 2))))
 
-(fn max-scroll [state entry]
-  (math.max 0 (- (length (lines state entry)) (row-count state))))
+(fn max-scroll [state _entry]
+  (math.max 0 (- (or state.preview_total 0) (row-count state))))
 
 (fn set-scroll [state entry scroll]
   (let [before (or state.preview_scroll 0)
@@ -85,9 +85,31 @@
                           (viewport.scroll-state lines (visible-count visible)
                                                  state.preview_scroll)))
 
+(fn display-lines-for-width [state lines visible cols]
+  (let [cache-key {:lines lines
+                   :visible visible
+                   :cols cols
+                   :split-ratio state.split_ratio
+                   :wrap? state.preview_wrap?}
+        cache state.preview_display_cache]
+    (if (and cache (= cache.lines cache-key.lines)
+             (= cache.visible cache-key.visible) (= cache.cols cache-key.cols)
+             (= cache.split-ratio cache-key.split-ratio)
+             (= cache.wrap? cache-key.wrap?))
+        cache.display
+        (let [display (viewport.lines-for-width state lines visible cols)]
+          (set state.preview_display_cache
+               {:lines lines
+                :visible visible
+                :cols cols
+                :split-ratio state.split_ratio
+                :wrap? state.preview_wrap?
+                :display display})
+          display))))
+
 (fn reset-scroll [state]
   (set-fields state [:preview_scroll 0] [:preview_x_scroll 0]
-              [:preview_x_max_scroll 0]))
+              [:preview_x_max_scroll 0] [:preview_display_cache nil]))
 
 (fn scroll [state entry delta]
   (set-scroll state entry (+ (or state.preview_scroll 0) delta)))
@@ -109,8 +131,17 @@
   (accumulate [width 0 _ line (ipairs (or lines []))]
     (math.max width (tui.visible-length line))))
 
+(fn cached-max-line-width [state lines]
+  (if (= state.preview_width_lines lines)
+      (or state.preview_width 0)
+      (let [width (max-line-width lines)]
+        (set-fields state [:preview_width_lines lines] [:preview_width width])
+        width)))
+
 (fn set-horizontal-scroll-limit [state lines width]
-  (let [max-scroll (math.max 0 (- (max-line-width lines) (math.max 0 width)))]
+  (let [max-scroll (math.max 0
+                             (- (cached-max-line-width state lines)
+                                (math.max 0 width)))]
     (set-fields state [:preview_x_max_scroll max-scroll]
                 [:preview_x_scroll
                  (math-util.clamp (or state.preview_x_scroll 0) 0 max-scroll)])))
@@ -148,6 +179,9 @@
  : scroll-page-up
  : selection-lines
  : apply-horizontal-scroll-limit
+ : cached-max-line-width
+ : display-lines-for-width
+ : max-line-width
  : set-horizontal-scroll-limit
  : visible-display-lines
  : visible-count

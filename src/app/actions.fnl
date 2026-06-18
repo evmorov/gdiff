@@ -1,4 +1,5 @@
 (local commands (require :app.commands))
+(local sys (require :platform.core))
 (local preview (require :preview.core))
 (local review (require :app.review))
 (local reviews (require :storage.reviews))
@@ -60,13 +61,17 @@
   (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))
         entry (selection.selected-entry state)]
     (if (and row (= row.type :folder))
-        (do
-          (set-notice state "Opening" row.path)
-          (commands.open-folder row.path))
+        (if (sys.dir-exists? row.path)
+            (do
+              (set-notice state "Opening" row.path)
+              (commands.open-folder row.path))
+            (set-notice state "Folder not found" row.path))
         entry
-        (do
-          (set-notice state "Opening" entry.path)
-          (commands.open-editor config entry)))))
+        (if (sys.file-exists? entry.path)
+            (do
+              (set-notice state "Opening" entry.path)
+              (commands.open-editor config entry))
+            (set-notice state "File not found" entry.path)))))
 
 (fn copy-selected-path [state]
   (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))

@@ -1,5 +1,6 @@
 (local app (require :app.core))
 (local browser (require :platform.browser))
+(local editor (require :platform.editor))
 (local faith (require :faith))
 (local fennel (require :fennel))
 (local preview-key (require :preview.key))
@@ -170,6 +171,8 @@
     (faith.= {} (reviews.paths state.entries))))
 
 (fn test-open_on_tree_folder_opens_folder []
+  (t.reset-workdir)
+  (t.mkdir "spec/lib/epoxy")
   (let [state (state [(entry "A" "script/shorthand_branch.sh")
                       (entry "M"
                              "spec/lib/epoxy/version_branch_validation_spec.rb")])
@@ -183,6 +186,33 @@
     (set browser.open old-open)
     (faith.= ["spec/lib/epoxy"] opened)
     (faith.= "Opening: spec/lib/epoxy" state.notice)))
+
+(fn test-open_on_deleted_tree_folder_shows_not_found []
+  (t.reset-workdir)
+  (let [state (state [(entry "D" "lib/tardis/docker/workers/app.rb")])
+        opened []
+        old-open browser.open]
+    (set state.tree_selected_row 1)
+    (set browser.open (fn [path]
+                        (table.insert opened path)
+                        true))
+    (faith.is (app.handle-key state {} "o"))
+    (set browser.open old-open)
+    (faith.= [] opened)
+    (faith.= "Folder not found: lib/tardis/docker/workers" state.notice)))
+
+(fn test-open_on_deleted_file_shows_not_found []
+  (t.reset-workdir)
+  (let [state (state [(entry "D" "lib/workers/destroy.rb")])
+        opened []
+        old-run editor.run]
+    (set editor.run (fn [_config entry _stty-state]
+                      (table.insert opened entry.path)
+                      true))
+    (faith.is (app.handle-key state {} "o"))
+    (set editor.run old-run)
+    (faith.= [] opened)
+    (faith.= "File not found: lib/workers/destroy.rb" state.notice)))
 
 (fn test-tree_search_matches_folders []
   (let [state (state [(entry "A" "script/shorthand_branch.sh")
@@ -462,6 +492,8 @@
  : test-startup-clean-remote-sync-finish-stays-quiet
  : test-startup-fetch-failure-shows-sync-notice
  : test-split-key-does-not-start-due-sync
+ : test-open_on_deleted_file_shows_not_found
+ : test-open_on_deleted_tree_folder_shows_not_found
  : test-open_on_tree_folder_opens_folder
  : test-space_on_tree_folder_toggles_descendant_files
  : test-view-styles_reviewed_checkbox_brackets_as_muted

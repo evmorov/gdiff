@@ -24,7 +24,17 @@
     (sys.remove-file path)
     (faith.= false (sys.file-exists? path))))
 
+(fn test-dir-exists-checks-directories []
+  (let [path "/tmp/gdiff-platform-dir-exists-test"]
+    (sys.remove-dir path)
+    (faith.= false (sys.dir-exists? path))
+    (faith.is (sys.ensure-dir path))
+    (faith.= true (sys.dir-exists? path))
+    (sys.remove-dir path)
+    (faith.= false (sys.dir-exists? path))))
+
 {: test-background-shell-command-detaches-from-terminal
  : test-browser-command-quotes-url
+ : test-dir-exists-checks-directories
  : test-editor-detached-command-does-not-use-terminal-stdin
  : test-file-exists-checks-plain-files}

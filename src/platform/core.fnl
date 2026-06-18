@@ -46,6 +46,11 @@
           true)
         false)))
 
+(fn dir-exists? [path]
+  (let [(ok _kind _code) (os.execute (.. "test -d " (shell-quote path)
+                                         " 2>/dev/null"))]
+    (= ok true)))
+
 (fn remove-file [path]
   (os.remove path))
 
@@ -69,6 +74,7 @@
 {: background-command
  : background-shell-command
  : cpu-count
+ : dir-exists?
  : ensure-dir
  : file-exists?
  : read-command

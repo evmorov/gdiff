@@ -1,4 +1,5 @@
 (local sys (require :platform.core))
+(local symbols (require :tui.symbols))
 (local tui (require :tui.core))
 
 (fn command-path [path]
@@ -205,11 +206,13 @@
                   (render-listing-lines state folder record.output statuses
                                         orders)
                   (render-synthetic-lines state folder statuses orders))]
-    (table.insert lines 1 "")
-    (table.insert lines 1 (.. (marker state
-                                      (folder-status-kind (or row.entries
-                                                              state.entries)))
-                              folder "/"))
+    (let [header (.. (marker state
+                             (folder-status-kind (or row.entries state.entries)))
+                     folder "/")
+          divider (string.rep symbols.line.horizontal
+                              (tui.visible-length header))]
+      (table.insert lines 1 (tui.color state.theme :muted divider))
+      (table.insert lines 1 header))
     lines))
 
 (fn ensure-cache [state]

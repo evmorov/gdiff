@@ -279,7 +279,7 @@
     (select-folder state "lib/tardis/docker")
     (let [view (app.view state 12 100)]
       (faith.= (table.concat ["[M] lib/tardis/docker/"
-                              ""
+                              (string.rep "─" 22)
                               "[M] api.rb"
                               "[D] web.rb"
                               "[D] views/"

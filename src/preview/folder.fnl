@@ -224,21 +224,31 @@
   (let [(output ok _kind _code) (sys.read-command (command path))]
     {:ok? ok :output output}))
 
-(fn lines [state row]
+(fn cached-record [cache path]
+  (. cache path))
+
+(fn cache-record [cache path record]
+  (tset cache path record)
+  record)
+
+(fn record-for [state path]
   (let [cache (ensure-cache state)
-        path row.path
-        cached (. cache path)
-        record (or cached (load-record path))]
-    (when (not cached)
-      (tset cache path record))
-    (render-lines state row record)))
+        cached (cached-record cache path)]
+    (or cached (cache-record cache path (load-record path)))))
+
+(fn lines [state row]
+  (render-lines state row (record-for state row.path)))
 
 {: command
+ : cached-record
+ : cache-record
  : child-status-kind
  : direct-child
  : direct-file-child
  : direct-statuses
  : folder-status-kind
  : listing-entry
+ : load-record
  : lines
+ : record-for
  : render-lines}

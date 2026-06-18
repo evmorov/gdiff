@@ -188,12 +188,31 @@
                     :error "No linked PR for feature"})
     (faith.= "No linked PR for feature" state.notice)))
 
+(fn test-open-target-finished-updates-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (update.update state {} {:type :open-target-finished
+                             :target :folder
+                             :path "src"
+                             :ok? true})
+    (faith.= "Opening: src" state.notice)
+    (update.update state {} {:type :open-target-finished
+                             :target :folder
+                             :path "missing"
+                             :ok? false})
+    (faith.= "Folder not found: missing" state.notice)
+    (update.update state {} {:type :open-target-finished
+                             :target :file
+                             :path "missing.rb"
+                             :ok? false})
+    (faith.= "File not found: missing.rb" state.notice)))
+
 {: test-command-dispatches-back-through-update
  : test-copy-path-copies_selected_tree_folder_path
  : test-h_l_scroll_preview_horizontally
  : test-local-refresh_does_not_start_remote_sync
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-open-pr-finished-updates-notice
+ : test-open-target-finished-updates-notice
  : test-preview_page_scroll_sets_skip_draw_when_clamped
  : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data

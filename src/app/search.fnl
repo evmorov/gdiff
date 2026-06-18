@@ -1,11 +1,12 @@
 (local matcher (require :app.search_match))
 (local nav (require :app.search_nav))
 (local selection (require :app.selection))
+(local search-plan (require :app.search_plan))
 (local search-status (require :app.search_status))
 (local tui (require :tui.core))
 
 (fn new-state []
-  {:active? false :query "" :matches [] :index 0})
+  (search-plan.new-state))
 
 (fn search [state]
   state.search)
@@ -64,39 +65,28 @@
         (set-status state))))
 
 (fn start [state]
-  (let [search (search state)]
-    (set search.active? true)
-    (set search.query "")
-    (set search.matches [])
-    (set search.index 0)
-    (set-status state)))
+  (set state.search (search-plan.start))
+  (set-status state))
 
 (fn finish [state]
-  (set (. state.search :active?) false)
+  (set state.search (search-plan.finish (search state)))
   (set-status state))
 
 (fn clear [state]
-  (let [search (search state)]
-    (set search.active? false)
-    (set search.query "")
-    (set search.matches [])
-    (set search.index 0)
-    (set state.notice nil)))
+  (set state.search (search-plan.clear))
+  (set state.notice nil))
 
 (fn backspace [state]
-  (let [search (search state)
-        len (length search.query)]
-    (when (> len 0)
-      (set search.query (search.query:sub 1 (- len 1))))
+  (let [search (search state)]
+    (set search.query (search-plan.backspace-query search.query))
     (rebuild state)))
 
 (fn printable? [key]
-  (and (= (type key) "string") (= (length key) 1)
-       (let [byte (string.byte key)]
-         (and byte (>= byte 32) (not (= byte 127))))))
+  (search-plan.printable? key))
 
 (fn append-char [state key]
-  (set (. state.search :query) (.. state.search.query key))
+  (set (. state.search :query)
+       (search-plan.append-query state.search.query key))
   (rebuild state))
 
 (fn handle-input [state key]

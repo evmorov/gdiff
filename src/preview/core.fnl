@@ -1,7 +1,10 @@
 (local git (require :git.core))
 (local assets (require :preview.assets))
 (local format (require :preview.format))
+(local folder-preview (require :preview.folder))
 (local preview-key (require :preview.key))
+(local preview-warm (require :preview.warm))
+(local viewport (require :preview.viewport))
 (local sys (require :platform.core))
 (local tui (require :tui.core))
 (local math-util (require :util.math))
@@ -42,8 +45,20 @@
             (warming? state) (loading-lines state)
             (lines state entry)))))
 
+(fn prepare-entry [state entry]
+  (preview-warm.import-entry state.preview_warm state.preview_cache
+                             state.revision entry))
+
+(fn selection-lines [state selected-entry selected-row]
+  (if (and (= state.view_mode :tree) selected-row (= selected-row.type :folder))
+      (folder-preview.lines state selected-row)
+      (nonblocking-lines state selected-entry)))
+
 (fn row-count [state]
   (or state.preview_rows 1))
+
+(fn visible-count [visible]
+  (math.max 1 (or visible 1)))
 
 (fn page-step [state]
   (math.max 1 (math.floor (/ (row-count state) 2))))
@@ -57,12 +72,18 @@
     (set state.preview_scroll after)
     (not (= before after))))
 
-(fn set-scroll-for-lines [state lines scroll]
-  (let [before (or state.preview_scroll 0)
-        max-scroll (math.max 0 (- (length lines) (row-count state)))
-        after (math-util.clamp scroll 0 max-scroll)]
-    (set state.preview_scroll after)
-    (not (= before after))))
+(fn apply-display-lines [state lines visible]
+  (let [scroll-state (viewport.scroll-state lines (visible-count visible)
+                                            state.preview_scroll)]
+    (set-fields state [:preview_rows scroll-state.visible]
+                [:preview_total scroll-state.total]
+                [:preview_scroll scroll-state.offset])
+    scroll-state))
+
+(fn visible-display-lines [state lines visible]
+  (viewport.visible-lines lines
+                          (viewport.scroll-state lines (visible-count visible)
+                                                 state.preview_scroll)))
 
 (fn reset-scroll [state]
   (set-fields state [:preview_scroll 0] [:preview_x_scroll 0]
@@ -94,19 +115,19 @@
                 [:preview_x_scroll
                  (math-util.clamp (or state.preview_x_scroll 0) 0 max-scroll)])))
 
+(fn apply-horizontal-scroll-limit [state lines cols vertical-scroll?]
+  (if state.preview_wrap?
+      (set-horizontal-scroll-limit state [] 0)
+      (set-horizontal-scroll-limit state lines
+                                   (viewport.content-width state.split_ratio
+                                                           cols vertical-scroll?))))
+
 (fn visible-lines [state entry visible ?opts]
-  (let [visible (math.max 1 visible)
-        lines (if (and ?opts ?opts.nonblocking?)
+  (let [lines (if (and ?opts ?opts.nonblocking?)
                   (nonblocking-lines state entry)
                   (lines state entry))]
-    (set-fields state [:preview_rows visible] [:preview_total (length lines)])
-    (set-scroll-for-lines state lines (or state.preview_scroll 0))
-    (let [first (+ state.preview_scroll 1)
-          last (math.min (length lines) (+ state.preview_scroll visible))]
-      (if (> first last)
-          []
-          (fcollect [i first last]
-            (. lines i))))))
+    (apply-display-lines state lines visible)
+    (visible-display-lines state lines visible)))
 
 (fn scroll-info [state]
   (let [visible (or state.preview_rows 0)
@@ -115,13 +136,19 @@
       {:offset (or state.preview_scroll 0) :visible visible :total total})))
 
 {: lines
+ : apply-display-lines
  : nonblocking-lines
  : page-step
+ : prepare-entry
  : reset-scroll
  : scroll
  : scroll-info
  : scroll-horizontal
  : scroll-page-down
  : scroll-page-up
+ : selection-lines
+ : apply-horizontal-scroll-limit
  : set-horizontal-scroll-limit
+ : visible-display-lines
+ : visible-count
  : visible-lines}

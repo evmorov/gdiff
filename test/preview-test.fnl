@@ -67,6 +67,27 @@
     (faith.= 0 state.preview_x_max_scroll)
     (faith.= 0 state.preview_x_scroll)))
 
+(fn test-apply-horizontal-scroll-limit_uses_split_width []
+  (let [state (state)]
+    (set state.split_ratio 0.5)
+    (set state.preview_wrap? false)
+    (set state.preview_x_scroll 99)
+    (preview.apply-horizontal-scroll-limit state ["abcdefghij"] 20 false)
+    (faith.= 0 state.preview_x_max_scroll)
+    (faith.= 0 state.preview_x_scroll)
+    (preview.apply-horizontal-scroll-limit state ["abcdefghijklmnopqrstuvwxyz"]
+                                           20 true)
+    (faith.= 17 state.preview_x_max_scroll)))
+
+(fn test-apply-horizontal-scroll-limit_resets_when_wrapping []
+  (let [state (state)]
+    (set state.preview_wrap? true)
+    (set state.preview_x_scroll 10)
+    (preview.apply-horizontal-scroll-limit state ["abcdefghijklmnopqrstuvwxyz"]
+                                           20 false)
+    (faith.= 0 state.preview_x_max_scroll)
+    (faith.= 0 state.preview_x_scroll)))
+
 (fn test-asset-detection-covers-image_and_icon_extensions []
   (faith.= true (assets.asset? {:path "icons/logo.SVG"}))
   (faith.= true (assets.asset? {:path "favicon.ico"}))
@@ -141,13 +162,44 @@
                              :reviewed {}})
     (faith.= 0 (t.count-pairs state.folder_preview_cache))))
 
+(fn test-selection-lines-renders-folder_rows_through_preview_core []
+  (let [state {:view_mode :tree
+               :entries [{:status "M"
+                          :kind "M"
+                          :path "src/a.rb"
+                          :reviewed false}]
+               :folder_preview_cache {"src" {:ok? true
+                                             :output "total 0\n-rw-r--r--  1 u  g  1 Jan  1 00:00 a.rb\n"}}}
+        row {:type :folder :path "src"}]
+    (faith.= "[M] src/\n────────\n[M] a.rb"
+             (t.text (preview.selection-lines state nil row)))))
+
+(fn test-apply-display-lines-updates_preview_scroll_metadata []
+  (let [state {:preview_scroll 10}]
+    (faith.= {:offset 1 :total 3 :visible 2}
+             (preview.apply-display-lines state ["a" "b" "c"] 2))
+    (faith.= 2 state.preview_rows)
+    (faith.= 3 state.preview_total)
+    (faith.= 1 state.preview_scroll)
+    (faith.= ["b" "c"] (preview.visible-display-lines state ["a" "b" "c"] 2))))
+
+(fn test-visible_count_never_drops_below_one []
+  (faith.= 1 (preview.visible-count nil))
+  (faith.= 1 (preview.visible-count 0))
+  (faith.= 3 (preview.visible-count 3)))
+
 {: test-visible-lines-can-be-nonblocking-while-warming
+ : test-apply-display-lines-updates_preview_scroll_metadata
+ : test-apply-horizontal-scroll-limit_resets_when_wrapping
+ : test-apply-horizontal-scroll-limit_uses_split_width
  : test-asset-detection-covers-image_and_icon_extensions
  : test-asset-preview-is-cheap-and-cached-without_git_diff
  : test-horizontal_scroll_limit_uses_visible_line_width
  : test-preview_format_colors_diff_lines
  : test-refresh-loaded-clears-folder-preview-cache
  : test-refresh-loaded-keeps-cache-and-caches-selected-preview
+ : test-selection-lines-renders-folder_rows_through_preview_core
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
+ : test-visible_count_never_drops_below_one
  : test-visible-lines-renders-and-caches-real-git-preview}

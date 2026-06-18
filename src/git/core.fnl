@@ -6,9 +6,7 @@
 (local linked-pr-url-command commands.linked-pr-url-command)
 
 (fn revision-exists? [revision]
-  (let [cmd (.. "git rev-parse --verify --quiet "
-                (sys.shell-quote (.. revision "^{commit}")) " >/dev/null 2>&1")
-        (ok _kind _code) (os.execute cmd)]
+  (let [(ok _kind _code) (os.execute (commands.revision-exists-command revision))]
     ok))
 
 (fn default-revision []
@@ -19,8 +17,7 @@
       (values nil "No revision provided, and neither main nor master exists.")))
 
 (fn diff-filter []
-  (let [cmd "git config --get interactive.diffFilter 2>/dev/null"
-        (output ok _kind _code) (sys.read-command cmd)
+  (let [(output ok _kind _code) (sys.read-command (commands.diff-filter-command))
         filter (sys.trim output)]
     (if (and ok (< 0 (length filter)))
         filter)))
@@ -29,7 +26,7 @@
   {:diff-filter (diff-filter)})
 
 (fn current-branch []
-  (let [(output ok _kind _code) (sys.read-command "git branch --show-current 2>/dev/null")
+  (let [(output ok _kind _code) (sys.read-command (commands.current-branch-command))
         branch (sys.trim output)]
     (if (and ok (> (length branch) 0))
         branch
@@ -91,7 +88,7 @@
           (values output ok false)))))
 
 (fn repo-root []
-  (let [(output ok _kind _code) (sys.read-command "git rev-parse --show-toplevel 2>/dev/null")]
+  (let [(output ok _kind _code) (sys.read-command (commands.repo-root-command))]
     (if ok
         (sys.trim output)
         (or (os.getenv "PWD") "."))))

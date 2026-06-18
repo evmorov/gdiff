@@ -1,0 +1,46 @@
+(local tui (require :tui.core))
+(local math-util (require :util.math))
+(local wrap (require :tui.wrap))
+
+(fn content-width [split-ratio cols scroll?]
+  (let [(_left-cols right-cols) (tui.components.split.widths cols split-ratio)]
+    (math.max 0 (if scroll? (- right-cols 1) right-cols))))
+
+(fn display-lines [wrap? lines width]
+  (if wrap?
+      (wrap.lines lines width)
+      lines))
+
+(fn scroll? [lines visible]
+  (> (length lines) visible))
+
+(fn lines-for-width [state lines visible cols]
+  (let [wide-width (content-width state.split_ratio cols false)
+        wide-lines (display-lines state.preview_wrap? lines wide-width)
+        scroll? (scroll? wide-lines visible)
+        width (content-width state.split_ratio cols scroll?)]
+    (if (and state.preview_wrap? scroll? (not (= width wide-width)))
+        (display-lines state.preview_wrap? lines width)
+        wide-lines)))
+
+(fn scroll-state [lines visible scroll]
+  (let [total (length lines)
+        max-scroll (math.max 0 (- total visible))
+        offset (math-util.clamp (or scroll 0) 0 max-scroll)]
+    {:offset offset :total total :visible visible}))
+
+(fn visible-lines [lines scroll-state]
+  (let [first (+ (or scroll-state.offset 0) 1)
+        last (math.min scroll-state.total
+                       (+ (or scroll-state.offset 0) scroll-state.visible))]
+    (if (> first last)
+        []
+        (fcollect [i first last]
+          (. lines i)))))
+
+{: content-width
+ : display-lines
+ : lines-for-width
+ : scroll-state
+ : scroll?
+ : visible-lines}

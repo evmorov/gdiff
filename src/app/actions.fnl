@@ -1,30 +1,21 @@
 (local commands (require :app.commands))
-(local sys (require :platform.core))
+(local action-plan (require :app.action_plan))
+(local notice (require :app.notice))
 (local preview (require :preview.core))
 (local review (require :app.review))
 (local reviews (require :storage.reviews))
 (local search (require :app.search))
 (local selection (require :app.selection))
-(local math-util (require :util.math))
 
 (import-macros {: set-fields} :state.macros)
 
 (fn move-selection [state delta]
   (selection.move state delta))
 
-(fn set-notice [state action path]
-  (set state.notice (.. action ": " path)))
-
-(fn reviewed-action [entry]
-  (if entry.reviewed "Marked reviewed" "Unmarked reviewed"))
-
 (fn toggle-folder-reviewed [state row]
   (let [entries (or row.entries [])
         review? (review.toggle-all! entries)]
-    (set-notice state (if review?
-                          "Marked folder reviewed"
-                          "Unmarked folder reviewed")
-                row.name)))
+    (set state.notice (notice.reviewed-folder review? row.name))))
 
 (fn toggle-reviewed [state]
   (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))
@@ -34,14 +25,12 @@
         entry
         (do
           (review.toggle-entry! entry)
-          (set-notice state (reviewed-action entry) entry.path))))
+          (set state.notice (notice.reviewed-entry entry)))))
   (commands.persist-reviewed))
 
 (fn toggle-all-reviewed [state]
   (let [review? (review.toggle-all! state.entries)]
-    (set state.notice (if review?
-                          "Marked all reviewed"
-                          "Unmarked all reviewed"))
+    (set state.notice (notice.reviewed-all review?))
     (commands.persist-reviewed)))
 
 (fn cache-selected-preview [state]
@@ -58,33 +47,24 @@
   (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed)))
 
 (fn open-selected [state config]
-  (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))
-        entry (selection.selected-entry state)]
-    (if (and row (= row.type :folder))
-        (if (sys.dir-exists? row.path)
-            (do
-              (set-notice state "Opening" row.path)
-              (commands.open-folder row.path))
-            (set-notice state "Folder not found" row.path))
-        entry
-        (if (sys.file-exists? entry.path)
-            (do
-              (set-notice state "Opening" entry.path)
-              (commands.open-editor config entry))
-            (set-notice state "File not found" entry.path)))))
+  (let [target (action-plan.selected-target state.view_mode
+                                            (selection.selected-tree-row state)
+                                            (selection.selected-entry state))]
+    (when target
+      (if (= target.kind :folder)
+          (commands.open-folder target.path)
+          (commands.open-editor config target.entry)))))
 
 (fn copy-selected-path [state]
-  (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))
-        entry (selection.selected-entry state)
-        path (if (and row (= row.type :folder))
-                 (.. row.path "/")
-                 (and entry entry.path))]
+  (let [target (action-plan.selected-target state.view_mode
+                                            (selection.selected-tree-row state)
+                                            (selection.selected-entry state))
+        path (action-plan.copy-path target)]
     (when path
       (commands.copy-path path))))
 
 (fn move-split [state delta]
-  (set state.split_ratio (math-util.clamp (+ (or state.split_ratio 0.4) delta)
-                                          0.1 0.9)))
+  (set state.split_ratio (action-plan.split-ratio state.split_ratio delta)))
 
 (fn scroll-horizontal [state delta]
   (let [changed? (preview.scroll-horizontal state delta)]
@@ -115,7 +95,7 @@
 
 (fn refresh-and-sync [state]
   (set state.show_sync_notice? true)
-  (set state.notice "Syncing remote...")
+  (set state.notice (notice.syncing-remote))
   (commands.batch (commands.sync-start) (commands.refresh)))
 
 (local handlers {:up #(move-selection $1 -1)
@@ -146,4 +126,4 @@
     (when handler
       (handler state config))))
 
-{: apply-refresh : cache-selected-preview : handle : handlers : set-notice}
+{: apply-refresh : cache-selected-preview : handle : handlers}

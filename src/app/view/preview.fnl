@@ -1,61 +1,26 @@
 (local preview (require :preview.core))
-(local folder-preview (require :preview.folder))
 (local selection (require :app.selection))
 (local tui (require :tui.core))
-(local math-util (require :util.math))
-(local wrap (require :tui.wrap))
-
-(fn content-width [state cols scroll?]
-  (let [(_left-cols right-cols) (tui.components.split.widths cols
-                                                             state.split_ratio)]
-    (math.max 0 (if scroll? (- right-cols 1) right-cols))))
+(local viewport (require :preview.viewport))
 
 (fn raw-lines [state selected-entry selected-row]
-  (if (and (= state.view_mode :tree) selected-row (= selected-row.type :folder))
-      (folder-preview.lines state selected-row)
-      (preview.nonblocking-lines state selected-entry)))
-
-(fn display-lines [state lines width]
-  (if state.preview_wrap?
-      (wrap.lines lines width)
-      lines))
-
-(fn scroll? [lines visible]
-  (> (length lines) visible))
+  (preview.selection-lines state selected-entry selected-row))
 
 (fn lines-for-width [state lines visible cols]
-  (let [wide-width (content-width state cols false)
-        wide-lines (display-lines state lines wide-width)
-        scroll? (scroll? wide-lines visible)
-        width (content-width state cols scroll?)]
-    (if (and state.preview_wrap? scroll? (not (= width wide-width)))
-        (display-lines state lines width)
-        wide-lines)))
+  (viewport.lines-for-width state lines visible cols))
 
 (fn set-scroll [state lines visible]
-  (set state.preview_rows visible)
-  (set state.preview_total (length lines))
-  (let [max-scroll (math.max 0 (- (length lines) visible))]
-    (set state.preview_scroll
-         (math-util.clamp (or state.preview_scroll 0) 0 max-scroll))))
+  (preview.apply-display-lines state lines visible))
 
 (fn visible-lines [state lines visible]
-  (let [first (+ (or state.preview_scroll 0) 1)
-        last (math.min (length lines) (+ (or state.preview_scroll 0) visible))]
-    (if (> first last)
-        []
-        (fcollect [i first last]
-          (. lines i)))))
+  (preview.visible-display-lines state lines visible))
 
 (fn has-vertical-scroll? [state]
   (not (= nil (preview.scroll-info state))))
 
 (fn update-horizontal-scroll [state raw-lines cols]
-  (if state.preview_wrap?
-      (preview.set-horizontal-scroll-limit state [] 0)
-      (preview.set-horizontal-scroll-limit state raw-lines
-                                           (content-width state cols
-                                                          (has-vertical-scroll? state)))))
+  (preview.apply-horizontal-scroll-limit state raw-lines cols
+                                         (has-vertical-scroll? state)))
 
 (fn body [state visible cols]
   (let [selected-entry (selection.selected-entry state)
@@ -69,13 +34,4 @@
     (tui.lines visible-lines (preview.scroll-info state) state.preview_x_scroll
                state.preview_x_max_scroll)))
 
-{: body
- : content-width
- : display-lines
- : lines-for-width
- : raw-lines
- : has-vertical-scroll?
- : scroll?
- : set-scroll
- : update-horizontal-scroll
- : visible-lines}
+{: body}

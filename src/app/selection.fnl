@@ -1,6 +1,6 @@
 (local preview (require :preview.core))
+(local selection-plan (require :app.selection_plan))
 (local tree (require :app.tree))
-(local math-util (require :util.math))
 
 (fn flat-rows [entries]
   (icollect [index entry (ipairs entries)]
@@ -24,10 +24,11 @@
       (. state.entries state.selected)))
 
 (fn selected-row-index [state ?rows]
-  (if (= state.view_mode :tree)
-      (or state.tree_selected_row
-          (tree.selected-row (or ?rows (tree-rows state)) state.selected))
-      state.selected))
+  (selection-plan.selected-row-index state.view_mode state.tree_selected_row
+                                     state.selected
+                                     (tree.selected-row (or ?rows
+                                                            (tree-rows state))
+                                                        state.selected)))
 
 (fn selected-row? [state row row-index]
   (if (= state.view_mode :tree)
@@ -40,7 +41,7 @@
 (fn set-file [state selected]
   (let [before state.selected]
     (set state.selected selected)
-    (when (not (= before state.selected))
+    (when (selection-plan.changed? before state.selected)
       (preview.reset-scroll state))))
 
 (fn set-tree-row [state row-index]
@@ -51,7 +52,7 @@
     (let [entry-index (tree.entry-index-at-row rows row-index)]
       (when entry-index
         (set state.selected entry-index)))
-    (when (not (= before state.tree_selected_row))
+    (when (selection-plan.changed? before state.tree_selected_row)
       (preview.reset-scroll state))))
 
 (fn move [state delta]
@@ -59,11 +60,8 @@
       (set-tree-row state
                     (tree.move-row (tree-rows state) state.tree_selected_row
                                    delta))
-      (set-file state
-                (if (= (length state.entries) 0)
-                    1
-                    (math-util.clamp (+ state.selected delta) 1
-                                     (length state.entries))))))
+      (set-file state (selection-plan.flat-index state.entries state.selected
+                                                 delta))))
 
 (fn top [state]
   (if (= state.view_mode :tree)

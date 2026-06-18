@@ -1,18 +1,25 @@
 (local faith (require :faith))
 
 (faith.run [:app-test
+            :action_plan_test
             :args-test
             :git-test
+            :git_commands_test
             :git_parse_test
+            :messages_test
+            :notice_test
             :platform-test
             :review-test
             :search_match_test
             :search_nav_test
+            :search_plan_test
             :search_status_test
+            :selection_plan_test
             :preview-test
             :preview_folder_test
             :preview_warm_test
             :preview_warm_plan_test
+            :preview_viewport_test
             :preview_workers_test
             :reviews-test
             :sync-test

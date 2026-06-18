@@ -1,4 +1,5 @@
 (local search (require :app.search))
+(local messages (require :app.messages))
 
 (fn event-key [key]
   (case key
@@ -38,10 +39,10 @@
 
 (fn read-msg [state raw-key]
   (let [(pending-key action) (next-key state.pending-key raw-key)]
-    (if (= raw-key :quit) {:type :quit}
-        (= action :toggle-tree) {:type :toggle-tree :pending-key pending-key}
-        (search.active? state) {:type :search-input :key raw-key}
-        action {:type action :pending-key pending-key}
-        {:type :pending-key :pending-key pending-key})))
+    (if (= raw-key :quit) (messages.quit)
+        (= action :toggle-tree) (messages.action :toggle-tree pending-key)
+        (search.active? state) (messages.search-input raw-key)
+        action (messages.action action pending-key)
+        (messages.pending-key pending-key))))
 
 {: event-key : next-key : read-msg}

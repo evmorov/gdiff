@@ -2,6 +2,7 @@
 (local command-runner (require :app.command_runner))
 (local commands (require :app.commands))
 (local input (require :app.input))
+(local notice (require :app.notice))
 (local preview-warm (require :preview.warm))
 (local search (require :app.search))
 (local app-state (require :app.state))
@@ -14,51 +15,67 @@
                (not (sync.warning state.sync)))
       (let [sync-notice (sync.notice state.sync)]
         (if sync-notice (set state.notice sync-notice)
-            state.show_sync_notice? (set state.notice "Remote in sync"))))
+            state.show_sync_notice? (set state.notice (notice.remote-in-sync)))))
     (when (and running? (not state.sync.running?))
       (set state.show_sync_notice? false)
       (set state.force_next_draw? true))))
 
+(fn handle-quit [state _config _msg]
+  (preview-warm.cleanup state.preview_warm)
+  (set state.quit? true)
+  commands.none)
+
+(fn handle-pending-key [state _config msg]
+  (set state.pending-key msg.pending-key)
+  commands.none)
+
+(fn handle-search-input [state _config msg]
+  (search.handle-input state msg.key)
+  commands.none)
+
+(fn handle-review-persist-failed [state _config _msg]
+  (set state.notice (notice.review-persist-failed))
+  commands.none)
+
+(fn handle-copy-path-finished [state _config msg]
+  (set state.notice (notice.copy-finished msg.ok? msg.path))
+  commands.none)
+
+(fn handle-open-pr-finished [state _config msg]
+  (set state.notice (notice.open-pr-finished msg.ok? msg.url msg.error))
+  commands.none)
+
+(fn handle-open-target-finished [state _config msg]
+  (set state.notice (notice.open-target-finished msg.target msg.path msg.ok?))
+  commands.none)
+
+(fn handle-refresh-loaded [state _config msg]
+  (actions.apply-refresh state msg.entries msg.reviewed msg.diff_stats))
+
+(local message-handlers
+       {:copy-path-finished handle-copy-path-finished
+        :open-pr-finished handle-open-pr-finished
+        :open-target-finished handle-open-target-finished
+        :pending-key handle-pending-key
+        :quit handle-quit
+        :refresh-loaded handle-refresh-loaded
+        :review-persist-failed handle-review-persist-failed
+        :search-input handle-search-input})
+
+(fn handle-action [state config msg msg-type]
+  (set state.pending-key msg.pending-key)
+  (command-runner.command-or-none (actions.handle state config msg-type)))
+
+(fn command-for-message [state config msg]
+  (let [msg-type (and (= (type msg) :table) msg.type)
+        handler (. message-handlers msg-type)]
+    (if handler
+        (handler state config msg)
+        (handle-action state config msg msg-type))))
+
 (fn update [state config msg]
   (set state.skip_next_draw? false)
-  (let [msg-type (and (= (type msg) :table) msg.type)
-        command (case msg-type
-                  :quit (do
-                          (preview-warm.cleanup state.preview_warm)
-                          (set state.quit? true)
-                          commands.none)
-                  :pending-key (do
-                                 (set state.pending-key msg.pending-key)
-                                 commands.none)
-                  :search-input (do
-                                  (search.handle-input state msg.key)
-                                  commands.none)
-                  :review-persist-failed (do
-                                           (set state.notice
-                                                "Could not save reviewed marks")
-                                           commands.none)
-                  :copy-path-finished (do
-                                        (actions.set-notice state
-                                                            (if msg.ok?
-                                                                "Copied"
-                                                                "Copy failed")
-                                                            msg.path)
-                                        commands.none)
-                  :open-pr-finished (do
-                                      (set state.notice
-                                           (if msg.ok?
-                                               (.. "Opened PR: " msg.url)
-                                               (or msg.error "No linked PR")))
-                                      commands.none)
-                  :refresh-loaded (actions.apply-refresh state msg.entries
-                                                         msg.reviewed
-                                                         msg.diff_stats)
-                  _ (do
-                      (set state.pending-key msg.pending-key)
-                      (command-runner.command-or-none (actions.handle state
-                                                                      config
-                                                                      msg-type))))]
-    (values state command)))
+  (values state (command-for-message state config msg)))
 
 (fn run-command [state config command]
   (command-runner.run state config update command))
@@ -91,4 +108,5 @@
  : run-command
  : start
  : start-command
- : update}
+ : update
+ :command-for-message command-for-message}

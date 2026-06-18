@@ -2,9 +2,11 @@
 (local clipboard (require :platform.clipboard))
 (local editor (require :platform.editor))
 (local git (require :git.core))
+(local messages (require :app.messages))
 (local preview-warm (require :preview.warm))
 (local reviews (require :storage.reviews))
 (local sync (require :git.sync))
+(local sys (require :platform.core))
 
 (import-macros {: defcommand} :app.macros)
 
@@ -24,7 +26,7 @@
   (let [state (get-state)]
     (when (not (reviews.persist state.review_store state.review_scope
                                 state.entries))
-      (dispatch {:type :review-persist-failed}))))
+      (dispatch (messages.review-persist-failed)))))
 
 (defcommand warm-preview-cache
   []
@@ -43,18 +45,24 @@
 
 (defcommand open-editor
   [config entry]
-  [_dispatch get-state]
-  (editor.run config entry (. (get-state) :stty-state)))
+  [dispatch get-state]
+  (let [exists? (sys.file-exists? entry.path)]
+    (when exists?
+      (editor.run config entry (. (get-state) :stty-state)))
+    (dispatch (messages.open-target-finished :file entry.path exists?))))
 
 (defcommand open-folder
   [path]
-  [_dispatch _get-state]
-  (browser.open path))
+  [dispatch _get-state]
+  (let [exists? (sys.dir-exists? path)]
+    (when exists?
+      (browser.open path))
+    (dispatch (messages.open-target-finished :folder path exists?))))
 
 (defcommand copy-path
   [path]
   [dispatch _get-state]
-  (dispatch {:type :copy-path-finished :path path :ok? (clipboard.copy path)}))
+  (dispatch (messages.copy-path-finished path (clipboard.copy path))))
 
 (defcommand open-linked-pr
   []
@@ -64,8 +72,8 @@
     (if url
         (do
           (browser.open url)
-          (dispatch {:type :open-pr-finished :url url :ok? true}))
-        (dispatch {:type :open-pr-finished :error err :ok? false}))))
+          (dispatch (messages.open-pr-finished url nil true)))
+        (dispatch (messages.open-pr-finished nil err false)))))
 
 (defcommand refresh
   []
@@ -77,10 +85,7 @@
                                     (git.diff-stats state.revision)
                                     (values nil nil))]
     (when (not err)
-      (dispatch {:type :refresh-loaded
-                 :entries entries
-                 :reviewed reviewed
-                 :diff_stats diff-stats}))))
+      (dispatch (messages.refresh-loaded entries reviewed diff-stats)))))
 
 {: batch
  : copy-path

@@ -56,10 +56,16 @@
   (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed)))
 
 (fn open-selected [state config]
-  (let [entry (selection.selected-entry state)]
-    (when entry
-      (set-notice state "Opening" entry.path)
-      (commands.open-editor config entry))))
+  (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))
+        entry (selection.selected-entry state)]
+    (if (and row (= row.type :folder))
+        (do
+          (set-notice state "Opening" row.path)
+          (commands.open-folder row.path))
+        entry
+        (do
+          (set-notice state "Opening" entry.path)
+          (commands.open-editor config entry)))))
 
 (fn copy-selected-path [state]
   (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))

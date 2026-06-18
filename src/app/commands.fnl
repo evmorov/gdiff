@@ -46,6 +46,11 @@
   [_dispatch get-state]
   (editor.run config entry (. (get-state) :stty-state)))
 
+(defcommand open-folder
+  [path]
+  [_dispatch _get-state]
+  (browser.open path))
+
 (defcommand copy-path
   [path]
   [dispatch _get-state]
@@ -81,6 +86,7 @@
  : copy-path
  : none
  : open-editor
+ : open-folder
  : open-linked-pr
  : persist-reviewed
  : refresh

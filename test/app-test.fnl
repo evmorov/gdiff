@@ -1,4 +1,5 @@
 (local app (require :app.core))
+(local browser (require :platform.browser))
 (local faith (require :faith))
 (local fennel (require :fennel))
 (local preview-key (require :preview.key))
@@ -167,6 +168,21 @@
              (reviews.paths state.entries))
     (app.handle-key state {} " ")
     (faith.= {} (reviews.paths state.entries))))
+
+(fn test-open_on_tree_folder_opens_folder []
+  (let [state (state [(entry "A" "script/shorthand_branch.sh")
+                      (entry "M"
+                             "spec/lib/epoxy/version_branch_validation_spec.rb")])
+        opened []
+        old-open browser.open]
+    (set browser.open (fn [path]
+                        (table.insert opened path)
+                        true))
+    (app.handle-key state {} "j")
+    (app.handle-key state {} "o")
+    (set browser.open old-open)
+    (faith.= ["spec/lib/epoxy"] opened)
+    (faith.= "Opening: spec/lib/epoxy" state.notice)))
 
 (fn test-tree_search_matches_folders []
   (let [state (state [(entry "A" "script/shorthand_branch.sh")
@@ -446,6 +462,7 @@
  : test-startup-clean-remote-sync-finish-stays-quiet
  : test-startup-fetch-failure-shows-sync-notice
  : test-split-key-does-not-start-due-sync
+ : test-open_on_tree_folder_opens_folder
  : test-space_on_tree_folder_toggles_descendant_files
  : test-view-styles_reviewed_checkbox_brackets_as_muted
  : test-tree_mode_navigation_moves_between_folders_and_files

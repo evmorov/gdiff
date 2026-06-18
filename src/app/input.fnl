@@ -24,8 +24,8 @@
     "`" :toggle-tree
     "y" :copy-path
     "p" :open-pr
-    "<" :split-left
-    ">" :split-right
+    "[" :split-left
+    "]" :split-right
     "G" :bottom
     "q" :clear-search
     _ key))

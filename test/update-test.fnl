@@ -85,18 +85,18 @@
 
 (fn test-split-keys-move-divider-by-five-percent []
   (let [state (state [(entry "M" "a.rb")])]
-    (update.update state {} (update.read-msg state "<"))
+    (update.update state {} (update.read-msg state "["))
     (faith.almost= 0.35 state.split_ratio 0.0001)
-    (update.update state {} (update.read-msg state ">"))
+    (update.update state {} (update.read-msg state "]"))
     (faith.almost= 0.4 state.split_ratio 0.0001)))
 
 (fn test-split-ratio-is-clamped []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.split_ratio 0.1)
-    (update.update state {} (update.read-msg state "<"))
+    (update.update state {} (update.read-msg state "["))
     (faith.= 0.1 state.split_ratio)
     (set state.split_ratio 0.9)
-    (update.update state {} (update.read-msg state ">"))
+    (update.update state {} (update.read-msg state "]"))
     (faith.= 0.9 state.split_ratio)))
 
 (fn test-h_l_scroll_preview_horizontally []

@@ -56,7 +56,7 @@
     (faith.= ["1" "2" "3" "4" "5"] (preview.visible-lines state entry 5))
     (faith.= nil (preview.scroll-info state))))
 
-(fn test-scroll_uses_rendered_preview_total_without_loading_diff []
+(fn test-scroll-uses-rendered-preview-total-without-loading-diff []
   (let [entry {:status "M" :kind "M" :path "missing.rb" :reviewed false}
         state (state)
         old-preview-output git.preview-output]
@@ -69,7 +69,7 @@
     (set git.preview-output old-preview-output)
     (faith.= 5 state.preview_scroll)))
 
-(fn test-horizontal_scroll_limit_uses_visible_line_width []
+(fn test-horizontal-scroll-limit-uses-visible-line-width []
   (let [state (state)]
     (set state.preview_x_scroll 20)
     (preview.set-horizontal-scroll-limit state
@@ -80,7 +80,7 @@
     (faith.= 0 state.preview_x_max_scroll)
     (faith.= 0 state.preview_x_scroll)))
 
-(fn test-horizontal_width_cache_follows_current_lines_table []
+(fn test-horizontal-width-cache-follows-current-lines-table []
   (let [state (state)
         first ["abcdef"]
         second ["abcdefghijkl"]]
@@ -89,7 +89,7 @@
     (faith.= 12 (preview.cached-max-line-width state second))
     (faith.= second state.preview_width_lines)))
 
-(fn test-apply-horizontal-scroll-limit_uses_split_width []
+(fn test-apply-horizontal-scroll-limit-uses-split-width []
   (let [state (state)]
     (set state.split_ratio 0.5)
     (set state.preview_wrap? false)
@@ -101,7 +101,7 @@
                                            20 true)
     (faith.= 17 state.preview_x_max_scroll)))
 
-(fn test-apply-horizontal-scroll-limit_resets_when_wrapping []
+(fn test-apply-horizontal-scroll-limit-resets-when-wrapping []
   (let [state (state)]
     (set state.preview_wrap? true)
     (set state.preview_x_scroll 10)
@@ -110,13 +110,13 @@
     (faith.= 0 state.preview_x_max_scroll)
     (faith.= 0 state.preview_x_scroll)))
 
-(fn test-asset-detection-covers-image_and_icon_extensions []
+(fn test-asset-detection-covers-image-and-icon-extensions []
   (faith.= true (assets.asset? {:path "icons/logo.SVG"}))
   (faith.= true (assets.asset? {:path "favicon.ico"}))
   (faith.= true (assets.asset? {:path "screenshots/page.png"}))
   (faith.= false (assets.asset? {:path "src/app.fnl"})))
 
-(fn test-preview_format_colors_diff_lines []
+(fn test-preview-format-colors-diff-lines []
   (let [state (state)
         lines (preview-format.output-lines state
                                            "diff --git a b\n+added\n-context"
@@ -126,7 +126,7 @@
     (faith.match "%+added" text)
     (faith.match "%-context" text)))
 
-(fn test-asset-preview-is-cheap-and-cached-without_git_diff []
+(fn test-asset-preview-is-cheap-and-cached-without-git-diff []
   (let [entry {:status "M" :kind "M" :path "icons/logo.svg" :reviewed false}
         state (state)
         old-preview-output git.preview-output]
@@ -180,7 +180,7 @@
     (update.update state {} {:type :refresh-loaded : entries :reviewed {}})
     (faith.= 0 (t.count-pairs state.folder_preview_cache))))
 
-(fn test-selection-lines-renders-folder_rows_through_preview_core []
+(fn test-selection-lines-renders-folder-rows-through-preview-core []
   (let [state {:view_mode :tree
                :entries [{:status "M"
                           :kind "M"
@@ -192,7 +192,7 @@
     (faith.= "[M] src/\n────────\n[M] a.rb"
              (t.text (preview.selection-lines state nil row)))))
 
-(fn test-apply-display-lines-updates_preview_scroll_metadata []
+(fn test-apply-display-lines-updates-preview-scroll-metadata []
   (let [state {:preview_scroll 10}]
     (faith.= {:offset 1 :total 3 :visible 2}
              (preview.apply-display-lines state ["a" "b" "c"] 2))
@@ -201,7 +201,7 @@
     (faith.= 1 state.preview_scroll)
     (faith.= ["b" "c"] (preview.visible-display-lines state ["a" "b" "c"] 2))))
 
-(fn test-display-lines-for-width-caches_stable_layout []
+(fn test-display-lines-for-width-caches-stable-layout []
   (let [state (state)
         lines ["abcdefghijklmnopqrstuvwxyz"]]
     (set state.preview_wrap? true)
@@ -211,7 +211,7 @@
       (faith.= first second)
       (faith.= first state.preview_display_cache.display))))
 
-(fn test-display-lines-for-width-invalidates_when_layout_changes []
+(fn test-display-lines-for-width-invalidates-when-layout-changes []
   (let [state (state)
         lines ["abcdefghijklmnopqrstuvwxyz"]]
     (set state.preview_wrap? true)
@@ -221,27 +221,27 @@
       (faith.not= first second)
       (faith.= 20 state.preview_display_cache.cols))))
 
-(fn test-visible_count_never_drops_below_one []
+(fn test-visible-count-never-drops-below-one []
   (faith.= 1 (preview.visible-count nil))
   (faith.= 1 (preview.visible-count 0))
   (faith.= 3 (preview.visible-count 3)))
 
 {: test-visible-lines-can-be-nonblocking-while-warming
- : test-apply-display-lines-updates_preview_scroll_metadata
- : test-apply-horizontal-scroll-limit_resets_when_wrapping
- : test-apply-horizontal-scroll-limit_uses_split_width
- : test-asset-detection-covers-image_and_icon_extensions
- : test-asset-preview-is-cheap-and-cached-without_git_diff
- : test-display-lines-for-width-caches_stable_layout
- : test-display-lines-for-width-invalidates_when_layout_changes
- : test-horizontal_width_cache_follows_current_lines_table
- : test-horizontal_scroll_limit_uses_visible_line_width
- : test-preview_format_colors_diff_lines
+ : test-apply-display-lines-updates-preview-scroll-metadata
+ : test-apply-horizontal-scroll-limit-resets-when-wrapping
+ : test-apply-horizontal-scroll-limit-uses-split-width
+ : test-asset-detection-covers-image-and-icon-extensions
+ : test-asset-preview-is-cheap-and-cached-without-git-diff
+ : test-display-lines-for-width-caches-stable-layout
+ : test-display-lines-for-width-invalidates-when-layout-changes
+ : test-horizontal-width-cache-follows-current-lines-table
+ : test-horizontal-scroll-limit-uses-visible-line-width
+ : test-preview-format-colors-diff-lines
  : test-refresh-loaded-clears-folder-preview-cache
  : test-refresh-loaded-keeps-cache-and-caches-selected-preview
- : test-selection-lines-renders-folder_rows_through_preview_core
- : test-scroll_uses_rendered_preview_total_without_loading_diff
+ : test-selection-lines-renders-folder-rows-through-preview-core
+ : test-scroll-uses-rendered-preview-total-without-loading-diff
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
- : test-visible_count_never_drops_below_one
+ : test-visible-count-never-drops-below-one
  : test-visible-lines-renders-and-caches-real-git-preview}

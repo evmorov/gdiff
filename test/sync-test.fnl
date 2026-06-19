@@ -41,12 +41,12 @@
     (faith.match "git fetch %-%-quiet %-%-prune" command)
     (faith.match "</dev/null >/dev/null 2>&1" command)))
 
-(fn test-update_does_not_start_remote_sync_automatically []
+(fn test-update-does-not-start-remote-sync-automatically []
   (let [state (sync.new-state)]
     (sync.update state)
     (faith.= false state.running?)))
 
-(fn test-start_launches_remote_sync_explicitly []
+(fn test-start-launches-remote-sync-explicitly []
   (let [state (sync.new-state)
         calls []]
     (faith.= true
@@ -130,7 +130,7 @@
  : test-no-upstream-has-sync-notice-not-warning
  : test-range-revision-checks-both-sides
  : test-single-revision-checks-current-branch
- : test-start_launches_remote_sync_explicitly
+ : test-start-launches-remote-sync-explicitly
  : test-target-status-command-is-quoted-and-structured
- : test-update_does_not_start_remote_sync_automatically
+ : test-update-does-not-start-remote-sync-automatically
  : test-warns-when-branch-is-behind-upstream}

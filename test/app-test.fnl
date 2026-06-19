@@ -93,7 +93,7 @@
     (faith.= "> [ ] [R] spec/tardis/api/v2_spec.rb <- spec/tardis/api_spec.rb"
              (plain-row-text (. view.body.left.rows 1)))))
 
-(fn test-view-styles_reviewed_checkbox_brackets_as_muted []
+(fn test-view-styles-reviewed-checkbox-brackets-as-muted []
   (let [state (flat-state [(entry "M" "a.rb")])
         first-entry (. state.entries 1)]
     (set first-entry.reviewed true)
@@ -104,7 +104,7 @@
         (faith.is (text:find "\27[2m%[" 1))
         (faith.is (text:find "\27[2m%]" 1))))))
 
-(fn test-backtick_toggles_tree_mode_without_clearing_search []
+(fn test-backtick-toggles-tree-mode-without-clearing-search []
   (let [state (flat-state [(entry "A" "script/shorthand_branch.sh")
                            (entry "M"
                                   "spec/lib/epoxy/version_branch_validation_spec.rb")
@@ -122,7 +122,7 @@
     (faith.= true state.search.active?)
     (faith.= "s" state.search.query)))
 
-(fn test-backtick_preserves_selected_file_with_search []
+(fn test-backtick-preserves-selected-file-with-search []
   (let [state (flat-state [(entry "M" "alpha/file.rb") (entry "M" "z.rb")])]
     (app.handle-key state {} "/")
     (app.handle-key state {} "a")
@@ -138,7 +138,7 @@
     (faith.= :flat state.view_mode)
     (faith.= 2 state.selected)))
 
-(fn test-tree_view_renders_collapsed_folders_and_file_rows []
+(fn test-tree-view-renders-collapsed-folders-and-file-rows []
   (let [state (state [(entry "A" "script/shorthand_branch.sh")
                       (entry "M"
                              "spec/lib/epoxy/version_branch_validation_spec.rb")
@@ -158,7 +158,7 @@
       (faith.= "      [ ] [M] commit_validator_spec.rb"
                (plain-row-text (. rows 7))))))
 
-(fn test-tree_mode_navigation_moves_between_folders_and_files []
+(fn test-tree-mode-navigation-moves-between-folders-and-files []
   (let [state (state [(entry "M" "z.rb")
                       (entry "A" "script/shorthand_branch.sh")
                       (entry "M"
@@ -184,7 +184,7 @@
     (faith.= 5 state.tree_selected_row)
     (faith.= 3 state.selected)))
 
-(fn test-space_on_tree_folder_toggles_descendant_files []
+(fn test-space-on-tree-folder-toggles-descendant-files []
   (let [state (state [(entry "A" "script/shorthand_branch.sh")
                       (entry "M"
                              "spec/lib/epoxy/version_branch_validation_spec.rb")
@@ -200,7 +200,7 @@
     (app.handle-key state {} " ")
     (faith.= {} (reviews.paths state.entries))))
 
-(fn test-open_on_tree_folder_opens_folder []
+(fn test-open-on-tree-folder-opens-folder []
   (t.reset-workdir)
   (t.mkdir "spec/lib/epoxy")
   (let [state (state [(entry "A" "script/shorthand_branch.sh")
@@ -217,7 +217,7 @@
     (faith.= ["spec/lib/epoxy"] opened)
     (faith.= "Opening: spec/lib/epoxy" state.notice)))
 
-(fn test-open_on_deleted_tree_folder_shows_not_found []
+(fn test-open-on-deleted-tree-folder-shows-not-found []
   (t.reset-workdir)
   (let [state (state [(entry "D" "lib/tardis/docker/workers/app.rb")])
         opened []
@@ -231,7 +231,7 @@
     (faith.= [] opened)
     (faith.= "Folder not found: lib/tardis/docker/workers" state.notice)))
 
-(fn test-open_on_deleted_file_shows_not_found []
+(fn test-open-on-deleted-file-shows-not-found []
   (t.reset-workdir)
   (let [state (state [(entry "D" "lib/workers/destroy.rb")])
         opened []
@@ -244,7 +244,7 @@
     (faith.= [] opened)
     (faith.= "File not found: lib/workers/destroy.rb" state.notice)))
 
-(fn test-tree_search_matches_folders []
+(fn test-tree-search-matches-folders []
   (let [state (state [(entry "A" "script/shorthand_branch.sh")
                       (entry "M"
                              "spec/lib/epoxy/version_branch_validation_spec.rb")])]
@@ -258,7 +258,7 @@
     (let [view (app.view state 10 100)]
       (faith.is (. view.body.right.lines 1)))))
 
-(fn test-view-folder_preview_for_real_deleted_folders []
+(fn test-view-folder-preview-for-real-deleted-folders []
   (setup-real-folder-preview-repo)
   (let [state (real-preview-state)]
     (select-folder state "lib/tardis/docker")
@@ -269,7 +269,7 @@
       (faith.match "%[D%] workers/" text)
       (faith.not-match "ls:" text))))
 
-(fn test-view-folder_preview_sorts_like_left_tree_for_real_repo []
+(fn test-view-folder-preview-sorts-like-left-tree-for-real-repo []
   (setup-real-folder-preview-repo)
   (let [state (real-preview-state)]
     (select-folder state "lib/tardis/docker")
@@ -282,7 +282,7 @@
                               "[D] workers/"] "\n")
                (t.text view.body.right.lines)))))
 
-(fn test-view-moves_file_counts_to_footer_right []
+(fn test-view-moves-file-counts-to-footer-right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
     (let [first-entry (. state.entries 1)]
       (set first-entry.reviewed true))
@@ -293,14 +293,14 @@
       (faith.= nil (header:find "reviewed" 1 true))
       (faith.= "1/2 files │ 50% reviewed" footer-right))))
 
-(fn test-view-shows_diff_stats_in_footer_right []
+(fn test-view-shows-diff-stats-in-footer-right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
     (set state.diff_stats {:additions 42 :deletions 7})
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
       (faith.= "0/2 files │ 0% reviewed │ +42 -7" footer-right))))
 
-(fn test-view-shows_reviewed_file_percent_in_footer_right []
+(fn test-view-shows-reviewed-file-percent-in-footer-right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
     (let [first-entry (. state.entries 1)]
       (set first-entry.reviewed true))
@@ -313,7 +313,7 @@
           footer-right (tui.strip-ansi view.footer.right)]
       (faith.= "1/2 files │ 50% reviewed │ +10 -5" footer-right))))
 
-(fn test-view-shows_all_reviewed_when_all_files_reviewed []
+(fn test-view-shows-all-reviewed-when-all-files-reviewed []
   (let [state (state [(entry "M" "a.rb") (entry "M" "renamed.rb")])]
     (each [_ entry (ipairs state.entries)]
       (set entry.reviewed true))
@@ -334,13 +334,13 @@
     (faith.= nil (header:find "h/l preview" 1 true))
     (faith.= nil (header:find "R sync" 1 true))))
 
-(fn test-view-clamps_preview_horizontal_scroll_when_content_fits []
+(fn test-view-clamps-preview-horizontal-scroll-when-content-fits []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.preview_x_scroll 16)
     (let [view (app.view state 10 100)]
       (faith.= 0 view.body.right.x-scroll))))
 
-(fn test-view-passes_preview_horizontal_scroll_when_content_overflows []
+(fn test-view-passes-preview-horizontal-scroll-when-content-overflows []
   (let [selected (entry "M" "a.rb")
         state (state [selected])
         key (preview-key.for-entry "HEAD" selected)]
@@ -352,7 +352,7 @@
       (faith.= 8 view.body.right.x-max-scroll)
       (faith.= 8 state.preview_x_max_scroll))))
 
-(fn test-view-uses_whole_preview_for_horizontal_scroll_limit []
+(fn test-view-uses-whole-preview-for-horizontal-scroll-limit []
   (let [selected (entry "M" "a.rb")
         state (state [selected])
         key (preview-key.for-entry "HEAD" selected)]
@@ -365,7 +365,7 @@
       (faith.= 9 view.body.right.x-max-scroll)
       (faith.= 9 state.preview_x_max_scroll))))
 
-(fn test-view-wraps_preview_lines_when_enabled []
+(fn test-view-wraps-preview-lines-when-enabled []
   (let [selected (entry "M" "a.rb")
         state (state [selected])
         key (preview-key.for-entry "HEAD" selected)]
@@ -379,14 +379,14 @@
       (faith.= 3 state.preview_total)
       (faith.= 0 state.preview_x_scroll))))
 
-(fn test-view-clamps_file_horizontal_scroll_when_file_rows_fit []
+(fn test-view-clamps-file-horizontal-scroll-when-file-rows-fit []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.files_x_scroll 8)
     (let [view (app.view state 10 80)]
       (faith.= 0 view.body.left.x-scroll)
       (faith.= 0 state.files_x_max_scroll))))
 
-(fn test-view-keeps_file_list_horizontal_scroll_disabled []
+(fn test-view-keeps-file-list-horizontal-scroll-disabled []
   (let [state (state [(entry "M"
                              "really/long/path/that/does/not/fit/in/the/list.rb")])]
     (set state.files_x_scroll 100)
@@ -405,7 +405,7 @@
         view (app.view state 6 100)]
     (faith.= {:offset 0 :total 5 :visible 2} view.body.left.scroll)))
 
-(fn test-view-keeps_last_file_above_bottom_divider []
+(fn test-view-keeps-last-file-above-bottom-divider []
   (let [state (flat-state [(entry "M" "1.rb")
                            (entry "M" "2.rb")
                            (entry "M" "3.rb")
@@ -535,8 +535,8 @@
 
 {: test-a-toggles-all-reviewed-and-A-does-nothing
  : test-search-next-is-relative-to-current-cursor
- : test-backtick_preserves_selected_file_with_search
- : test-backtick_toggles_tree_mode_without_clearing_search
+ : test-backtick-preserves-selected-file-with-search
+ : test-backtick-toggles-tree-mode-without-clearing-search
  : test-fetch-failure-shows-sync-notice-not-success
  : test-manual-clean-remote-sync-finish-updates-notice
  : test-no-upstream-shows-sync-notice-not-warning
@@ -546,28 +546,28 @@
  : test-startup-clean-remote-sync-finish-stays-quiet
  : test-startup-fetch-failure-shows-sync-notice
  : test-split-key-does-not-start-due-sync
- : test-open_on_deleted_file_shows_not_found
- : test-open_on_deleted_tree_folder_shows_not_found
- : test-open_on_tree_folder_opens_folder
- : test-space_on_tree_folder_toggles_descendant_files
- : test-view-styles_reviewed_checkbox_brackets_as_muted
- : test-tree_mode_navigation_moves_between_folders_and_files
- : test-tree_search_matches_folders
- : test-tree_view_renders_collapsed_folders_and_file_rows
+ : test-open-on-deleted-file-shows-not-found
+ : test-open-on-deleted-tree-folder-shows-not-found
+ : test-open-on-tree-folder-opens-folder
+ : test-space-on-tree-folder-toggles-descendant-files
+ : test-view-styles-reviewed-checkbox-brackets-as-muted
+ : test-tree-mode-navigation-moves-between-folders-and-files
+ : test-tree-search-matches-folders
+ : test-tree-view-renders-collapsed-folders-and-file-rows
  : test-view-adds-left-scroll-info-for-overflowing-file-list
- : test-view-keeps_last_file_above_bottom_divider
- : test-view-moves_file_counts_to_footer_right
- : test-view-shows_all_reviewed_when_all_files_reviewed
- : test-view-shows_reviewed_file_percent_in_footer_right
- : test-view-shows_diff_stats_in_footer_right
+ : test-view-keeps-last-file-above-bottom-divider
+ : test-view-moves-file-counts-to-footer-right
+ : test-view-shows-all-reviewed-when-all-files-reviewed
+ : test-view-shows-reviewed-file-percent-in-footer-right
+ : test-view-shows-diff-stats-in-footer-right
  : test-view-shows-single-refresh-sync-key
- : test-view-clamps_preview_horizontal_scroll_when_content_fits
- : test-view-clamps_file_horizontal_scroll_when_file_rows_fit
- : test-view-keeps_file_list_horizontal_scroll_disabled
- : test-view-folder_preview_for_real_deleted_folders
- : test-view-folder_preview_sorts_like_left_tree_for_real_repo
- : test-view-passes_preview_horizontal_scroll_when_content_overflows
- : test-view-uses_whole_preview_for_horizontal_scroll_limit
- : test-view-wraps_preview_lines_when_enabled
+ : test-view-clamps-preview-horizontal-scroll-when-content-fits
+ : test-view-clamps-file-horizontal-scroll-when-file-rows-fit
+ : test-view-keeps-file-list-horizontal-scroll-disabled
+ : test-view-folder-preview-for-real-deleted-folders
+ : test-view-folder-preview-sorts-like-left-tree-for-real-repo
+ : test-view-passes-preview-horizontal-scroll-when-content-overflows
+ : test-view-uses-whole-preview-for-horizontal-scroll-limit
+ : test-view-wraps-preview-lines-when-enabled
  : test-view-imports-only-selected-ready-preview-during-cursor-redraw
  : test-view-renders-renames-with-short-status}

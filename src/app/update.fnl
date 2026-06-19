@@ -1,5 +1,5 @@
 (local actions (require :app.actions))
-(local command-runner (require :app.command_runner))
+(local command-runner (require :app.command-runner))
 (local commands (require :app.commands))
 (local input (require :app.input))
 (local notice (require :app.notice))

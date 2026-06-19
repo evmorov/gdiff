@@ -1,5 +1,5 @@
 (local preview (require :preview.core))
-(local selection-plan (require :app.selection_plan))
+(local selection-plan (require :app.selection-plan))
 (local tree (require :app.tree))
 
 (fn flat-rows [entries]

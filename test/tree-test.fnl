@@ -16,7 +16,7 @@
   (icollect [_ row (ipairs rows)]
     (simple-row row)))
 
-(fn test-tree_rows_collapse_single_directory_chains []
+(fn test-tree-rows-collapse-single-directory-chains []
   (let [rows (tree.rows [(entry "A" "script/shorthand_branch.sh")
                          (entry "M"
                                 "spec/lib/epoxy/version_branch_validation_spec.rb")
@@ -41,13 +41,13 @@
                :name "commit_validator_spec.rb"
                :entry-index 4}] (simple-rows rows))))
 
-(fn test-selected-row_maps_entry_index_to_tree_row []
+(fn test-selected-row-maps-entry-index-to-tree-row []
   (let [rows (tree.rows [(entry "A" "script/a.sh")
                          (entry "M" "spec/lib/a_spec.rb")])]
     (faith.= 2 (tree.selected-row rows 1))
     (faith.= 4 (tree.selected-row rows 2))))
 
-(fn test-tree_selection_moves_in_rendered_row_order []
+(fn test-tree-selection-moves-in-rendered-row-order []
   (let [entries [(entry "M" "z.rb")
                  (entry "M" "script/a.sh")
                  (entry "M" "spec/b_spec.rb")]
@@ -60,7 +60,7 @@
     (faith.= 1 (tree.entry-index-at-row rows 1))
     (faith.= nil (tree.entry-index-at-row rows 2))))
 
-(fn test-folder_rows_keep_descendant_entries []
+(fn test-folder-rows-keep-descendant-entries []
   (let [first (entry "M" "src/a.rb")
         second (entry "A" "src/nested/b.rb")
         rows (tree.rows [first second])
@@ -68,7 +68,7 @@
     (faith.= "src/" folder.name)
     (faith.= [first second] folder.entries)))
 
-{: test-selected-row_maps_entry_index_to_tree_row
- : test-tree_selection_moves_in_rendered_row_order
- : test-folder_rows_keep_descendant_entries
- : test-tree_rows_collapse_single_directory_chains}
+{: test-selected-row-maps-entry-index-to-tree-row
+ : test-tree-selection-moves-in-rendered-row-order
+ : test-folder-rows-keep-descendant-entries
+ : test-tree-rows-collapse-single-directory-chains}

@@ -28,7 +28,7 @@
     (faith.= 80 ctx.cols)
     (faith.= 6 (tui.context-body-rows ctx))))
 
-(fn test-layout-names_screen_regions []
+(fn test-layout-names-screen-regions []
   (let [regions (tui.layout.screen 10 80)]
     (faith.= {:row 1 :col 1 :rows 1 :cols 80} regions.header)
     (faith.= {:row 2 :col 1 :rows 1 :cols 80} regions.header-rule)
@@ -54,7 +54,7 @@
   (faith.= tui.components.screen (tui.renderer.component-for {:type :screen}))
   (faith.= :function (type tui.surface.write-at)))
 
-(fn test-renderer-dispatches_registered_components []
+(fn test-renderer-dispatches-registered-components []
   (let [calls []
         component {:draw (fn [_ctx node]
                            (table.insert calls node.value))}
@@ -63,46 +63,46 @@
     (tui.renderer.draw (tui.context 5 20) node)
     (faith.= ["drawn"] calls)))
 
-(fn test-header-rule-connects_top_bar_separators []
+(fn test-header-rule-connects-top-bar-separators []
   (let [rule (tui.components.header.rule-line "a │ b │ c" 9)]
     (faith.= "──┴───┴──" rule)))
 
-(fn test-header-rule-connects_body_divider []
+(fn test-header-rule-connects-body-divider []
   (let [rule (tui.components.header.rule-line "abcdefghi" 9 5)]
     (faith.= "────┬────" rule)))
 
-(fn test-header-rule-crosses_top_bar_separator_and_body_divider []
+(fn test-header-rule-crosses-top-bar-separator-and-body-divider []
   (let [rule (tui.components.header.rule-line "a │ b" 5 3)]
     (faith.= "──┼──" rule)))
 
-(fn test-bottom-rule-connects_body_divider []
+(fn test-bottom-rule-connects-body-divider []
   (let [rule (tui.components.chrome.bottom-rule 9 5)]
     (faith.= "────┴────" rule)))
 
-(fn test-bottom-rule-connects_footer_right_separator []
+(fn test-bottom-rule-connects-footer-right-separator []
   (let [rule (tui.components.chrome.bottom-rule 9 nil 7)]
     (faith.= "──────┬──" rule)))
 
-(fn test-bottom-rule-crosses_body_divider_and_footer_separator []
+(fn test-bottom-rule-crosses-body-divider-and-footer-separator []
   (let [rule (tui.components.chrome.bottom-rule 9 5 5)]
     (faith.= "────┼────" rule)))
 
-(fn test-bottom-rule-connects_all_footer_right_separators []
+(fn test-bottom-rule-connects-all-footer-right-separators []
   (let [footer-cols (tui.components.footer.rule-cols 30 nil
                                                      "65 files │ 12/65 reviewed")
         rule (tui.components.chrome.bottom-rule 30 nil footer-cols)]
     (faith.= "───┬──────────┬───────────────"
              rule)))
 
-(fn test-bottom-rule-connects_left_footer_separators []
+(fn test-bottom-rule-connects-left-footer-separators []
   (let [footer-cols (tui.components.footer.rule-cols 20 "a │ b │ c" nil)]
     (faith.= true (. footer-cols 3))
     (faith.= true (. footer-cols 7))))
 
-(fn test-footer-right-col_includes_leading_separator []
+(fn test-footer-right-col-includes-leading-separator []
   (faith.= 8 (tui.components.footer.right-col 20 "11 chars ok")))
 
-(fn test-footer-text-styles_separators_as_muted []
+(fn test-footer-text-styles-separators-as-muted []
   (let [ctx (tui.context 10 80)
         node (tui.footer :prompt "Search │ next")
         styled (tui.components.footer.styled-text ctx node node.text)]
@@ -110,36 +110,36 @@
     (when (ansi.color?)
       (faith.is (styled:find "\27[2m│" 1 true)))))
 
-(fn test-visible-length-counts_utf8_glyph_as_one_cell []
+(fn test-visible-length-counts-utf8-glyph-as-one-cell []
   (faith.= 1 (ansi.visible-length "│"))
   (faith.= 5 (ansi.visible-length "a │ b")))
 
-(fn test-truncate_preserves_whole_utf8_glyphs []
+(fn test-truncate-preserves-whole-utf8-glyphs []
   (faith.= "a │..." (ansi.truncate "a │ b c" 6)))
 
-(fn test-crop_preserves_whole_utf8_glyphs []
+(fn test-crop-preserves-whole-utf8-glyphs []
   (faith.= "│ b" (ansi.strip-ansi (ansi.crop "a │ b" 2 3))))
 
-(fn test-crop_keeps_ansi_style_context []
+(fn test-crop-keeps-ansi-style-context []
   (let [text "\27[32mabcdef\27[0m"
         cropped (ansi.crop text 2 3)]
     (faith.= "cde" (ansi.strip-ansi cropped))
     (when (ansi.color?)
       (faith.is (cropped:find "\27[32m" 1 true)))))
 
-(fn test-split-component-calculates_widths []
+(fn test-split-component-calculates-widths []
   (let [(left right divider) (tui.components.split.widths 101 0.4)]
     (faith.= 40 left)
     (faith.= 60 right)
     (faith.= 41 divider)))
 
-(fn test-horizontal_text_does_not_add_inline_indicators []
+(fn test-horizontal-text-does-not-add-inline-indicators []
   (faith.= "abcdef" (tui.components.split.horizontal-text "abcdefghij" 6 0 4)))
 
-(fn test-horizontal_text_scrolls_without_inline_indicators []
+(fn test-horizontal-text-scrolls-without-inline-indicators []
   (faith.= "cdefgh" (tui.components.split.horizontal-text "abcdefghij" 6 2 4)))
 
-(fn test-pane_content_width_reserves_scrollbar_column []
+(fn test-pane-content-width-reserves-scrollbar-column []
   (faith.= 9 (tui.components.pane.content-width 10
                                                 {:offset 0
                                                  :visible 5
@@ -151,14 +151,14 @@
                                                   :total 10}
                                                  5)))
 
-(fn test-split_row_composes_panes_and_divider []
+(fn test-split-row-composes-panes-and-divider []
   (let [ctx (tui.context 10 20)
         row (tui.row "left" false)
         line (tui.components.split-row.line ctx row "right" nil nil 1 5 8 11 0
                                             0)]
     (faith.= "left    │right      " (tui.strip-ansi line))))
 
-(fn test-split_row_measure_reserves_scrollbar_column []
+(fn test-split-row-measure-reserves-scrollbar-column []
   (faith.= {:content-cols 9 :scroll? true}
            (tui.components.split-row.pane-measure 10
                                                   {:offset 0
@@ -168,28 +168,28 @@
   (faith.= {:content-cols 10 :scroll? nil}
            (tui.components.split-row.pane-measure 10 nil 5)))
 
-(fn test-horizontal_scroll_is_visible_only_for_overflow []
+(fn test-horizontal-scroll-is-visible-only-for-overflow []
   (faith.= {:offset 2 :visible 6 :total 10}
            (tui.components.hscroll.scroll 2 4 6))
   (faith.= nil (tui.components.hscroll.scroll 0 0 6)))
 
-(fn test-horizontal_scrollbar_uses_rule_thumb []
+(fn test-horizontal-scrollbar-uses-rule-thumb []
   (faith.= "▀" (tui.components.scrollbar.marker {:offset 0
                                                    :total 10
                                                    :visible 5}
                                                   5 1 "▀")))
 
-(fn test-horizontal_scrollbar_is_composed_into_bottom_rule []
+(fn test-horizontal-scrollbar-is-composed-into-bottom-rule []
   (let [body (tui.split (tui.list []) (tui.lines [] nil 0 4) 0.4)
         line (tui.components.chrome.horizontal-scrollbars "───┴──────"
                                                           body 10 3)]
     (faith.= "───┴▀▀▀▀──" line)))
 
-(fn test-wrap_marks_continued_visual_lines []
+(fn test-wrap-marks-continued-visual-lines []
   (faith.= ["abcdefghij↪" "klmnopqrst↪" "uvwxyz"]
            (tui.wrap.lines ["abcdefghijklmnopqrstuvwxyz"] 11)))
 
-(fn test-scrollbar_only_visible_for_overflow []
+(fn test-scrollbar-only-visible-for-overflow []
   (faith.is (tui.components.scrollbar.visible? {:offset 0 :total 10 :visible 5}
                                                5))
   (faith.= nil (tui.components.scrollbar.visible? {:offset 0
@@ -197,7 +197,7 @@
                                                    :visible 5}
                                                   5)))
 
-(fn test-scrollbar_thumb_tracks_offset []
+(fn test-scrollbar-thumb-tracks-offset []
   (let [scroll {:offset 5 :total 10 :visible 5}
         (start finish) (tui.components.scrollbar.thumb-range scroll 5)]
     (faith.= 3 start)
@@ -248,39 +248,39 @@
     (faith.= nil (style:find "48;" 1 true))))
 
 {: test-empty-footer-is-nil
- : test-bottom-rule-connects_footer_right_separator
- : test-bottom-rule-connects_all_footer_right_separators
- : test-bottom-rule-connects_body_divider
- : test-bottom-rule-connects_left_footer_separators
- : test-bottom-rule-crosses_body_divider_and_footer_separator
+ : test-bottom-rule-connects-footer-right-separator
+ : test-bottom-rule-connects-all-footer-right-separators
+ : test-bottom-rule-connects-body-divider
+ : test-bottom-rule-connects-left-footer-separators
+ : test-bottom-rule-crosses-body-divider-and-footer-separator
  : test-components-are-exposed-for-extension
- : test-crop_keeps_ansi_style_context
- : test-crop_preserves_whole_utf8_glyphs
- : test-footer-right-col_includes_leading_separator
- : test-footer-text-styles_separators_as_muted
- : test-header-rule-connects_body_divider
- : test-header-rule-connects_top_bar_separators
- : test-header-rule-crosses_top_bar_separator_and_body_divider
- : test-horizontal_scrollbar_uses_rule_thumb
- : test-horizontal_scrollbar_is_composed_into_bottom_rule
- : test-horizontal_scroll_is_visible_only_for_overflow
- : test-horizontal_text_does_not_add_inline_indicators
- : test-horizontal_text_scrolls_without_inline_indicators
- : test-wrap_marks_continued_visual_lines
- : test-layout-names_screen_regions
+ : test-crop-keeps-ansi-style-context
+ : test-crop-preserves-whole-utf8-glyphs
+ : test-footer-right-col-includes-leading-separator
+ : test-footer-text-styles-separators-as-muted
+ : test-header-rule-connects-body-divider
+ : test-header-rule-connects-top-bar-separators
+ : test-header-rule-crosses-top-bar-separator-and-body-divider
+ : test-horizontal-scrollbar-uses-rule-thumb
+ : test-horizontal-scrollbar-is-composed-into-bottom-rule
+ : test-horizontal-scroll-is-visible-only-for-overflow
+ : test-horizontal-text-does-not-add-inline-indicators
+ : test-horizontal-text-scrolls-without-inline-indicators
+ : test-wrap-marks-continued-visual-lines
+ : test-layout-names-screen-regions
  : test-parses-terminal-background-response
- : test-pane_content_width_reserves_scrollbar_column
+ : test-pane-content-width-reserves-scrollbar-column
  : test-render-context-carries-terminal-shape
- : test-renderer-dispatches_registered_components
+ : test-renderer-dispatches-registered-components
  : test-screen-builds-declarative-view-tree
- : test-split-component-calculates_widths
- : test-split_row_composes_panes_and_divider
- : test-split_row_measure_reserves_scrollbar_column
- : test-scrollbar_only_visible_for_overflow
- : test-scrollbar_thumb_tracks_offset
+ : test-split-component-calculates-widths
+ : test-split-row-composes-panes-and-divider
+ : test-split-row-measure-reserves-scrollbar-column
+ : test-scrollbar-only-visible-for-overflow
+ : test-scrollbar-thumb-tracks-offset
  : test-search-match-does-not-guess-background
  : test-search-match-uses-derived-background
  : test-selected-row-does-not-guess-without-background
  : test-selected-row-uses-derived-background
- : test-truncate_preserves_whole_utf8_glyphs
- : test-visible-length-counts_utf8_glyph_as_one_cell}
+ : test-truncate-preserves-whole-utf8-glyphs
+ : test-visible-length-counts-utf8-glyph-as-one-cell}

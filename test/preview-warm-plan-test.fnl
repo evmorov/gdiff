@@ -1,6 +1,6 @@
 (local faith (require :faith))
 (local preview-key (require :preview.key))
-(local plan (require :preview.warm_plan))
+(local plan (require :preview.warm-plan))
 
 (fn entry [status path ?old-path]
   {: status :kind (status:sub 1 1) : path :old_path ?old-path})
@@ -47,7 +47,7 @@
     (faith.= ["1" "2" "3" "4" "5" "6"]
              (paths (plan.side-priority-entries entries)))))
 
-(fn test-index-entries-builds_bidirectional_key_maps []
+(fn test-index-entries-builds-bidirectional-key-maps []
   (let [first (entry "M" "a.rb")
         second (entry "R" "new.rb" "old.rb")
         (key-index index-key) (plan.index-entries "HEAD" [first second])
@@ -58,7 +58,7 @@
     (faith.= first-key (. index-key 1))
     (faith.= second-key (. index-key 2))))
 
-{: test-index-entries-builds_bidirectional_key_maps
+{: test-index-entries-builds-bidirectional-key-maps
  : test-missing-entries-skips-cached-previews
  : test-side-priority-entries-handles-small-lists
  : test-side-priority-entries-warmer-from-edges-to-center}

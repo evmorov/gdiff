@@ -1,6 +1,6 @@
 (local git (require :git.core))
-(local commands (require :git.sync_commands))
-(local status (require :git.sync_status))
+(local commands (require :git.sync-commands))
+(local status (require :git.sync-status))
 (local sys (require :platform.core))
 
 (local branch-status-command commands.branch-status-command)

@@ -44,7 +44,7 @@
     (faith.= "Marked all reviewed" state.notice)
     (faith.= :function (type command))))
 
-(fn test-local-refresh_does_not_start_remote_sync []
+(fn test-local-refresh-does-not-start-remote-sync []
   (let [state (state [])
         (_ command) (update.update state {}
                                    {:type :refresh-loaded
@@ -99,7 +99,7 @@
     (update.update state {} (update.read-msg state "]"))
     (faith.= 0.9 state.split_ratio)))
 
-(fn test-h_l_scroll_preview_horizontally []
+(fn test-h-l-scroll-preview-horizontally []
   (let [state (state [(entry "M" "a.rb")])]
     (let [(_ command) (update.update state {} (update.read-msg state "l"))]
       (faith.= :function (type command)))
@@ -131,7 +131,7 @@
     (faith.= true state.skip_next_draw?)
     (faith.= 0 state.files_x_scroll)))
 
-(fn test-preview_page_scroll_sets_skip_draw_when_clamped []
+(fn test-preview-page-scroll-sets-skip-draw-when-clamped []
   (let [selected (entry "M" "a.rb")
         state (state [selected])
         key (preview-key.for-entry "HEAD" selected)]
@@ -140,7 +140,7 @@
     (update.update state {} (update.read-msg state "\21"))
     (faith.= true state.skip_next_draw?)))
 
-(fn test-w_toggles_preview_wrap_and_resets_horizontal_scroll []
+(fn test-w-toggles-preview-wrap-and-resets-horizontal-scroll []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.preview_wrap? false)
     (set state.preview_x_scroll 8)
@@ -159,7 +159,7 @@
     (update.run-command state {} command)
     (faith.= "Copied: a.rb" state.notice)))
 
-(fn test-copy-path-copies_selected_tree_folder_path []
+(fn test-copy-path-copies-selected-tree-folder-path []
   (let [state (state [(entry "M" "script/a.sh") (entry "M" "spec/b_spec.rb")])]
     (set state.tree_selected_row 1)
     (let [copied []
@@ -207,13 +207,13 @@
     (faith.= "File not found: missing.rb" state.notice)))
 
 {: test-command-dispatches-back-through-update
- : test-copy-path-copies_selected_tree_folder_path
- : test-h_l_scroll_preview_horizontally
- : test-local-refresh_does_not_start_remote_sync
+ : test-copy-path-copies-selected-tree-folder-path
+ : test-h-l-scroll-preview-horizontally
+ : test-local-refresh-does-not-start-remote-sync
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-open-pr-finished-updates-notice
  : test-open-target-finished-updates-notice
- : test-preview_page_scroll_sets_skip_draw_when_clamped
+ : test-preview-page-scroll-sets-skip-draw-when-clamped
  : test-read-msg-keeps-pending-g-in-state
  : test-read-msg-turns-raw-key-into-message-data
  : test-start-command-starts-remote-sync-quietly
@@ -222,5 +222,5 @@
  : test-uppercase-r-does-not-attach-to-startup-sync
  : test-uppercase-r-does-not-start-sync
  : test-unknown-key-clears-pending-g
- : test-w_toggles_preview_wrap_and_resets_horizontal_scroll
+ : test-w-toggles-preview-wrap-and-resets-horizontal-scroll
  : test-update-returns-command-for-review-persistence}

@@ -9,7 +9,7 @@
 (fn state [entries]
   {: entries :folder_preview_cache {}})
 
-(fn test-render-lines_marks_changed_children_and_deleted_files []
+(fn test-render-lines-marks-changed-children-and-deleted-files []
   (let [state (state [(entry "A" "src/added.rb")
                       (entry "M" "src/updated.rb")
                       (entry "D" "src/deleted.rb")])
@@ -30,7 +30,7 @@
                             "    unchanged.rb"] "\n")
              (t.text (folder.render-lines state row record)))))
 
-(fn test-render-lines_marks_child_directories_with_descendant_changes []
+(fn test-render-lines-marks-child-directories-with-descendant-changes []
   (let [state (state [(entry "M" "src/nested/changed.rb")])
         row {:path "src"}
         record {:ok? true
@@ -38,7 +38,7 @@
     (faith.= "[M] src/\n────────\n[M] nested/"
              (t.text (folder.render-lines state row record)))))
 
-(fn test-render-lines_does_not_mark_directory_deleted_for_deleted_descendant []
+(fn test-render-lines-does-not-mark-directory-deleted-for-deleted-descendant []
   (let [state (state [(entry "D" "src/nested/deleted.rb")])
         row {:path "src"}
         record {:ok? true
@@ -46,7 +46,7 @@
     (faith.= "[D] src/\n────────\n[M] nested/"
              (t.text (folder.render-lines state row record)))))
 
-(fn test-render-lines_synthesizes_deleted_folder_without_ls_error []
+(fn test-render-lines-synthesizes-deleted-folder-without-ls-error []
   (let [state (state [(entry "D" "src/deleted.rb") (entry "D" "src/old.rb")])
         row {:path "src"}
         record {:ok? false :output "ls: src: No such file or directory"}]
@@ -56,21 +56,21 @@
                             "[D] old.rb"] "\n")
              (t.text (folder.render-lines state row record)))))
 
-(fn test-render-lines_synthesizes_missing_child_folder_as_deleted []
+(fn test-render-lines-synthesizes-missing-child-folder-as-deleted []
   (let [state (state [(entry "D" "src/nested/deleted.rb")])
         row {:path "src"}
         record {:ok? false :output "ls: src: No such file or directory"}]
     (faith.= "[D] src/\n────────\n[D] nested/"
              (t.text (folder.render-lines state row record)))))
 
-(fn test-render-lines_adds_missing_deleted_child_folder_to_live_parent []
+(fn test-render-lines-adds-missing-deleted-child-folder-to-live-parent []
   (let [state (state [(entry "D" "src/nested/deleted.rb")])
         row {:path "src"}
         record {:ok? true :output "total 0\n"}]
     (faith.= "[D] src/\n────────\n[D] nested/"
              (t.text (folder.render-lines state row record)))))
 
-(fn test-render-lines_sorts_like_left_tree []
+(fn test-render-lines-sorts-like-left-tree []
   (let [state (state [(entry "M" "src/b.rb")
                       (entry "M" "src/nested/changed.rb")
                       (entry "A" "src/a.rb")])
@@ -90,7 +90,7 @@
                             "[M] nested/"] "\n")
              (t.text (folder.render-lines state row record)))))
 
-(fn test-render-lines_uses_row_descendants_when_available []
+(fn test-render-lines-uses-row-descendants-when-available []
   (let [state (state [(entry "M" "other/noise.rb")
                       (entry "D" "src/unrelated-from-state.rb")])
         row {:path "src" :entries [(entry "A" "src/kept.rb")]}
@@ -106,7 +106,7 @@
                            "\n")
              (t.text (folder.render-lines state row record)))))
 
-(fn test-parsed-listing_returns_fresh_copies_from_cached_parse []
+(fn test-parsed-listing-returns-fresh-copies-from-cached-parse []
   (let [record {:ok? true
                 :output "total 0\n-rw-r--r--  1 u  g  1 Jan  1 00:00 a.rb\n"}
         (entries seen) (folder.parsed-listing record)]
@@ -116,7 +116,7 @@
       (faith.= "a.rb" (. again 1 :name))
       (faith.= true (. again-seen "a.rb")))))
 
-(fn test-folder-plan-is-cached_on_rows_with_descendants []
+(fn test-folder-plan-is-cached-on-rows-with-descendants []
   (let [state (state [(entry "D" "src/from-state.rb")])
         row {:path "src" :entries [(entry "A" "src/from-row.rb")]}
         plan (folder.folder-plan-for state row)]
@@ -127,14 +127,14 @@
     (faith.= "A" (. plan.statuses "from-row.rb"))
     (faith.= nil (. plan.statuses "changed-state.rb"))))
 
-(fn test-folder-plan-without_row_descendants_tracks_state_entries []
+(fn test-folder-plan-without-row-descendants-tracks-state-entries []
   (let [state (state [(entry "A" "src/a.rb")])
         row {:path "src"}]
     (faith.= "A" (. (folder.folder-plan-for state row) :statuses "a.rb"))
     (set state.entries [(entry "M" "src/a.rb")])
     (faith.= "M" (. (folder.folder-plan-for state row) :statuses "a.rb"))))
 
-(fn test-lines_caches_raw_listing_but_applies_current_statuses []
+(fn test-lines-caches-raw-listing-but-applies-current-statuses []
   (let [state (state [])
         row {:path "src"}
         calls []
@@ -152,15 +152,15 @@
     (faith.= 1 (length calls))
     (faith.= "ls -la 'src' 2>&1" (. calls 1))))
 
-{: test-lines_caches_raw_listing_but_applies_current_statuses
- : test-render-lines_does_not_mark_directory_deleted_for_deleted_descendant
- : test-render-lines_marks_changed_children_and_deleted_files
- : test-render-lines_marks_child_directories_with_descendant_changes
- : test-render-lines_synthesizes_deleted_folder_without_ls_error
- : test-render-lines_adds_missing_deleted_child_folder_to_live_parent
- : test-render-lines_synthesizes_missing_child_folder_as_deleted
- : test-render-lines_sorts_like_left_tree
- : test-folder-plan-is-cached_on_rows_with_descendants
- : test-folder-plan-without_row_descendants_tracks_state_entries
- : test-parsed-listing_returns_fresh_copies_from_cached_parse
- : test-render-lines_uses_row_descendants_when_available}
+{: test-lines-caches-raw-listing-but-applies-current-statuses
+ : test-render-lines-does-not-mark-directory-deleted-for-deleted-descendant
+ : test-render-lines-marks-changed-children-and-deleted-files
+ : test-render-lines-marks-child-directories-with-descendant-changes
+ : test-render-lines-synthesizes-deleted-folder-without-ls-error
+ : test-render-lines-adds-missing-deleted-child-folder-to-live-parent
+ : test-render-lines-synthesizes-missing-child-folder-as-deleted
+ : test-render-lines-sorts-like-left-tree
+ : test-folder-plan-is-cached-on-rows-with-descendants
+ : test-folder-plan-without-row-descendants-tracks-state-entries
+ : test-parsed-listing-returns-fresh-copies-from-cached-parse
+ : test-render-lines-uses-row-descendants-when-available}

@@ -38,7 +38,7 @@
                                             :status "R"}}
              (entries-by-path entries))))
 
-(fn test-diff-stats-reports_total_additions_and_deletions []
+(fn test-diff-stats-reports-total-additions-and-deletions []
   (setup-changed-repo)
   (let [(stats err) (git.diff-stats "HEAD")]
     (faith.= nil err)
@@ -47,7 +47,7 @@
     (faith.= {:additions 1 :deletions 0} (. stats.files "added.txt"))
     (faith.= {:additions 1 :deletions 1} (. stats.files "modified.txt"))))
 
-(fn test-diff-stats-indexes_renamed_files_by_new_path []
+(fn test-diff-stats-indexes-renamed-files-by-new-path []
   (t.init-repo)
   (t.mkdir "spec/tardis")
   (t.write-file "spec/tardis/api_spec.rb" "old\n")
@@ -87,7 +87,7 @@
   (faith.= "current...feature" (git.comparison-revision "...feature" "current"))
   (faith.= "main...current" (git.comparison-revision "main..." "current")))
 
-(fn test-comparison-right-selects_pr_branch []
+(fn test-comparison-right-selects-pr-branch []
   (faith.= "feature" (git.comparison-right "main...feature" "current"))
   (faith.= "current" (git.comparison-right "main...HEAD" "current"))
   (faith.= "current" (git.comparison-right "main..." "current"))
@@ -101,10 +101,10 @@
 
 {: test-default-revision-falls-back-to-master
  : test-default-revision-prefers-main
- : test-comparison-right-selects_pr_branch
+ : test-comparison-right-selects-pr-branch
  : test-comparison-revision-expands-single-revision
  : test-comparison-revision-keeps-explicit-range
  : test-diff-entries-reports-working-tree-changes
- : test-diff-stats-indexes_renamed_files_by_new_path
- : test-diff-stats-reports_total_additions_and_deletions
+ : test-diff-stats-indexes-renamed-files-by-new-path
+ : test-diff-stats-reports-total-additions-and-deletions
  : test-linked-pr-url-command-quotes-branch}

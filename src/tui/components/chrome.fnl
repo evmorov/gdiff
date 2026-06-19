@@ -1,5 +1,5 @@
 (local footer (require :tui.components.footer))
-(local chrome-layout (require :tui.components.chrome_layout))
+(local chrome-layout (require :tui.components.chrome-layout))
 (local header (require :tui.components.header))
 (local layout (require :tui.layout))
 (local surface (require :tui.surface))

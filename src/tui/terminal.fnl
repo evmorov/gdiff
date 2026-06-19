@@ -1,7 +1,7 @@
 (local ansi (require :tui.ansi))
 (local keys (require :tui.keys))
-(local osc (require :tui.terminal_osc))
-(local probe (require :tui.terminal_probe))
+(local osc (require :tui.terminal-osc))
+(local probe (require :tui.terminal-probe))
 
 (local saved-stty probe.saved-stty)
 (local terminal-size probe.terminal-size)

@@ -1,8 +1,8 @@
-(local matcher (require :app.search_match))
-(local nav (require :app.search_nav))
+(local matcher (require :app.search-match))
+(local nav (require :app.search-nav))
 (local selection (require :app.selection))
-(local search-plan (require :app.search_plan))
-(local search-status (require :app.search_status))
+(local search-plan (require :app.search-plan))
+(local search-status (require :app.search-status))
 (local tui (require :tui.core))
 
 (fn new-state []

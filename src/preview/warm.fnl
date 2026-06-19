@@ -1,7 +1,7 @@
 (local fennel (require :fennel))
 (local fennel-command (require :platform.fennel))
 (local preview-key (require :preview.key))
-(local plan (require :preview.warm_plan))
+(local plan (require :preview.warm-plan))
 (local sys (require :platform.core))
 
 (import-macros {: set-fields} :state.macros)

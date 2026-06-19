@@ -2,7 +2,7 @@
 (local lines-view (require :tui.components.lines))
 (local list-view (require :tui.components.list))
 (local pane (require :tui.components.pane))
-(local split-row (require :tui.components.split_row))
+(local split-row (require :tui.components.split-row))
 
 (fn widths [cols ?ratio]
   (let [ratio (or ?ratio 0.4)

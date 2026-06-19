@@ -1,40 +1,40 @@
 (local faith (require :faith))
 
 (faith.run [:app-test
-            :action_plan_test
+            :action-plan-test
             :args-test
             :git-test
-            :git_commands_test
-            :git_parse_test
-            :messages_test
-            :notice_test
+            :git-commands-test
+            :git-parse-test
+            :messages-test
+            :notice-test
             :platform-test
             :review-test
-            :search_match_test
-            :search_nav_test
-            :search_plan_test
-            :search_status_test
-            :selection_cache_test
-            :selection_context_test
-            :selection_plan_test
+            :search-match-test
+            :search-nav-test
+            :search-plan-test
+            :search-status-test
+            :selection-cache-test
+            :selection-context-test
+            :selection-plan-test
             :preview-test
-            :preview_folder_test
-            :preview_warm_test
-            :preview_warm_plan_test
-            :preview_viewport_test
-            :preview_workers_test
+            :preview-folder-test
+            :preview-warm-test
+            :preview-warm-plan-test
+            :preview-viewport-test
+            :preview-workers-test
             :reviews-test
             :sync-test
             :tree-test
-            :tui_chrome_layout_test
-            :tui_footer_layout_test
-            :tui_footer_text_test
-            :tui_keys_test
+            :tui-chrome-layout-test
+            :tui-footer-layout-test
+            :tui-footer-text-test
+            :tui-keys-test
             :tui-test
-            :tui_text_highlight_test
-            :tui_text_test
-            :tui_text_window_test
-            :tui_terminal_osc_test
-            :tui_terminal_probe_test
+            :tui-text-highlight-test
+            :tui-text-test
+            :tui-text-window-test
+            :tui-terminal-osc-test
+            :tui-terminal-probe-test
             :update-test
-            :util_math_test])
+            :util-math-test])

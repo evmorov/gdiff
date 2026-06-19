@@ -1,6 +1,6 @@
 (local txt (require :tui.text))
-(local text-highlight (require :tui.text_highlight))
-(local text-window (require :tui.text_window))
+(local text-highlight (require :tui.text-highlight))
+(local text-window (require :tui.text-window))
 
 (local esc txt.esc)
 (local nl "\r\n")

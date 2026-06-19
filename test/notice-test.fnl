@@ -1,7 +1,7 @@
 (local faith (require :faith))
 (local notice (require :app.notice))
 
-(fn test-path_notices []
+(fn test-path-notices []
   (faith.= "Copied: a.rb" (notice.copy-finished true "a.rb"))
   (faith.= "Copy failed: a.rb" (notice.copy-finished false "a.rb"))
   (faith.= "Opening: src" (notice.open-target-finished :folder "src" true))
@@ -10,7 +10,7 @@
   (faith.= "File not found: a.rb"
            (notice.open-target-finished :file "a.rb" false)))
 
-(fn test-review_notices []
+(fn test-review-notices []
   (faith.= "Marked reviewed: a.rb"
            (notice.reviewed-entry {:path "a.rb" :reviewed true}))
   (faith.= "Unmarked reviewed: a.rb"
@@ -18,7 +18,7 @@
   (faith.= "Marked folder reviewed: src/" (notice.reviewed-folder true "src/"))
   (faith.= "Unmarked all reviewed" (notice.reviewed-all false)))
 
-(fn test_misc_notices []
+(fn test-misc-notices []
   (faith.= "Opened PR: https://example.com"
            (notice.open-pr-finished true "https://example.com" nil))
   (faith.= "No linked PR" (notice.open-pr-finished false nil nil))
@@ -28,4 +28,4 @@
   (faith.= "Syncing remote..." (notice.syncing-remote))
   (faith.= "Remote in sync" (notice.remote-in-sync)))
 
-{: test_misc_notices : test-path_notices : test-review_notices}
+{: test-misc-notices : test-path-notices : test-review-notices}

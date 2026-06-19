@@ -1,5 +1,5 @@
 (local commands (require :app.commands))
-(local action-plan (require :app.action_plan))
+(local action-plan (require :app.action-plan))
 (local notice (require :app.notice))
 (local preview (require :preview.core))
 (local review (require :app.review))

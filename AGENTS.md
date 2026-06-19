@@ -30,6 +30,12 @@ focused on users; put contributor and agent workflow details here.
 - Use modern Fennel idioms when they improve clarity: table shorthand, `#()`
   shorthand for small functions, `collect` / `fcollect` for transformations,
   and macros only when they remove real repetition without hiding behavior.
+- Follow official Fennel naming conventions: variables, functions, modules,
+  and Fennel filenames should use lowercase words separated by hyphens. Use
+  leading `_` only for intentionally unused bindings and leading `?` for values
+  that may be nil. Underscores are acceptable for persisted data fields,
+  external API compatibility, environment variables, and Lua-facing exported
+  module fields when needed, but keep the internal Fennel binding hyphenated.
 - Keep macros small and local. Existing macros are in `src/app/macros.fnlm`,
   `src/state/macros.fnlm`, and `src/tui/macros.fnlm`.
 

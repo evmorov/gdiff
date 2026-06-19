@@ -9,7 +9,7 @@
         (let [(first last) (plain:find query start true)]
           (if first
               (do
-                (table.insert ranges {:first first :last last})
+                (table.insert ranges {: first : last})
                 (set start (+ last 1)))
               (set searching? false)))))
     ranges))

@@ -10,7 +10,7 @@
   (faith.is (sys.write-file (.. dir "/" index ".fnl") (fennel.view lines))))
 
 (fn entry [status path ?old-path]
-  {:status status :kind (status:sub 1 1) :path path :old_path ?old-path})
+  {: status :kind (status:sub 1 1) : path :old_path ?old-path})
 
 (fn paths [entries]
   (icollect [_ entry (ipairs entries)]
@@ -28,8 +28,8 @@
      :remaining (length entries)
      :scan-index 1
      :imported {}
-     :key-index key-index
-     :index-key index-key}))
+     : key-index
+     : index-key}))
 
 (fn test-update-imports-all-previews-and-cleans-temp-dir []
   (t.reset-workdir)

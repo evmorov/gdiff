@@ -5,15 +5,15 @@
   (let [(kind branch upstream ahead behind) (line:match target-status-pattern)]
     (case kind
       "branch" {:kind :branch
-                :branch branch
-                :upstream upstream
+                : branch
+                : upstream
                 :ahead (tonumber ahead)
                 :behind (tonumber behind)}
-      "detached" {:kind :detached :branch branch}
+      "detached" {:kind :detached : branch}
       "fetch-error" {:kind :fetch-error :status branch}
-      "no-upstream" {:kind :no-upstream :branch branch}
-      "error" {:kind :error :branch branch}
-      "skip" {:kind :skip :branch branch}
+      "no-upstream" {:kind :no-upstream : branch}
+      "error" {:kind :error : branch}
+      "skip" {:kind :skip : branch}
       _ nil)))
 
 (fn parse-branch-status [text]
@@ -32,7 +32,7 @@
       (when next-ahead
         (set ahead (tonumber next-ahead))
         (set behind (tonumber next-behind)))))
-  {:branch branch :upstream upstream :ahead (or ahead 0) :behind (or behind 0)})
+  {: branch : upstream :ahead (or ahead 0) :behind (or behind 0)})
 
 (fn warning-for-status [status]
   (if (= status.kind :skip) nil

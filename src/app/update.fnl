@@ -109,4 +109,4 @@
  : start
  : start-command
  : update
- :command-for-message command-for-message}
+ : command-for-message}

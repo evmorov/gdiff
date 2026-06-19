@@ -3,11 +3,7 @@
     part))
 
 (fn entry [status path ?old-path]
-  {:status status
-   :kind (status:sub 1 1)
-   :path path
-   :old_path ?old-path
-   :reviewed false})
+  {: status :kind (status:sub 1 1) : path :old_path ?old-path :reviewed false})
 
 (fn entry-from-name-status-line [line]
   (let [parts (split-tabs line)
@@ -55,7 +51,7 @@
 
 (fn add-file-stats [files path additions deletions]
   (each [_ path (ipairs (numstat-paths path))]
-    (tset files path {:additions additions :deletions deletions})))
+    (tset files path {: additions : deletions})))
 
 (fn parse-numstat [text]
   (accumulate [stats {:additions 0 :deletions 0 :files {}} line (string.gmatch (or text

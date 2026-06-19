@@ -3,10 +3,10 @@
 (local tree (require :app.tree))
 
 (fn entry [path]
-  {:status "M" :kind "M" :path path :reviewed false})
+  {:status "M" :kind "M" : path :reviewed false})
 
 (fn state [entries]
-  {:entries entries :view_mode :tree :selected 1 :tree_selected_row 1})
+  {: entries :view_mode :tree :selected 1 :tree_selected_row 1})
 
 (fn test-tree_rows_are_cached_until_invalidated []
   (let [state (state [(entry "src/a.rb")])

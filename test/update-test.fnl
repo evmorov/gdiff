@@ -5,7 +5,7 @@
 (local update (require :app.update))
 
 (fn entry [status path]
-  {:status status :kind (status:sub 1 1) :path path :reviewed false})
+  {: status :kind (status:sub 1 1) : path :reviewed false})
 
 (fn state [entries]
   (let [state (update.init "HEAD" entries {:version 1 :reviews {}} "scope"

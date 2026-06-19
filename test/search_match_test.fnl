@@ -2,7 +2,7 @@
 (local matcher (require :app.search_match))
 
 (fn entry [status path]
-  {:status status :kind (status:sub 1 1) :path path :reviewed false})
+  {: status :kind (status:sub 1 1) : path :reviewed false})
 
 (fn test-collects_flat_entry_matches []
   (let [state {:view_mode :flat

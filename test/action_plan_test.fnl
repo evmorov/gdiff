@@ -2,7 +2,7 @@
 (local faith (require :faith))
 
 (fn entry [path]
-  {:path path :kind "M"})
+  {: path :kind "M"})
 
 (fn test-selected_target_prefers_tree_folder []
   (faith.= {:kind :folder :path "src"}

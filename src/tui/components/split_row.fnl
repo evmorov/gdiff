@@ -5,7 +5,7 @@
 
 (fn pane-measure [width scroll height]
   (let [scroll? (pane.scroll? scroll height)]
-    {:scroll? scroll? :content-cols (pane.content-width width scroll height)}))
+    {: scroll? :content-cols (pane.content-width width scroll height)}))
 
 (fn line [ctx
           left-row

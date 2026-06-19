@@ -2,7 +2,7 @@
 (local selection (require :app.selection))
 
 (fn entry [path]
-  {:status "M" :kind "M" :path path :reviewed false})
+  {:status "M" :kind "M" : path :reviewed false})
 
 (fn test-selected_context_returns_tree_folder_row_without_entry []
   (let [state {:entries [(entry "src/a.rb")]

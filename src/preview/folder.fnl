@@ -32,7 +32,7 @@
     (when rest
       {:name (or (rest:match "^([^/]+)/") rest)
        :folder? (not (= nil (rest:find "/" 1 true)))
-       :rest rest})))
+       : rest})))
 
 (fn child-status-kind [entry rest]
   (if (and (rest:find "/" 1 true) (= entry.kind "D"))
@@ -50,7 +50,7 @@
   (when (not (. orders info.name))
     (let [section (if info.folder? 2 1)]
       (tset counts section (+ (. counts section) 1))
-      (tset orders info.name {:section section :order (. counts section)}))))
+      (tset orders info.name {: section :order (. counts section)}))))
 
 (fn record-status [statuses entry info]
   (tset statuses info.name
@@ -81,14 +81,14 @@
     (each [_ entry (ipairs (or entries []))]
       (let [info (child-info folder entry.path)]
         (when info
-          (table.insert children {:entry entry :info info})
+          (table.insert children {: entry : info})
           (record-order orders counts info)
           (record-status statuses entry info)
           (record-deleted-status deleted entry info))))
-    {:statuses statuses
-     :deleted deleted
-     :orders orders
-     :children children
+    {: statuses
+     : deleted
+     : orders
+     : children
      :folder-kind (folder-status-kind entries)}))
 
 (fn direct-statuses [folder entries]
@@ -118,7 +118,7 @@
                  "")]
     (when (and (< 0 (length name)) (not (= name ".")) (not (= name "..")))
       (let [name (or (name:match "^(.-) %-> ") name)]
-        {:name name :folder? (= mode "d")}))))
+        {: name :folder? (= mode "d")}))))
 
 (fn display-name [entry]
   (if entry.folder?
@@ -148,7 +148,7 @@
   (when record.ok?
     (when (not record.listing)
       (let [(entries seen) (listing-entries record.output)]
-        (set record.listing {:entries entries :seen seen})))
+        (set record.listing {: entries : seen})))
     (values (copy-listing-entries record.listing.entries)
             (copy-seen record.listing.seen))))
 
@@ -156,7 +156,7 @@
   (each [name status (pairs deleted)]
     (when (and status.all-deleted? (not (. seen name)))
       (tset seen name true)
-      (table.insert entries {:name name :folder? status.folder? :deleted? true})))
+      (table.insert entries {: name :folder? status.folder? :deleted? true})))
   entries)
 
 (fn entries-from-plan [plan]
@@ -169,9 +169,7 @@
           (let [status (. plan.deleted info.name)
                 deleted? (and status status.all-deleted?)]
             (table.insert entries
-                          {:name info.name
-                           :folder? info.folder?
-                           :deleted? deleted?})))))
+                          {:name info.name :folder? info.folder? : deleted?})))))
     entries))
 
 (fn entry-sort-values [orders entry]
@@ -256,7 +254,7 @@
 
 (fn load-record [path]
   (let [(output ok _kind _code) (sys.read-command (command path))]
-    {:ok? ok :output output}))
+    {:ok? ok : output}))
 
 (fn cached-record [cache path]
   (. cache path))

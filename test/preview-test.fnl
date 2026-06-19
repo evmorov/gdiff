@@ -165,9 +165,7 @@
     (faith.= nil err)
     (tset state.preview_cache old-key ["old preview"])
     (faith.= 1 (t.count-pairs state.preview_cache))
-    (update.update state {} {:type :refresh-loaded
-                             :entries entries
-                             :reviewed {}})
+    (update.update state {} {:type :refresh-loaded : entries :reviewed {}})
     (faith.= ["old preview"] (. state.preview_cache old-key))
     (faith.match "%+after" (t.text (. state.preview_cache key)))))
 
@@ -179,9 +177,7 @@
     (faith.= nil err)
     (set state.folder_preview_cache.src {:ok? true :output "cached"})
     (faith.= 1 (t.count-pairs state.folder_preview_cache))
-    (update.update state {} {:type :refresh-loaded
-                             :entries entries
-                             :reviewed {}})
+    (update.update state {} {:type :refresh-loaded : entries :reviewed {}})
     (faith.= 0 (t.count-pairs state.folder_preview_cache))))
 
 (fn test-selection-lines-renders-folder_rows_through_preview_core []

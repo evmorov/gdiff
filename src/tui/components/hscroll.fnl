@@ -4,7 +4,7 @@
 
 (fn scroll [x-scroll x-max-scroll visible]
   (when (and (< 0 (or x-max-scroll 0)) (< 0 visible))
-    {:offset (or x-scroll 0) :visible visible :total (+ visible x-max-scroll)}))
+    {:offset (or x-scroll 0) : visible :total (+ visible x-max-scroll)}))
 
 (fn thumb [line start-col width x-scroll x-max-scroll]
   (let [scroll (scroll x-scroll x-max-scroll width)]

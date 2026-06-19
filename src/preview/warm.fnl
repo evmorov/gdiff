@@ -44,7 +44,7 @@
               [:scan-index 1] [:imported {}] [:key-index {}] [:index-key {}]))
 
 (fn write-manifest [path revision entries]
-  (sys.write-file path (fennel.view {:revision revision :entries entries})))
+  (sys.write-file path (fennel.view {: revision : entries})))
 
 (fn start-workers [src-dir manifest dir count]
   (for [i 1 count]

@@ -1,5 +1,5 @@
 (fn rect [row col rows cols]
-  {:row row :col col :rows rows :cols cols})
+  {: row : col : rows : cols})
 
 (fn screen [rows cols]
   {:header (rect 1 1 1 cols)

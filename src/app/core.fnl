@@ -20,7 +20,7 @@
   (let [state (app-update.init revision entries review-store review-scope
                                src-dir diff-stats)]
     (app-update.start state)
-    (tui.run {:state state
+    (tui.run {: state
               :view app-view.view
               :update #(app-update.handle-key $1 config $2)})))
 

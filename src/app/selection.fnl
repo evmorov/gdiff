@@ -4,7 +4,7 @@
 
 (fn flat-rows [entries]
   (icollect [index entry (ipairs entries)]
-    {:type :file :depth 0 :entry entry :entry-index index}))
+    {:type :file :depth 0 : entry :entry-index index}))
 
 (fn row-cache [state]
   (when (not state.row_cache)
@@ -47,7 +47,7 @@
 (fn selected-context [state]
   (if (= state.view_mode :tree)
       (let [row (selected-tree-row state)]
-        {:row row :entry (if (and row (= row.type :file)) row.entry)})
+        {: row :entry (if (and row (= row.type :file)) row.entry)})
       {:row nil :entry (. state.entries state.selected)}))
 
 (fn selected-row-index [state ?rows]

@@ -12,11 +12,7 @@
 (local tui (require :tui.core))
 
 (fn entry [status path ?old-path]
-  {:status status
-   :kind (status:sub 1 1)
-   :path path
-   :old_path ?old-path
-   :reviewed false})
+  {: status :kind (status:sub 1 1) : path :old_path ?old-path :reviewed false})
 
 (fn state [entries]
   (let [state (app.new-state "HEAD" entries {:version 1 :reviews {}} "scope"

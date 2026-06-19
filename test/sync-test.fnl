@@ -52,7 +52,7 @@
     (faith.= true
              (sync.start state
                          (fn [path targets]
-                           (table.insert calls {:path path :targets targets}))))
+                           (table.insert calls {: path : targets}))))
     (faith.= true state.running?)
     (let [call (. calls 1)]
       (faith.= state.path call.path)
@@ -60,7 +60,7 @@
     (faith.= nil
              (sync.start state
                          (fn [path targets]
-                           (table.insert calls {:path path :targets targets}))))
+                           (table.insert calls {: path : targets}))))
     (faith.= 1 (length calls))))
 
 (fn test-branch-status-command-separates-target-subshells []

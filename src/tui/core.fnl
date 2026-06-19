@@ -29,18 +29,18 @@
 (local wrap (require :tui.wrap))
 
 {:color theme.color
- :components {:body body
-              :chrome chrome
+ :components {: body
+              : chrome
               :footer footer-view
-              :footer-layout footer-layout
+              : footer-layout
               :header header-view
-              :hscroll hscroll
+              : hscroll
               :lines lines-view
               :list list-view
-              :pane pane
+              : pane
               :rule rule-view
               :row row-view
-              :scrollbar scrollbar
+              : scrollbar
               :screen screen-view
               :split-row split-row-view
               :split split-view}
@@ -49,23 +49,23 @@
  :default-theme theme.default
  :draw draw.draw
  :footer nodes.footer
- :frame frame
+ : frame
  :highlight-matches theme.highlight-matches
- :layout layout
+ : layout
  :lines nodes.lines
  :list nodes.list
  :read-key terminal.read-key
- :renderer renderer
+ : renderer
  :row nodes.row
  :run runtime.run
  :run-loop runtime.run-loop
  :screen nodes.screen
  :split nodes.split
  :strip-ansi ansi.strip-ansi
- :surface surface
+ : surface
  :suspend terminal.suspend
  :terminal-size terminal.terminal-size
  :theme theme.new
  :truncate ansi.truncate
  :visible-length ansi.visible-length
- :wrap wrap}
+ : wrap}

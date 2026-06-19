@@ -7,11 +7,8 @@
 
 (fn test-finish_preserves_query_matches_and_index []
   (let [matches [{:entry 1}]]
-    (faith.= {:active? false :query "api" :matches matches :index 1}
-             (plan.finish {:active? true
-                           :query "api"
-                           :matches matches
-                           :index 1}))))
+    (faith.= {:active? false :query "api" : matches :index 1}
+             (plan.finish {:active? true :query "api" : matches :index 1}))))
 
 (fn test-query_edit_helpers []
   (faith.= "ap" (plan.backspace-query "api"))

@@ -2,7 +2,7 @@
 (local status (require :app.search_status))
 
 (fn search-state [active? query index matches]
-  {:active? active? :query query :index index :matches matches})
+  {: active? : query : index : matches})
 
 (fn test-active_status_shows_prompt_text []
   (faith.= "/api │ 2 matches │ enter finish │ esc clear"

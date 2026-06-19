@@ -2,11 +2,7 @@
 (local tree (require :app.tree))
 
 (fn entry [status path ?old-path]
-  {:status status
-   :kind (status:sub 1 1)
-   :path path
-   :old_path ?old-path
-   :reviewed false})
+  {: status :kind (status:sub 1 1) : path :old_path ?old-path :reviewed false})
 
 (fn simple-row [row]
   (if (= row.type :folder)

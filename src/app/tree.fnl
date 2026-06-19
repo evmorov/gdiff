@@ -30,7 +30,7 @@
         (set node (child-dir node (. parts i)))
         (table.insert node.entries entry))
       (table.insert node.files
-                    {:entry entry :entry-index index :name (. parts count)}))))
+                    {: entry :entry-index index :name (. parts count)}))))
 
 (fn single-dir-name [node]
   (and (= 0 (length node.files)) (= 1 (length node.dir-order))
@@ -67,7 +67,7 @@
   (each [_ file (ipairs node.files)]
     (table.insert rows
                   {:type :file
-                   :depth depth
+                   : depth
                    :entry file.entry
                    :entry-index file.entry-index
                    :name (file-name file.entry file.name)}))
@@ -75,7 +75,7 @@
     (let [(label child) (compact-dir node dir-name)]
       (table.insert rows
                     {:type :folder
-                     :depth depth
+                     : depth
                      :name (.. label "/")
                      :path (join-path ?prefix label)
                      :entries (node-entries child)})

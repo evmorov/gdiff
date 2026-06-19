@@ -7,13 +7,13 @@
 
 (fn init [revision entries review-store review-scope src-dir ?diff-stats]
   (let [selected 1
-        state {:revision revision
+        state {: revision
                :src_dir src-dir
                :revision_label (git.comparison-label revision)
-               :entries entries
+               : entries
                :diff_stats ?diff-stats
                :quit? false
-               :selected selected
+               : selected
                :preview_scroll 0
                :preview_x_scroll 0
                :preview_x_max_scroll 0

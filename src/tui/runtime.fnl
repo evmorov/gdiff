@@ -24,6 +24,6 @@
         (error err)))))
 
 (fn run-loop [state view handle-key]
-  (run {:state state :view view :update handle-key}))
+  (run {: state : view :update handle-key}))
 
 {: run : run-loop}

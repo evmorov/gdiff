@@ -82,10 +82,10 @@
 {: ansi-sequence-end
  : ansi-sequence?
  : ascii-byte?
- :ascii-limit ascii-limit
+ : ascii-limit
  : esc
- :esc-byte esc-byte
- :left-bracket-byte left-bracket-byte
+ : esc-byte
+ : left-bracket-byte
  : next-char
  : pad-right
  : pattern-quote

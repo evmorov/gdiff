@@ -89,7 +89,7 @@
 
 (fn pass [] {:char "." :type :pass})
 
-(fn error-result [msg] {:char "E" :type :err :tostring err->string :msg msg})
+(fn error-result [msg] {:char "E" :type :err :tostring err->string : msg})
 
 (fn skip []
   (error {:char :s :type :skip}))

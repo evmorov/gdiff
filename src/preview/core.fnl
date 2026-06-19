@@ -86,9 +86,9 @@
                                                  state.preview_scroll)))
 
 (fn display-lines-for-width [state lines visible cols]
-  (let [cache-key {:lines lines
-                   :visible visible
-                   :cols cols
+  (let [cache-key {: lines
+                   : visible
+                   : cols
                    :split-ratio state.split_ratio
                    :wrap? state.preview_wrap?}
         cache state.preview_display_cache]
@@ -99,12 +99,12 @@
         cache.display
         (let [display (viewport.lines-for-width state lines visible cols)]
           (set state.preview_display_cache
-               {:lines lines
-                :visible visible
-                :cols cols
+               {: lines
+                : visible
+                : cols
                 :split-ratio state.split_ratio
                 :wrap? state.preview_wrap?
-                :display display})
+                : display})
           display))))
 
 (fn reset-scroll [state]
@@ -164,7 +164,7 @@
   (let [visible (or state.preview_rows 0)
         total (or state.preview_total 0)]
     (when (> total visible)
-      {:offset (or state.preview_scroll 0) :visible visible :total total})))
+      {:offset (or state.preview_scroll 0) : visible : total})))
 
 {: lines
  : apply-display-lines

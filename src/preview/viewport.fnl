@@ -27,7 +27,7 @@
   (let [total (length lines)
         max-scroll (math.max 0 (- total visible))
         offset (math-util.clamp (or scroll 0) 0 max-scroll)]
-    {:offset offset :total total :visible visible}))
+    {: offset : total : visible}))
 
 (fn visible-lines [lines scroll-state]
   (let [first (+ (or scroll-state.offset 0) 1)

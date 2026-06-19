@@ -23,7 +23,7 @@
 
 (fn footer [kind text ?right]
   (when (or text ?right)
-    {:type kind :text text :right ?right}))
+    {:type kind : text :right ?right}))
 
 (defnode screen [header body ?footer] :screen
   [:header header]

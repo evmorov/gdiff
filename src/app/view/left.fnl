@@ -12,7 +12,7 @@
 
 (fn scroll-info [top count visible]
   (when (> count visible)
-    {:offset (- top 1) :visible visible :total count}))
+    {:offset (- top 1) : visible :total count}))
 
 (fn status-color [entry]
   (case entry.kind

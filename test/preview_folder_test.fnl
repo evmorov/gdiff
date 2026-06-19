@@ -4,10 +4,10 @@
 (local t (require :test-helper))
 
 (fn entry [kind path]
-  {:kind kind :status kind :path path :reviewed false})
+  {: kind :status kind : path :reviewed false})
 
 (fn state [entries]
-  {:entries entries :folder_preview_cache {}})
+  {: entries :folder_preview_cache {}})
 
 (fn test-render-lines_marks_changed_children_and_deleted_files []
   (let [state (state [(entry "A" "src/added.rb")

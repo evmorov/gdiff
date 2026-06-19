@@ -102,8 +102,8 @@
 (local handlers {:up #(move-selection $1 -1)
                  :down #(move-selection $1 1)
                  :open open-selected
-                 :toggle-reviewed toggle-reviewed
-                 :toggle-all-reviewed toggle-all-reviewed
+                 : toggle-reviewed
+                 : toggle-all-reviewed
                  :preview-down scroll-preview-page-down
                  :preview-up scroll-preview-page-up
                  :preview-left #(scroll-horizontal $1 -8)
@@ -114,8 +114,8 @@
                  :clear-search search.clear
                  :top selection.top
                  :bottom selection.bottom
-                 :toggle-wrap toggle-wrap
-                 :toggle-tree toggle-tree
+                 : toggle-wrap
+                 : toggle-tree
                  :refresh refresh-and-sync
                  :copy-path copy-selected-path
                  :open-pr commands.open-linked-pr

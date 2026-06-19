@@ -3,7 +3,7 @@
 (local plan (require :preview.warm_plan))
 
 (fn entry [status path ?old-path]
-  {:status status :kind (status:sub 1 1) :path path :old_path ?old-path})
+  {: status :kind (status:sub 1 1) : path :old_path ?old-path})
 
 (fn paths [entries]
   (icollect [_ entry (ipairs entries)]

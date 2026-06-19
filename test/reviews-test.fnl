@@ -3,7 +3,7 @@
 (local t (require :test-helper))
 
 (fn entry [path reviewed?]
-  {:path path :reviewed reviewed?})
+  {: path :reviewed reviewed?})
 
 (fn test-review-marks-persist-by-scope []
   (t.reset-workdir)

@@ -2,7 +2,7 @@
 (local workers (require :preview.workers))
 
 (fn entry [path]
-  {:path path})
+  {: path})
 
 (fn entries [count]
   (fcollect [i 1 count]

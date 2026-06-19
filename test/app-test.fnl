@@ -61,7 +61,7 @@
     (faith.= nil err)
     (state entries)))
 
-(fn test-a-toggles-all-reviewed-and-A-does-nothing []
+(fn test-a-toggles-all-reviewed-and-uppercase-a-does-nothing []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
     (faith.is (app.handle-key state {} "a"))
     (faith.= 1 state.selected)
@@ -533,7 +533,7 @@
     (app.handle-key state {} :tick)
     (faith.= ["warmed"] (. state.preview_cache warmed-key))))
 
-{: test-a-toggles-all-reviewed-and-A-does-nothing
+{: test-a-toggles-all-reviewed-and-uppercase-a-does-nothing
  : test-search-next-is-relative-to-current-cursor
  : test-backtick-preserves-selected-file-with-search
  : test-backtick-toggles-tree-mode-without-clearing-search

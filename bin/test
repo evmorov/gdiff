@@ -3,6 +3,24 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(cd -- "$script_dir/.." && pwd)"
+
+cd "$repo_dir"
+source_files=$(rg --files -g "*.fnl" src test examples)
+macro_files=$(rg --files -g "*.fnlm" src)
+
+echo "==> Checking formatting (fnlfmt --check)"
+# fnlfmt 0.3.x prints "Not formatted:" but exits 0, so inspect the output.
+fmt_output=$(fnlfmt --check $source_files $macro_files 2>/dev/null || true)
+if printf '%s\n' "$fmt_output" | grep -q "Not formatted:"; then
+  printf '%s\n' "$fmt_output" | grep "Not formatted:" >&2
+  echo "Fix with: fnlfmt --fix <file>" >&2
+  exit 1
+fi
+
+echo "==> Linting (fennel-ls --lint)"
+fennel-ls --lint $source_files
+fennel-ls --lint $macro_files
+
 test_repo="$(mktemp -d)"
 
 export GDIFF_TEST_ROOT="$test_repo"

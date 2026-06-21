@@ -6,6 +6,7 @@
             :git-test
             :git-commands-test
             :git-parse-test
+            :input-test
             :messages-test
             :notice-test
             :platform-test

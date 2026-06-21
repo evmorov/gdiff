@@ -6,6 +6,15 @@
 (local saved-stty probe.saved-stty)
 (local terminal-size probe.terminal-size)
 
+(fn input-mode [time]
+  (os.execute (.. "stty raw -echo min 0 time " time " 2>/dev/null")))
+
+(fn blocking-mode []
+  (input-mode 10))
+
+(fn nonblocking-mode []
+  (input-mode 0))
+
 (fn cursor [row col]
   (io.write ansi.esc "[" row ";" col "H"))
 
@@ -74,10 +83,46 @@
               key))
         (keys.decode state c))))
 
+(fn poll-key [state]
+  ;; Restores blocking mode before assembling an escape sequence so a split
+  ;; arrow key or bracketed paste can't be misread or leak paste as commands.
+  (let [c (io.read 1)]
+    (when c
+      (if (= c ansi.esc)
+          (do
+            (blocking-mode)
+            (let [key (keys.decode state c (read-escape-sequence))]
+              (if (= key :paste-start)
+                  (do
+                    (drain-paste)
+                    :tick)
+                  key)))
+          (keys.decode state c)))))
+
+(fn drain [state coalesce? apply]
+  ;; Returns running? and any non-coalescible key read for the caller to handle
+  ;; next. Restores blocking mode.
+  (nonblocking-mode)
+  (var running true)
+  (var held nil)
+  (var done? false)
+  (while (not done?)
+    (let [key (poll-key state)]
+      (if (not key) (set done? true) (coalesce? key)
+          (do
+            (set running (apply key))
+            (when (not running)
+              (set done? true)))
+          (do
+            (set held key)
+            (set done? true)))))
+  (blocking-mode)
+  (values running held))
+
 (fn raw-terminal [stty-state]
   (os.execute "stty raw -echo min 0 time 1 2>/dev/null")
   (let [background-rgb (osc.query-background-rgb)]
-    (os.execute "stty raw -echo min 0 time 10 2>/dev/null")
+    (blocking-mode)
     (io.write ansi.esc "[?1049h" ansi.esc "[?25l" ansi.esc "[?2004h")
     (clear-screen)
     (io.flush)
@@ -99,6 +144,7 @@
  : clear-line
  : clear-screen
  : cursor
+ : drain
  : end-frame
  : raw-terminal
  : read-key

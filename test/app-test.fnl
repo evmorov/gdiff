@@ -101,8 +101,8 @@
           text (. (. view.body.left.rows 1) :text)]
       (faith.= "> [x] [M] a.rb" (tui.strip-ansi text))
       (when (text:find "\27" 1 true)
-        (faith.is (text:find "\27[2m%[" 1))
-        (faith.is (text:find "\27[2m%]" 1))))))
+        (faith.is (text:find "\27[2m[" 1 true))
+        (faith.is (text:find "\27[2m]" 1 true))))))
 
 (fn test-backtick-toggles-tree-mode-without-clearing-search []
   (let [state (flat-state [(entry "A" "script/shorthand_branch.sh")

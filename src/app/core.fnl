@@ -22,7 +22,8 @@
     (app-update.start state)
     (tui.run {: state
               :view app-view.view
-              :update #(app-update.handle-key $1 config $2)})))
+              :update #(app-update.handle-key $1 config $2)
+              :coalesce? app-update.coalesce?})))
 
 (fn exit-with-error [message]
   (io.stderr:write message "\n")

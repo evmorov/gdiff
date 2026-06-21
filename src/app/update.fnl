@@ -101,6 +101,7 @@
   (run-command state {} (start-command state)))
 
 {:cache-selected-preview actions.cache-selected-preview
+ :coalesce? input.coalesce?
  : handle-key
  : init
  :new-state init

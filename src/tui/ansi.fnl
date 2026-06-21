@@ -17,6 +17,11 @@
 (fn reset-code []
   (if (color?) reset-style ""))
 
+;; Only close styling when the text carries an ANSI sequence, so plain rows
+;; keep no trailing reset while styled text never bleeds past a cut.
+(fn reset-for [s]
+  (if (string.find (tostring (or s "")) "\27" 1 true) (reset-code) ""))
+
 (fn apply-style [style text]
   (if (and (color?) style)
       (.. style text reset-style)
@@ -38,13 +43,13 @@
       (tostring (or s ""))))
 
 (fn truncate [s width]
-  (text-window.truncate s width (reset-code)))
+  (text-window.truncate s width (reset-for s)))
 
 (fn crop [s offset width]
-  (text-window.crop s offset width (reset-code)))
+  (text-window.crop s offset width (reset-for s)))
 
 (fn window [s offset width]
-  (text-window.window s offset width (reset-code)))
+  (text-window.window s offset width (reset-for s)))
 
 {: apply-block-style
  : apply-style

@@ -45,4 +45,10 @@
         action (messages.action action pending-key)
         (messages.pending-key pending-key))))
 
-{: event-key : next-key : read-msg}
+;; Side-effect-free navigation keys whose repeats can be folded into one repaint.
+(local coalescible-keys {:j true :k true :G true :g true})
+
+(fn coalesce? [state raw-key]
+  (and (. coalescible-keys raw-key) (not (search.active? state)) true))
+
+{: coalesce? : event-key : next-key : read-msg}

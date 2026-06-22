@@ -1,25 +1,22 @@
 (local fennel (require :fennel))
+(local fennel-command (require :platform.fennel))
 (local git (require :git.core))
 (local preview (require :preview.core))
+(local plan (require :preview.warm-plan))
 (local sys (require :platform.core))
 
 (fn read-manifest [path]
   (let [source (sys.read-file path)]
     (when source
-      (let [(ok result) (pcall fennel.eval source
-                               {:filename path :allowedGlobals []})]
+      (let [(ok result) (fennel-command.eval-source source path)]
         (when ok
           result)))))
 
-(fn output-path [dir index]
-  (.. dir "/" index ".fnl"))
-
 (fn write-output [dir index lines]
-  (let [path (output-path dir index)
+  (let [path (plan.output-path dir index)
         tmp (.. path ".tmp")]
     (when (sys.write-file tmp (fennel.view lines))
-      (os.execute (.. "mv " (sys.shell-quote tmp) " " (sys.shell-quote path)
-                      " 2>/dev/null")))))
+      (sys.rename tmp path))))
 
 (fn warm [manifest-path dir start step]
   (let [manifest (read-manifest manifest-path)]

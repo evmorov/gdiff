@@ -1,4 +1,8 @@
+(local fennel (require :fennel))
 (local sys (require :platform.core))
+
+(fn eval-source [source path]
+  (pcall fennel.eval source {:filename path :allowedGlobals []}))
 
 (fn runtime-path [src-dir]
   (.. src-dir "/?.fnl"))
@@ -17,4 +21,4 @@
       (table.insert parts (sys.shell-quote arg)))
     (table.concat parts " ")))
 
-{: command : macro-path : runtime-path}
+{: command : eval-source : macro-path : runtime-path}

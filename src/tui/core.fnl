@@ -3,7 +3,6 @@
 
 (local context (require :tui.context))
 (local draw (require :tui.draw))
-(local body (require :tui.components.body))
 (local chrome (require :tui.components.chrome))
 (local footer-view (require :tui.components.footer))
 (local footer-layout (require :tui.components.footer-layout))
@@ -29,8 +28,7 @@
 (local wrap (require :tui.wrap))
 
 {:color theme.color
- :components {: body
-              : chrome
+ :components {: chrome
               :footer footer-view
               : footer-layout
               :header header-view

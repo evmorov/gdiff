@@ -120,7 +120,7 @@
   (let [state (state [(entry "D" "src/from-state.rb")])
         row {:path "src" :entries [(entry "A" "src/from-row.rb")]}
         plan (folder.folder-plan-for state row)]
-    (faith.= plan row.folder_plan)
+    (faith.= plan row.folder-plan)
     (faith.= "A" plan.folder-kind)
     (set state.entries [(entry "M" "src/changed-state.rb")])
     (faith.= plan (folder.folder-plan-for state row))

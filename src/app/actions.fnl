@@ -127,4 +127,4 @@
     (when handler
       (handler state config))))
 
-{: apply-refresh : cache-selected-preview : handle : handlers}
+{: apply-refresh : cache-selected-preview : handle}

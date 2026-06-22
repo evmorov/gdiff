@@ -106,3 +106,4 @@ fnlfmt --fix $(rg --files -g "*.fnl" -g "*.fnlm" src test examples)
   data or the user asks for it.
 - Avoid unrelated refactors. If a cleanup is worthwhile, keep it small, tested,
   and aligned with the existing folder boundaries.
+- Add code comments only if they are absolutely necessary.

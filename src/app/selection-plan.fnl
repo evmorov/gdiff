@@ -8,9 +8,4 @@
 (fn changed? [before after]
   (not (= before after)))
 
-(fn selected-row-index [view-mode tree-selected-row selected fallback-tree-row]
-  (if (= view-mode :tree)
-      (or tree-selected-row fallback-tree-row)
-      selected))
-
-{: changed? : flat-index : selected-row-index}
+{: changed? : flat-index}

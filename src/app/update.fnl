@@ -109,5 +109,4 @@
  : run-command
  : start
  : start-command
- : update
- : command-for-message}
+ : update}

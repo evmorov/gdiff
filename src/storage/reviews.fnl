@@ -1,4 +1,5 @@
 (local fennel (require :fennel))
+(local fennel-command (require :platform.fennel))
 (local sys (require :platform.core))
 
 (fn state-dir []
@@ -27,8 +28,7 @@
   (let [path (state-path)
         source (sys.read-file path)]
     (if source
-        (let [(ok result) (pcall fennel.eval source
-                                 {:filename path :allowedGlobals []})]
+        (let [(ok result) (fennel-command.eval-source source path)]
           (if ok
               (normalize-store result)
               (empty-store)))

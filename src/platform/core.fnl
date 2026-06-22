@@ -54,6 +54,9 @@
 (fn remove-file [path]
   (os.remove path))
 
+(fn rename [old new]
+  (os.rename old new))
+
 (fn remove-dir [path]
   (os.execute (.. "rm -rf " (shell-quote path) " 2>/dev/null")))
 
@@ -81,6 +84,7 @@
  : read-file
  : remove-dir
  : remove-file
+ : rename
  : shell-quote
  : temp-path
  : trim

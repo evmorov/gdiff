@@ -73,11 +73,4 @@
     (set state.files_x_max_scroll 0)
     (tui.list visible-rows scroll 0 0)))
 
-{: body
- : display-row
- : file-row-text
- : folder-row-text
- : reviewed-text
- : scroll-info
- : status-text
- : viewport}
+{: body}

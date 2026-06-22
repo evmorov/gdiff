@@ -17,16 +17,6 @@
         (when (< 0 (length rest))
           rest)))))
 
-(fn direct-child [folder path]
-  (let [rest (rest-under folder path)]
-    (when rest
-      (or (rest:match "^([^/]+)/") rest))))
-
-(fn direct-file-child [folder path]
-  (let [rest (rest-under folder path)]
-    (when (and rest (not (rest:find "/" 1 true)))
-      rest)))
-
 (fn child-info [folder path]
   (let [rest (rest-under folder path)]
     (when rest
@@ -90,9 +80,6 @@
      : orders
      : children
      :folder-kind (folder-status-kind entries)}))
-
-(fn direct-statuses [folder entries]
-  (. (folder-plan folder entries) :statuses))
 
 (fn status-color [kind]
   (case kind
@@ -232,13 +219,10 @@
       (table.insert out line))
     out))
 
-(fn plan-entries [state row]
-  (or row.entries state.entries))
-
 (fn folder-plan-for [state row]
   (if row.entries
-      (or row.folder_plan (let [plan (folder-plan row.path row.entries)]
-                            (set row.folder_plan plan)
+      (or row.folder-plan (let [plan (folder-plan row.path row.entries)]
+                            (set row.folder-plan plan)
                             plan))
       (folder-plan row.path state.entries)))
 
@@ -256,35 +240,13 @@
   (let [(output ok _kind _code) (sys.read-command (command path))]
     {:ok? ok : output}))
 
-(fn cached-record [cache path]
-  (. cache path))
-
-(fn cache-record [cache path record]
-  (tset cache path record)
-  record)
-
 (fn record-for [state path]
-  (let [cache (ensure-cache state)
-        cached (cached-record cache path)]
-    (or cached (cache-record cache path (load-record path)))))
+  (let [cache (ensure-cache state)]
+    (or (. cache path) (let [record (load-record path)]
+                         (tset cache path record)
+                         record))))
 
 (fn lines [state row]
   (render-lines state row (record-for state row.path)))
 
-{: command
- : cached-record
- : cache-record
- : child-status-kind
- : direct-child
- : direct-file-child
- : direct-statuses
- : folder-status-kind
- : folder-plan-for
- : listing-entry
- : parsed-listing
- : load-record
- : lines
- : plan-entries
- : record-for
- : render-lines
- : with-header}
+{: folder-plan-for : lines : parsed-listing : render-lines}

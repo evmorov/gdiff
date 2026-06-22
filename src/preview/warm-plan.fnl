@@ -3,6 +3,9 @@
 
 (local edge-batch-size 8)
 
+(fn output-path [dir index]
+  (.. dir "/" index ".fnl"))
+
 (fn missing-entries [revision entries cache]
   (let [cache (or cache {})]
     (icollect [_ entry (ipairs entries)]
@@ -39,4 +42,8 @@
 (fn worker-count [entries ?cpu-count]
   (workers.count entries ?cpu-count))
 
-{: index-entries : missing-entries : side-priority-entries : worker-count}
+{: index-entries
+ : missing-entries
+ : output-path
+ : side-priority-entries
+ : worker-count}

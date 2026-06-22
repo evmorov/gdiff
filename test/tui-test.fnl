@@ -1,5 +1,6 @@
 (local faith (require :faith))
 (local ansi (require :tui.ansi))
+(local chrome-layout (require :tui.components.chrome-layout))
 (local colors (require :tui.colors))
 (local theme (require :tui.theme))
 (local tui (require :tui.core))
@@ -76,21 +77,21 @@
     (faith.= "──┼──" rule)))
 
 (fn test-bottom-rule-connects-body-divider []
-  (let [rule (tui.components.chrome.bottom-rule 9 5)]
+  (let [rule (chrome-layout.bottom-rule 9 5)]
     (faith.= "────┴────" rule)))
 
 (fn test-bottom-rule-connects-footer-right-separator []
-  (let [rule (tui.components.chrome.bottom-rule 9 nil 7)]
+  (let [rule (chrome-layout.bottom-rule 9 nil 7)]
     (faith.= "──────┬──" rule)))
 
 (fn test-bottom-rule-crosses-body-divider-and-footer-separator []
-  (let [rule (tui.components.chrome.bottom-rule 9 5 5)]
+  (let [rule (chrome-layout.bottom-rule 9 5 5)]
     (faith.= "────┼────" rule)))
 
 (fn test-bottom-rule-connects-all-footer-right-separators []
   (let [footer-cols (tui.components.footer.rule-cols 30 nil
                                                      "65 files │ 12/65 reviewed")
-        rule (tui.components.chrome.bottom-rule 30 nil footer-cols)]
+        rule (chrome-layout.bottom-rule 30 nil footer-cols)]
     (faith.= "───┬──────────┬───────────────"
              rule)))
 
@@ -181,8 +182,8 @@
 
 (fn test-horizontal-scrollbar-is-composed-into-bottom-rule []
   (let [body (tui.split (tui.list []) (tui.lines [] nil 0 4) 0.4)
-        line (tui.components.chrome.horizontal-scrollbars "───┴──────"
-                                                          body 10 3)]
+        line (chrome-layout.horizontal-scrollbars "───┴──────"
+                                                  body 10)]
     (faith.= "───┴▀▀▀▀──" line)))
 
 (fn test-wrap-marks-continued-visual-lines []

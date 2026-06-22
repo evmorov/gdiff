@@ -15,9 +15,6 @@
     (when (sys.ensure-dir path)
       path)))
 
-(fn output-path [dir index]
-  (.. dir "/" index ".fnl"))
-
 (fn manifest-path [dir]
   (.. dir "/manifest.fnl"))
 
@@ -79,8 +76,7 @@
 (fn read-lines [path]
   (let [source (sys.read-file path)]
     (when source
-      (let [(ok result) (pcall fennel.eval source
-                               {:filename path :allowedGlobals []})]
+      (let [(ok result) (fennel-command.eval-source source path)]
         (when ok
           result)))))
 
@@ -99,7 +95,7 @@
            (+ (or state.scan-index 1) 1))))
 
 (fn import-output [state cache index]
-  (let [path (output-path state.dir index)
+  (let [path (plan.output-path state.dir index)
         lines (read-lines path)]
     (when lines
       (let [key (. state.index-key index)]

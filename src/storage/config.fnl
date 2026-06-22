@@ -1,4 +1,4 @@
-(local fennel (require :fennel))
+(local fennel-command (require :platform.fennel))
 (local sys (require :platform.core))
 
 (fn path []
@@ -12,8 +12,7 @@
   (let [path (path)
         source (sys.read-file path)]
     (if source
-        (let [(ok result) (pcall fennel.eval source
-                                 {:filename path :allowedGlobals []})]
+        (let [(ok result) (fennel-command.eval-source source path)]
           (if ok
               (or result {})
               (error (.. "Could not load " path ": " result))))

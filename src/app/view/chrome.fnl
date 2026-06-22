@@ -50,4 +50,4 @@
         (tui.footer :warning warning summary)
         (tui.footer :notice state.notice summary))))
 
-{: footer : footer-summary : header : percentage}
+{: footer : header}

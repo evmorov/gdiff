@@ -93,16 +93,38 @@
   (when (search.has-query? state)
     (search.rebuild state true)))
 
+(fn row-folder-path [row]
+  (case row.type
+    :folder row.path
+    :file row.folder-path))
+
+(fn set-folder-expanded [state path expand?]
+  (if expand?
+      (tset state.expanded_folders path
+            (folder-preview.folder-entries state path))
+      (tset state.expanded_folders path nil)))
+
+(fn settled-row-index [state row]
+  (if (not row) state.tree_selected_row
+      (= row.type :folder) (selection.folder-row-index state row.path)
+      row.unchanged (or (selection.file-row-index-by-path state row.path)
+                        (selection.last-file-row-index state row.folder-path)
+                        (selection.folder-row-index state row.folder-path))
+      (selection.entry-row-index state row.entry-index)))
+
+(fn settle-cursor [state row]
+  (selection.set-tree-row state
+                          (or (settled-row-index state row)
+                              state.tree_selected_row)))
+
 (fn toggle-expand [state]
   (when (= state.view_mode :tree)
-    (let [path (selection.target-folder-path state)]
+    (let [row (selection.selected-tree-row state)
+          path (and row (row-folder-path row))]
       (when (and path (< 0 (length path)))
-        (if (. state.expanded_folders path)
-            (tset state.expanded_folders path nil)
-            (tset state.expanded_folders path
-                  (folder-preview.folder-entries state path)))
+        (set-folder-expanded state path (= nil (. state.expanded_folders path)))
         (selection.invalidate-rows state)
-        (selection.set-tree-row state state.tree_selected_row)))))
+        (settle-cursor state row)))))
 
 (fn nested-changed-folders [state]
   (icollect [_ row (ipairs (tree.rows state.entries {}))]
@@ -116,14 +138,12 @@
   (when (= state.view_mode :tree)
     (let [paths (nested-changed-folders state)]
       (when (< 0 (length paths))
-        (if (all-expanded? state paths)
-            (each [_ path (ipairs paths)]
-              (tset state.expanded_folders path nil))
-            (each [_ path (ipairs paths)]
-              (tset state.expanded_folders path
-                    (folder-preview.folder-entries state path))))
-        (selection.invalidate-rows state)
-        (selection.set-tree-row state state.tree_selected_row)))))
+        (let [row (selection.selected-tree-row state)
+              expand? (not (all-expanded? state paths))]
+          (each [_ path (ipairs paths)]
+            (set-folder-expanded state path expand?))
+          (selection.invalidate-rows state)
+          (settle-cursor state row))))))
 
 (fn toggle-help [state]
   (set state.show_help? (not state.show_help?)))

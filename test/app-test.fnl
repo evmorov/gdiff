@@ -41,6 +41,15 @@
     (faith.is index (.. "missing folder row: " path))
     (set state.tree_selected_row index)))
 
+(fn file-row-index [state name]
+  (accumulate [found nil index row (ipairs (selection.rows state)) &until found]
+    (when (and (= row.type :file) (= row.name name)) index)))
+
+(fn select-file [state name]
+  (let [index (file-row-index state name)]
+    (faith.is index (.. "missing file row: " name))
+    (set state.tree_selected_row index)))
+
 (fn setup-real-folder-preview-repo []
   (t.init-repo)
   (t.mkdir "lib/tardis/docker/views")
@@ -300,6 +309,81 @@
       (faith.match "sibling%.rb" text))
     (faith.is (app.handle-key state {} "E"))
     (faith.= nil (. state.expanded_folders "lib/sub"))))
+
+(fn setup-nested-changed-repo []
+  (t.init-repo)
+  (t.mkdir "lib/sub")
+  (t.write-file "lib/top.rb" "old\n")
+  (t.write-file "lib/sub/another.rb" "old\n")
+  (t.write-file "lib/sub/nested.rb" "old\n")
+  (t.write-file "lib/sub/sibling.rb" "sibling\n")
+  (t.commit-all "initial")
+  (t.write-file "lib/top.rb" "new\n")
+  (t.write-file "lib/sub/another.rb" "new\n")
+  (t.write-file "lib/sub/nested.rb" "new\n"))
+
+(fn test-e-on-changed-file-expands-parent-and-keeps-cursor []
+  (setup-nested-changed-repo)
+  (let [state (real-preview-state)]
+    (select-file state "nested.rb")
+    (faith.is (app.handle-key state {} "e"))
+    (faith.is (. state.expanded_folders "lib/sub"))
+    (faith.= "nested.rb" (. (selection.selected-tree-row state) :name))
+    (let [text (t.text (icollect [_ row (ipairs (selection.rows state))]
+                         (or row.name "")))]
+      (faith.match "sibling%.rb" text))))
+
+(fn test-e-on-unchanged-file-collapses-and-jumps-to-lowest-file []
+  (setup-nested-changed-repo)
+  (let [state (real-preview-state)]
+    (select-file state "nested.rb")
+    (app.handle-key state {} "e")
+    (select-file state "sibling.rb")
+    (faith.is (app.handle-key state {} "e"))
+    (faith.= nil (. state.expanded_folders "lib/sub"))
+    (let [row (selection.selected-tree-row state)]
+      (faith.= :file row.type)
+      (faith.= "nested.rb" row.name))))
+
+(fn setup-sibling-changed-folders []
+  (t.init-repo)
+  (t.mkdir "lib/a_dir")
+  (t.mkdir "lib/b_dir")
+  (t.write-file "lib/a_dir/a1.rb" "old\n")
+  (t.write-file "lib/a_dir/extra.rb" "extra\n")
+  (t.write-file "lib/b_dir/b1.rb" "old\n")
+  (t.commit-all "initial")
+  (t.write-file "lib/a_dir/a1.rb" "new\n")
+  (t.write-file "lib/b_dir/b1.rb" "new\n"))
+
+(fn test-uppercase-e-expand-keeps-cursor-on-changed-file []
+  (setup-sibling-changed-folders)
+  (let [state (real-preview-state)]
+    (select-file state "b1.rb")
+    (faith.is (app.handle-key state {} "E"))
+    (let [row (selection.selected-tree-row state)]
+      (faith.= :file row.type)
+      (faith.= "b1.rb" row.name))))
+
+(fn test-uppercase-e-expand-keeps-cursor-on-folder []
+  (setup-sibling-changed-folders)
+  (let [state (real-preview-state)]
+    (select-folder state "lib/b_dir")
+    (faith.is (app.handle-key state {} "E"))
+    (let [row (selection.selected-tree-row state)]
+      (faith.= :folder row.type)
+      (faith.= "lib/b_dir" row.path))))
+
+(fn test-uppercase-e-collapse-from-unchanged-file-jumps-to-lowest-file []
+  (setup-nested-changed-repo)
+  (let [state (real-preview-state)]
+    (faith.is (app.handle-key state {} "E"))
+    (select-file state "sibling.rb")
+    (faith.is (app.handle-key state {} "E"))
+    (faith.= nil (. state.expanded_folders "lib/sub"))
+    (let [row (selection.selected-tree-row state)]
+      (faith.= :file row.type)
+      (faith.= "nested.rb" row.name))))
 
 (fn test-view-moves-file-counts-to-footer-right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
@@ -610,6 +694,11 @@
  : test-view-adds-left-scroll-info-for-overflowing-file-list
  : test-view-keeps-last-file-above-bottom-divider
  : test-uppercase-e-toggles-nested-folders-and-skips-the-root
+ : test-e-on-changed-file-expands-parent-and-keeps-cursor
+ : test-e-on-unchanged-file-collapses-and-jumps-to-lowest-file
+ : test-uppercase-e-expand-keeps-cursor-on-changed-file
+ : test-uppercase-e-expand-keeps-cursor-on-folder
+ : test-uppercase-e-collapse-from-unchanged-file-jumps-to-lowest-file
  : test-view-moves-file-counts-to-footer-right
  : test-view-shows-all-reviewed-when-all-files-reviewed
  : test-view-shows-reviewed-file-percent-in-footer-right

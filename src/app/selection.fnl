@@ -109,10 +109,29 @@
   (set state.tree_selected_row
        (tree.selected-row (tree-rows state) state.selected)))
 
-(fn target-folder-path [state]
-  (let [row (selected-tree-row state)]
-    (when (and row (= row.type :folder))
-      row.path)))
+(fn folder-row-index [state path]
+  (accumulate [found nil index row (ipairs (tree-rows state)) &until found]
+    (when (and (= row.type :folder) (= row.path path)) index)))
+
+(fn under-folder? [folder-path path]
+  (let [prefix (.. path "/")]
+    (or (= folder-path path) (= (string.sub (or folder-path "") 1
+                                            (length prefix))
+                                prefix))))
+
+(fn last-file-row-index [state path]
+  (accumulate [found nil index row (ipairs (tree-rows state))]
+    (if (and (= row.type :file) (under-folder? row.folder-path path))
+        index
+        found)))
+
+(fn file-row-index-by-path [state path]
+  (accumulate [found nil index row (ipairs (tree-rows state)) &until found]
+    (when (and (= row.type :file) (= row.path path)) index)))
+
+(fn entry-row-index [state entry-index]
+  (when entry-index
+    (tree.selected-row (tree-rows state) entry-index)))
 
 (fn toggle-mode [state]
   (if (= state.view_mode :tree)
@@ -129,9 +148,12 @@
 {: bottom
  : cursor-position
  : flat-rows
+ : folder-row-index
+ : last-file-row-index
+ : file-row-index-by-path
+ : entry-row-index
  : invalidate-rows
  : move
- : target-folder-path
  : rows
  : selected-entry
  : selected-context

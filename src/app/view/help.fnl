@@ -2,7 +2,7 @@
 
 (local shortcuts [["↑ / k" "Move up"]
                   ["↓ / j" "Move down"]
-                  ["g g" "Jump to top"]
+                  ["gg" "Jump to top"]
                   ["G" "Jump to bottom"]
                   ["enter / o" "Open file or folder"]
                   ["← / h" "Scroll preview left"]
@@ -10,7 +10,7 @@
                   ["C-d / C-u" "Page preview down / up"]
                   ["[ / ]" "Resize split"]
                   ["space" "Toggle reviewed"]
-                  ["a" "Toggle all reviewed"]
+                  ["A" "Toggle all reviewed"]
                   ["/" "Search"]
                   ["n / N" "Next / previous match"]
                   ["q" "Clear search / close help"]

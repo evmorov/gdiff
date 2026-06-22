@@ -47,17 +47,22 @@
       (.. "--no-index -- /dev/null " (sys.shell-quote entry.path))
       (.. (diff-ref revision) " -- " (sys.shell-quote entry.path))))
 
-(fn preview-command [revision entry color]
-  (.. "git diff --no-ext-diff --color=" color " --find-renames --find-copies "
-      (diff-target revision entry)))
+(local full-context-lines 99999)
 
-(fn plain-preview-command [revision entry]
-  (.. (preview-command revision entry "never") " 2>&1"
+(fn context-flag [?full-context?]
+  (if ?full-context? (.. "-U" full-context-lines " ") ""))
+
+(fn preview-command [revision entry color ?full-context?]
+  (.. "git diff --no-ext-diff --color=" color " --find-renames --find-copies "
+      (context-flag ?full-context?) (diff-target revision entry)))
+
+(fn plain-preview-command [revision entry ?full-context?]
+  (.. (preview-command revision entry "never" ?full-context?) " 2>&1"
       (if (and (working? revision) (untracked? entry)) " || true" "")))
 
-(fn filtered-preview-command [revision entry filter]
-  (.. (preview-command revision entry "always") " 2>/dev/null | " filter
-      " 2>/dev/null"))
+(fn filtered-preview-command [revision entry filter ?full-context?]
+  (.. (preview-command revision entry "always" ?full-context?)
+      " 2>/dev/null | " filter " 2>/dev/null"))
 
 {: current-branch-command
  : diff-command

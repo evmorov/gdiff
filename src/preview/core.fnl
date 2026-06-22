@@ -29,7 +29,8 @@
 (fn lines [state entry]
   (if (not entry)
       (format.no-selection state)
-      (let [key (preview-key.for-entry state.revision entry)
+      (let [full-context? state.full_context?
+            key (preview-key.for-entry state.revision entry full-context?)
             cached (. state.preview_cache key)]
         (if cached
             cached
@@ -42,7 +43,8 @@
               (tset state.preview_cache key lines)
               lines)
             (let [(output ok filtered?) (git.preview-output state.preview_context
-                                                            state.revision entry)
+                                                            state.revision entry
+                                                            full-context?)
                   lines (if ok
                             (format.output-lines state output filtered?)
                             (format.warning state (sys.trim output)))]
@@ -58,10 +60,11 @@
 (fn nonblocking-lines [state entry]
   (if (not entry)
       (format.no-selection state)
-      (let [key (preview-key.for-entry state.revision entry)
+      (let [full-context? state.full_context?
+            key (preview-key.for-entry state.revision entry full-context?)
             cached (. state.preview_cache key)]
         (if cached cached
-            (warming? state) (loading-lines state)
+            (and (warming? state) (not full-context?)) (loading-lines state)
             (lines state entry)))))
 
 (fn prepare-entry [state entry]

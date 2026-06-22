@@ -35,6 +35,27 @@
     (t.write-file "app.rb" "changed after cache\n")
     (faith.= lines (preview.visible-lines state (. entries 1) 20))))
 
+(fn test-full-context-uses-separate-key-and-wider-diff []
+  (t.init-repo)
+  (let [padding (string.rep "line\n" 30)]
+    (t.write-file "big.rb" (.. padding "old\n" padding))
+    (t.commit-all "initial")
+    (t.write-file "big.rb" (.. padding "new\n" padding)))
+  (let [(entries err) (git.diff-entries "HEAD")
+        entry (. entries 1)
+        state (state)
+        normal (preview.lines state entry)
+        normal-key (preview-key.for-entry "HEAD" entry)]
+    (faith.= nil err)
+    (set state.full_context? true)
+    (let [full (preview.lines state entry)
+          full-key (preview-key.for-entry "HEAD" entry true)]
+      (faith.not= normal-key full-key)
+      (faith.= normal (. state.preview_cache normal-key))
+      (faith.= full (. state.preview_cache full-key))
+      (faith.is (> (length full) (length normal))
+                "full context should render more lines than the default diff"))))
+
 (fn test-visible-lines-can-be-nonblocking-while-warming []
   (let [entry {:status "M" :kind "M" :path "missing.rb" :reviewed false}
         state {:preview_cache {}
@@ -266,7 +287,8 @@
   (faith.= 1 (preview.visible-count 0))
   (faith.= 3 (preview.visible-count 3)))
 
-{: test-visible-lines-can-be-nonblocking-while-warming
+{: test-full-context-uses-separate-key-and-wider-diff
+ : test-visible-lines-can-be-nonblocking-while-warming
  : test-apply-display-lines-updates-preview-scroll-metadata
  : test-apply-horizontal-scroll-limit-resets-when-wrapping
  : test-apply-horizontal-scroll-limit-uses-split-width

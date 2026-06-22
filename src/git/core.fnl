@@ -83,19 +83,22 @@
         (values (parse.parse-numstat output) nil)
         (values nil (sys.trim output)))))
 
-(fn preview-output [context revision entry]
+(fn preview-output [context revision entry ?full-context?]
   (let [filter context.diff-filter]
     (if filter
         (let [(output ok _kind _code) (sys.read-command (commands.filtered-preview-command revision
                                                                                            entry
-                                                                                           filter))]
+                                                                                           filter
+                                                                                           ?full-context?))]
           (if ok
               (values output true true)
               (let [(output ok _kind _code) (sys.read-command (commands.plain-preview-command revision
-                                                                                              entry))]
+                                                                                              entry
+                                                                                              ?full-context?))]
                 (values output ok false))))
         (let [(output ok _kind _code) (sys.read-command (commands.plain-preview-command revision
-                                                                                        entry))]
+                                                                                        entry
+                                                                                        ?full-context?))]
           (values output ok false)))))
 
 (fn repo-root []

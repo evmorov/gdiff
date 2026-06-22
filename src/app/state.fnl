@@ -22,6 +22,7 @@
                :preview_rows 1
                :preview_total 0
                :preview_wrap? true
+               :full_context? false
                :split_ratio 0.4
                :view_mode :tree
                :tree_selected_row nil

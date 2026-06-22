@@ -152,6 +152,18 @@
     (update.update state {} (update.read-msg state "w"))
     (faith.= false state.preview_wrap?)))
 
+(fn test-f-toggles-full-context-and-navigation-resets-it []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
+    (faith.= false state.full_context?)
+    (update.update state {} (update.read-msg state "f"))
+    (faith.= true state.full_context?)
+    (update.update state {} (update.read-msg state "f"))
+    (faith.= false state.full_context?)
+    (update.update state {} (update.read-msg state "f"))
+    (faith.= true state.full_context?)
+    (update.update state {} (update.read-msg state "j"))
+    (faith.= false state.full_context?)))
+
 (fn test-command-dispatches-back-through-update []
   (let [state (state [(entry "M" "a.rb")])
         command (fn [dispatch _get-state]
@@ -206,7 +218,8 @@
                              :ok? false})
     (faith.= "File not found: missing.rb" state.notice)))
 
-{: test-command-dispatches-back-through-update
+{: test-f-toggles-full-context-and-navigation-resets-it
+ : test-command-dispatches-back-through-update
  : test-copy-path-copies-selected-tree-folder-path
  : test-h-l-scroll-preview-horizontally
  : test-local-refresh-does-not-start-remote-sync

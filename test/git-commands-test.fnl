@@ -18,6 +18,11 @@
            (commands.preview-command "main...feature" {:path "src/a b.rb"}
                                      "never")))
 
+(fn test-preview-command-requests-full-context []
+  (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies -U99999 'main...feature' -- 'src/a b.rb'"
+           (commands.preview-command "main...feature" {:path "src/a b.rb"}
+                                     "never" true)))
+
 (fn test-working-commands-diff-against-head []
   (faith.= "git diff --name-status --find-renames --find-copies HEAD 2>&1"
            (commands.diff-command commands.working-revision))
@@ -50,6 +55,7 @@
 
 {: test-basic-git-adapter-commands-are-centralized
  : test-preview-command-quotes-revision-and-path
+ : test-preview-command-requests-full-context
  : test-working-commands-diff-against-head
  : test-working-untracked-preview-uses-no-index
  : test-untracked-command-lists-others

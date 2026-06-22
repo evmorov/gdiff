@@ -88,6 +88,11 @@
   (set-fields state [:preview_wrap? (not state.preview_wrap?)]
               [:preview_x_scroll 0] [:preview_x_max_scroll 0]))
 
+(fn toggle-full-context [state]
+  (when (selection.selected-entry state)
+    (set state.full_context? (not state.full_context?))
+    (preview.reset-scroll state)))
+
 (fn toggle-tree [state]
   (selection.toggle-mode state)
   (when (search.has-query? state)
@@ -173,6 +178,7 @@
                  :top selection.top
                  :bottom selection.bottom
                  : toggle-wrap
+                 : toggle-full-context
                  : toggle-tree
                  : toggle-expand
                  :expand-all toggle-expand-all

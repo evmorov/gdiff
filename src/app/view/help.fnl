@@ -18,6 +18,7 @@
                   ["e" "Expand / collapse folder"]
                   ["E" "Expand / collapse all nested folders"]
                   ["w" "Toggle wrap"]
+                  ["f" "Toggle full file context"]
                   ["r" "Refresh and sync"]
                   ["y" "Copy path"]
                   ["p" "Open pull request"]

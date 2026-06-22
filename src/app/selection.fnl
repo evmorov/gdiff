@@ -68,6 +68,7 @@
   (let [before state.selected]
     (set state.selected selected)
     (when (selection-plan.changed? before state.selected)
+      (set state.full_context? false)
       (preview.reset-scroll state))))
 
 (fn set-tree-row [state row-index]
@@ -79,6 +80,7 @@
       (when entry-index
         (set state.selected entry-index)))
     (when (selection-plan.changed? before state.tree_selected_row)
+      (set state.full_context? false)
       (preview.reset-scroll state))))
 
 (fn move [state delta]

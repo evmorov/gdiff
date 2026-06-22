@@ -70,14 +70,14 @@
     (faith.= nil err)
     (state entries)))
 
-(fn test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing []
+(fn test-lowercase-a-toggles-all-reviewed-and-uppercase-a-does-nothing []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
-    (faith.is (app.handle-key state {} "A"))
+    (faith.is (app.handle-key state {} "a"))
     (faith.= 1 state.selected)
     (faith.= {"a.rb" true "b.rb" true} (reviews.paths state.entries))
-    (faith.is (app.handle-key state {} "a"))
-    (faith.= {"a.rb" true "b.rb" true} (reviews.paths state.entries))
     (faith.is (app.handle-key state {} "A"))
+    (faith.= {"a.rb" true "b.rb" true} (reviews.paths state.entries))
+    (faith.is (app.handle-key state {} "a"))
     (faith.= {} (reviews.paths state.entries))))
 
 (fn test-search-next-is-relative-to-current-cursor []
@@ -670,7 +670,7 @@
     (app.handle-key state {} :tick)
     (faith.= ["warmed"] (. state.preview_cache warmed-key))))
 
-{: test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing
+{: test-lowercase-a-toggles-all-reviewed-and-uppercase-a-does-nothing
  : test-search-next-is-relative-to-current-cursor
  : test-backtick-preserves-selected-file-with-search
  : test-backtick-toggles-tree-mode-without-clearing-search

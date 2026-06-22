@@ -23,7 +23,6 @@
     (when manifest
       (let [state {:revision manifest.revision
                    :preview_cache {}
-                   :bat? (sys.command-available? "bat")
                    :preview_context (git.preview-context)}]
         (var canceled? false)
         (for [i start (length manifest.entries) step]

@@ -152,8 +152,7 @@
   (let [(entries err) (git.diff-entries git.working-revision)
         entry (untracked-entry entries)
         state (doto (state)
-                (tset :revision git.working-revision)
-                (tset :bat? false))
+                (tset :revision git.working-revision))
         key (preview-key.for-entry git.working-revision entry)
         lines (preview.lines state entry)
         text (t.text lines)]
@@ -167,7 +166,7 @@
 (fn test-selection-lines-previews-expanded-listing-file []
   (t.init-repo)
   (t.write-file "util.rb" "puts :hi\n")
-  (let [state {:view_mode :tree :bat? false}
+  (let [state {:view_mode :tree}
         row {:type :file :unchanged true :path "util.rb"}
         text (t.text (preview.selection-lines state nil row))]
     (faith.match "puts :hi" text)))

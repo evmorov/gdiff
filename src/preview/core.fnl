@@ -15,12 +15,12 @@
 (fn file-lines [state entry]
   (if (assets.asset? entry)
       (format.asset state entry)
-      (let [(output ok) (file-preview.output entry.path state.bat?)]
-        (if ok
-            (let [lines (file-preview.split-lines output)]
+      (let [content (file-preview.read entry.path)]
+        (if content
+            (let [lines (file-preview.split-lines content)]
               (if (> (length lines) 0) lines
                   (format.output-lines state "" false)))
-            (format.warning state (sys.trim output))))))
+            (format.warning state (.. "Cannot read " entry.path))))))
 
 (fn lines [state entry]
   (if (not entry)

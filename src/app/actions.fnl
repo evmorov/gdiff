@@ -2,6 +2,7 @@
 (local action-plan (require :app.action-plan))
 (local notice (require :app.notice))
 (local preview (require :preview.core))
+(local folder-preview (require :preview.folder))
 (local review (require :app.review))
 (local reviews (require :storage.reviews))
 (local search (require :app.search))
@@ -51,7 +52,7 @@
     (when target
       (if (= target.kind :folder)
           (commands.open-folder target.path)
-          (commands.open-editor config target.entry)))))
+          (commands.open-editor config (or target.entry {:path target.path}))))))
 
 (fn copy-selected-path [state]
   (let [target (action-plan.selected-target state.view_mode
@@ -91,6 +92,17 @@
   (when (search.has-query? state)
     (search.rebuild state true)))
 
+(fn toggle-expand [state]
+  (when (= state.view_mode :tree)
+    (let [path (selection.target-folder-path state)]
+      (when (and path (< 0 (length path)))
+        (if (. state.expanded_folders path)
+            (tset state.expanded_folders path nil)
+            (tset state.expanded_folders path
+                  (folder-preview.folder-entries state path)))
+        (selection.invalidate-rows state)
+        (selection.set-tree-row state state.tree_selected_row)))))
+
 (fn refresh-and-sync [state]
   (set state.show_sync_notice? true)
   (set state.notice (notice.syncing-remote))
@@ -113,6 +125,7 @@
                  :bottom selection.bottom
                  : toggle-wrap
                  : toggle-tree
+                 : toggle-expand
                  :refresh refresh-and-sync
                  :copy-path copy-selected-path
                  :open-pr commands.open-linked-pr

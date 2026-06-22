@@ -68,7 +68,49 @@
     (faith.= "src/" folder.name)
     (faith.= [first second] folder.entries)))
 
+(fn test-expanded-folder-lists-files-and-folders []
+  (let [rows (tree.rows [(entry "M" "src/a.rb")]
+                        {:src [{:name "a.rb" :folder? false}
+                               {:name "b.rb" :folder? false}
+                               {:name "sub" :folder? true}]})
+        b-row (. rows 3)
+        sub-row (. rows 4)]
+    (faith.= 4 (length rows))
+    (faith.= {:type :file :depth 1 :name "b.rb"} (simple-row b-row))
+    (faith.= true b-row.unchanged)
+    (faith.= "src/b.rb" b-row.path)
+    (faith.= {:type :folder :depth 1 :name "sub/" :path "src/sub"}
+             (simple-row sub-row))))
+
+(fn test-expanded-folder-keeps-children-on-one-level []
+  (let [rows (tree.rows [(entry "M" "src/a.rb")]
+                        {:src [{:name "a.rb" :folder? false}
+                               {:name "b.rb" :folder? false}
+                               {:name "sub" :folder? true}]})
+        changed (. rows 2)
+        unchanged (. rows 3)
+        folder (. rows 4)]
+    ;; Changed file, unchanged file, and listed folder all share one indent.
+    (faith.= 1 changed.depth)
+    (faith.= 1 unchanged.depth)
+    (faith.= 1 folder.depth)
+    (faith.= 1 changed.entry-index)
+    (faith.= nil unchanged.entry-index)))
+
+(fn test-expanded-nested-folder-lists-children []
+  (let [rows (tree.rows [(entry "M" "src/a.rb")]
+                        {:src [{:name "sub" :folder? true}]
+                         "src/sub" [{:name "c.rb" :folder? false}]})
+        sub-row (. rows 3)
+        c-row (. rows 4)]
+    (faith.= true sub-row.expanded)
+    (faith.= {:type :file :depth 2 :name "c.rb"} (simple-row c-row))
+    (faith.= "src/sub/c.rb" c-row.path)))
+
 {: test-selected-row-maps-entry-index-to-tree-row
  : test-tree-selection-moves-in-rendered-row-order
  : test-folder-rows-keep-descendant-entries
+ : test-expanded-folder-lists-files-and-folders
+ : test-expanded-folder-keeps-children-on-one-level
+ : test-expanded-nested-folder-lists-children
  : test-tree-rows-collapse-single-directory-chains}

@@ -3,6 +3,8 @@
 (fn selected-target [view-mode selected-row selected-entry]
   (if (and (= view-mode :tree) selected-row (= selected-row.type :folder))
       {:kind :folder :path selected-row.path}
+      (and (= view-mode :tree) selected-row selected-row.unchanged)
+      {:kind :file :path selected-row.path}
       selected-entry
       {:kind :file :path selected-entry.path :entry selected-entry}))
 

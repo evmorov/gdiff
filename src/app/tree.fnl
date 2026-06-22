@@ -63,30 +63,67 @@
       (.. prefix "/" name)
       name))
 
-(fn render-node [node depth rows ?prefix]
+(fn node-existing [node]
+  (let [existing {}]
+    (each [_ file (ipairs node.files)]
+      (tset existing file.name true))
+    (each [name (pairs node.dirs)]
+      (tset existing name true))
+    existing))
+
+(fn listing-rows [depth prefix entries expanded existing rows]
+  (each [_ entry (ipairs entries)]
+    (when (not (and existing (. existing entry.name)))
+      (let [path (join-path prefix entry.name)]
+        (if entry.folder?
+            (let [child (. expanded path)]
+              (table.insert rows
+                            {:type :folder
+                             : depth
+                             :name (.. entry.name "/")
+                             : path
+                             :expanded (not (= nil child))})
+              (when child
+                (listing-rows (+ depth 1) path child expanded nil rows)))
+            (table.insert rows
+                          {:type :file
+                           : depth
+                           :unchanged true
+                           :folder-path prefix
+                           : path
+                           :name entry.name}))))))
+
+(fn render-node [node depth rows ?prefix expanded]
   (each [_ file (ipairs node.files)]
     (table.insert rows
                   {:type :file
                    : depth
                    :entry file.entry
                    :entry-index file.entry-index
+                   :folder-path ?prefix
                    :name (file-name file.entry file.name)}))
+  (let [entries (and ?prefix (. expanded ?prefix))]
+    (when entries
+      (listing-rows depth ?prefix entries expanded (node-existing node) rows)))
   (each [_ dir-name (ipairs node.dir-order)]
-    (let [(label child) (compact-dir node dir-name)]
+    (let [(label child) (compact-dir node dir-name)
+          path (join-path ?prefix label)]
       (table.insert rows
                     {:type :folder
                      : depth
                      :name (.. label "/")
-                     :path (join-path ?prefix label)
+                     : path
+                     :expanded (not (= nil (. expanded path)))
                      :entries (node-entries child)})
-      (render-node child (+ depth 1) rows (join-path ?prefix label)))))
+      (render-node child (+ depth 1) rows path expanded))))
 
-(fn rows [entries]
+(fn rows [entries ?expanded]
   (let [root (new-node)
-        out []]
+        out []
+        expanded (or ?expanded {})]
     (each [index entry (ipairs entries)]
       (add-entry root entry index))
-    (render-node root 0 out)
+    (render-node root 0 out nil expanded)
     out))
 
 (fn selected-row [rows selected]

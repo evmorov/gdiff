@@ -249,4 +249,14 @@
 (fn lines [state row]
   (render-lines state row (record-for state row.path)))
 
-{: folder-plan-for : lines : parsed-listing : render-lines}
+(fn folder-entries [state path]
+  (let [(entries _seen) (parsed-listing (record-for state path))
+        out (icollect [_ entry (ipairs (or entries []))]
+              {:name entry.name :folder? (not (not entry.folder?))})]
+    (table.sort out (fn [left right]
+                      (if (= left.folder? right.folder?)
+                          (< left.name right.name)
+                          (not left.folder?))))
+    out))
+
+{: folder-entries : folder-plan-for : lines : parsed-listing : render-lines}

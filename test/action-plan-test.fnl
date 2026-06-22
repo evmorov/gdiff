@@ -17,6 +17,14 @@
     (faith.= {:kind :file :path "src/a.rb" :entry selected}
              (action-plan.selected-target :flat nil selected))))
 
+(fn test-selected-target-uses-path-for-unchanged-tree-files []
+  (faith.= {:kind :file :path "src/.keep"}
+           (action-plan.selected-target :tree
+                                        {:type :file
+                                         :unchanged true
+                                         :path "src/.keep"}
+                                        nil)))
+
 (fn test-copy-path-adds-slash-only-for-folders []
   (faith.= "src/" (action-plan.copy-path {:kind :folder :path "src"}))
   (faith.= "src/a.rb" (action-plan.copy-path {:kind :file :path "src/a.rb"}))
@@ -30,4 +38,5 @@
 {: test-copy-path-adds-slash-only-for-folders
  : test-selected-target-prefers-tree-folder
  : test-selected-target-uses-entry-for-files-and-flat-mode
+ : test-selected-target-uses-path-for-unchanged-tree-files
  : test-split-ratio-is-clamped}

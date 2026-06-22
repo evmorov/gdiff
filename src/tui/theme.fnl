@@ -9,6 +9,7 @@
                     :status-renamed "\27[36m"
                     :status-copied "\27[35m"
                     :notice "\27[90m"
+                    :faint "\27[38;5;242m"
                     :warning "\27[31m"
                     :search-match "\27[1;4m"
                     :search-match-end "\27[22;24m"})

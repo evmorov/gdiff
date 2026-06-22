@@ -23,6 +23,7 @@
     "r" :refresh
     "w" :toggle-wrap
     "`" :toggle-tree
+    "e" :toggle-expand
     "y" :copy-path
     "p" :open-pr
     "[" :split-left

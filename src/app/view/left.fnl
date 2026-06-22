@@ -43,14 +43,20 @@
   (or descriptor.name (entry-view.path-text descriptor.entry)))
 
 (fn file-row-text [state descriptor selected?]
-  (let [entry descriptor.entry]
-    (.. (row-prefix state selected? descriptor.depth)
-        (reviewed-text state entry) " " (status-text state entry) " "
-        (search.highlight state (file-label descriptor)))))
+  (if descriptor.unchanged
+      (.. (row-prefix state selected? descriptor.depth)
+          (search.highlight state (file-label descriptor)))
+      (let [entry descriptor.entry]
+        (.. (row-prefix state selected? descriptor.depth)
+            (reviewed-text state entry) " " (status-text state entry) " "
+            (search.highlight state (file-label descriptor))))))
 
 (fn folder-row-text [state descriptor selected?]
   (.. (row-prefix state selected? descriptor.depth)
-      (search.highlight state descriptor.name)))
+      (search.highlight state descriptor.name)
+      (if descriptor.expanded
+          (.. " " (tui.color state.theme :faint "(expanded)"))
+          "")))
 
 (fn display-row [state descriptor row-index]
   (let [selected? (selection.selected-row? state descriptor row-index)]

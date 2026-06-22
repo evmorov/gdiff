@@ -25,6 +25,7 @@
                :split_ratio 0.4
                :view_mode :tree
                :tree_selected_row nil
+               :expanded_folders {}
                :folder_preview_cache {}
                :theme theme.default
                :preview_cache {}

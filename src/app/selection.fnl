@@ -25,7 +25,7 @@
   state)
 
 (fn tree-rows [state]
-  (cached-rows state :tree #(tree.rows state.entries)))
+  (cached-rows state :tree #(tree.rows state.entries state.expanded_folders)))
 
 (fn cached-flat-rows [state]
   (cached-rows state :flat #(flat-rows state.entries)))
@@ -109,6 +109,11 @@
   (set state.tree_selected_row
        (tree.selected-row (tree-rows state) state.selected)))
 
+(fn target-folder-path [state]
+  (let [row (selected-tree-row state)]
+    (when (and row (= row.type :folder))
+      row.path)))
+
 (fn toggle-mode [state]
   (if (= state.view_mode :tree)
       (do
@@ -126,6 +131,7 @@
  : flat-rows
  : invalidate-rows
  : move
+ : target-folder-path
  : rows
  : selected-entry
  : selected-context

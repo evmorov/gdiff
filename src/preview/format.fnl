@@ -43,10 +43,14 @@
 (fn asset [state entry]
   [(tui.color state.theme :muted (.. "Asset preview skipped: " entry.path))])
 
+(fn binary [state path]
+  [(tui.color state.theme :muted (.. "Binary file preview skipped: " path))])
+
 (fn warning [state message]
   [(tui.color state.theme :warning message)])
 
 {: asset
+ : binary
  : color-line
  : header
  : line-color

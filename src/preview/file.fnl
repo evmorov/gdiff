@@ -14,7 +14,12 @@
         (set pos (if nl (+ nl 1) (+ len 1)))))
     lines))
 
+(fn binary? [content]
+  (if (string.find (string.sub (or content "") 1 8000) "\0" 1 true)
+      true
+      false))
+
 (fn read [path]
   (sys.read-file path))
 
-{: read : split-lines}
+{: binary? : read : split-lines}

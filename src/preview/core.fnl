@@ -16,15 +16,17 @@
   (if (assets.asset? entry)
       (format.asset state entry)
       (let [content (file-preview.read entry.path)]
-        (if content
+        (if (not content)
+            (format.warning state (.. "Cannot read " entry.path))
+            (file-preview.binary? content)
+            (format.binary state entry.path)
             (let [body (file-preview.split-lines content)
                   body (if (> (length body) 0) body
                            (format.output-lines state "" false))
                   out (format.header state entry.path)]
               (each [_ line (ipairs body)]
                 (table.insert out line))
-              out)
-            (format.warning state (.. "Cannot read " entry.path))))))
+              out)))))
 
 (fn lines [state entry]
   (if (not entry)

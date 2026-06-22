@@ -195,6 +195,19 @@
     (faith.= "util.rb" (. lines 1))
     (faith.match "puts :hi" text)))
 
+(fn test-selection-lines-skips-binary-listing-file []
+  (t.init-repo)
+  (t.write-file "data.bin" "abc\0\1\2def")
+  (let [state {:view_mode :tree}
+        row {:type :file :unchanged true :path "data.bin"}
+        lines (preview.selection-lines state nil row)]
+    (faith.= "Binary file preview skipped: data.bin" (t.text lines))))
+
+(fn test-preview-file-detects-binary-content []
+  (faith.= true (preview-file.binary? "abc\0def"))
+  (faith.= false (preview-file.binary? "plain text\n"))
+  (faith.= false (preview-file.binary? "")))
+
 (fn test-preview-file-split-keeps-empty-lines-and-drops-trailing-newline []
   (faith.= ["a" "" "b"] (preview-file.split-lines "a\n\nb\n"))
   (faith.= ["a" "b"] (preview-file.split-lines "a\r\nb\r\n"))
@@ -307,6 +320,8 @@
  : test-startup-can-cache-selected-preview-before-rendering
  : test-untracked-file-preview-shows-plain-content-and-caches
  : test-selection-lines-previews-expanded-listing-file
+ : test-selection-lines-skips-binary-listing-file
+ : test-preview-file-detects-binary-content
  : test-preview-file-split-keeps-empty-lines-and-drops-trailing-newline
  : test-visible-count-never-drops-below-one
  : test-visible-lines-renders-and-caches-real-git-preview}

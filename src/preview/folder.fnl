@@ -86,7 +86,8 @@
      : unstaged
      : orders
      : children
-     :folder-kind (folder-status-kind entries)}))
+     :folder-kind (folder-status-kind (icollect [_ child (ipairs children)]
+                                        child.entry))}))
 
 (fn status-color [kind]
   (case kind
@@ -213,17 +214,14 @@
         (icollect [_ entry (ipairs entries)]
           (render-entry state plan.statuses plan.unstaged entry)))))
 
-(fn header-lines [state folder entries ?kind]
-  (let [header (.. (marker state (or ?kind (folder-status-kind entries)))
-                   folder "/")
+(fn header-lines [state folder ?kind]
+  (let [header (.. (marker state ?kind) folder "/")
         divider (string.rep symbols.line.horizontal (tui.visible-length header))]
     [header (tui.color state.theme :muted divider)]))
 
 (fn with-header [lines state row plan]
   (let [out []]
-    (each [_ line (ipairs (header-lines state row.path
-                                        (or row.entries state.entries)
-                                        plan.folder-kind))]
+    (each [_ line (ipairs (header-lines state row.path plan.folder-kind))]
       (table.insert out line))
     (each [_ line (ipairs lines)]
       (table.insert out line))

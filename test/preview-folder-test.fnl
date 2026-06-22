@@ -131,6 +131,21 @@
     (faith.= "[M] src/\n────────\n[M] nested/"
              (t.text (folder.render-lines state row record)))))
 
+(fn test-render-lines-leaves-unchanged-folder-unmarked []
+  (let [state (state [(entry "A" "other/added.rb")
+                      (entry "D" "other/removed.rb")])
+        row {:path "src/dummy"}
+        record {:ok? true
+                :output (table.concat ["total 0"
+                                       "drwxr-xr-x  2 u  g  64 Jan  1 00:00 config"
+                                       "-rw-r--r--  1 u  g   1 Jan  1 00:00 a.rb"]
+                                      "\n")}]
+    (faith.= (table.concat ["    src/dummy/"
+                            "──────────────"
+                            "    a.rb"
+                            "    config/"] "\n")
+             (t.text (folder.render-lines state row record)))))
+
 (fn test-parsed-listing-returns-fresh-copies-from-cached-parse []
   (let [record {:ok? true
                 :output "total 0\n-rw-r--r--  1 u  g  1 Jan  1 00:00 a.rb\n"}
@@ -187,6 +202,7 @@
  : test-render-lines-sorts-like-left-tree
  : test-render-lines-shows-unstaged-leaf-but-real-folder-kind
  : test-render-lines-keeps-real-kind-for-subfolder-with-unstaged-child
+ : test-render-lines-leaves-unchanged-folder-unmarked
  : test-folder-plan-is-cached-on-rows-with-descendants
  : test-folder-plan-without-row-descendants-tracks-state-entries
  : test-parsed-listing-returns-fresh-copies-from-cached-parse

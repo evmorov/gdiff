@@ -61,14 +61,14 @@
     (faith.= nil err)
     (state entries)))
 
-(fn test-a-toggles-all-reviewed-and-uppercase-a-does-nothing []
+(fn test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
-    (faith.is (app.handle-key state {} "a"))
+    (faith.is (app.handle-key state {} "A"))
     (faith.= 1 state.selected)
     (faith.= {"a.rb" true "b.rb" true} (reviews.paths state.entries))
-    (faith.is (app.handle-key state {} "A"))
-    (faith.= {"a.rb" true "b.rb" true} (reviews.paths state.entries))
     (faith.is (app.handle-key state {} "a"))
+    (faith.= {"a.rb" true "b.rb" true} (reviews.paths state.entries))
+    (faith.is (app.handle-key state {} "A"))
     (faith.= {} (reviews.paths state.entries))))
 
 (fn test-search-next-is-relative-to-current-cursor []
@@ -281,6 +281,25 @@
                               "[D] views/"
                               "[D] workers/"] "\n")
                (t.text view.body.right.lines)))))
+
+(fn test-uppercase-e-toggles-nested-folders-and-skips-the-root []
+  (t.init-repo)
+  (t.mkdir "lib/sub")
+  (t.write-file "lib/top.rb" "old\n")
+  (t.write-file "lib/sub/nested.rb" "old\n")
+  (t.write-file "lib/sub/sibling.rb" "sibling\n")
+  (t.commit-all "initial")
+  (t.write-file "lib/top.rb" "new\n")
+  (t.write-file "lib/sub/nested.rb" "new\n")
+  (let [state (real-preview-state)]
+    (faith.is (app.handle-key state {} "E"))
+    (faith.= nil (. state.expanded_folders "lib"))
+    (faith.is (. state.expanded_folders "lib/sub"))
+    (let [text (t.text (icollect [_ row (ipairs (selection.rows state))]
+                         (or row.name "")))]
+      (faith.match "sibling%.rb" text))
+    (faith.is (app.handle-key state {} "E"))
+    (faith.= nil (. state.expanded_folders "lib/sub"))))
 
 (fn test-view-moves-file-counts-to-footer-right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
@@ -567,7 +586,7 @@
     (app.handle-key state {} :tick)
     (faith.= ["warmed"] (. state.preview_cache warmed-key))))
 
-{: test-a-toggles-all-reviewed-and-uppercase-a-does-nothing
+{: test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing
  : test-search-next-is-relative-to-current-cursor
  : test-backtick-preserves-selected-file-with-search
  : test-backtick-toggles-tree-mode-without-clearing-search
@@ -590,6 +609,7 @@
  : test-tree-view-renders-collapsed-folders-and-file-rows
  : test-view-adds-left-scroll-info-for-overflowing-file-list
  : test-view-keeps-last-file-above-bottom-divider
+ : test-uppercase-e-toggles-nested-folders-and-skips-the-root
  : test-view-moves-file-counts-to-footer-right
  : test-view-shows-all-reviewed-when-all-files-reviewed
  : test-view-shows-reviewed-file-percent-in-footer-right

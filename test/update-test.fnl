@@ -15,7 +15,7 @@
 
 (fn test-read-msg-turns-raw-key-into-message-data []
   (let [state (state [(entry "M" "a.rb")])]
-    (faith.= {:type :toggle-all-reviewed} (update.read-msg state "a"))
+    (faith.= {:type :toggle-all-reviewed} (update.read-msg state "A"))
     (faith.= {:type :toggle-wrap} (update.read-msg state "w"))
     (faith.= {:type :open-pr} (update.read-msg state "p"))))
 

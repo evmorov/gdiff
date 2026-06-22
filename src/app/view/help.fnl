@@ -16,6 +16,7 @@
                   ["q" "Clear search / close help"]
                   ["`" "Toggle file tree"]
                   ["e" "Expand / collapse folder"]
+                  ["E" "Expand / collapse all nested folders"]
                   ["w" "Toggle wrap"]
                   ["r" "Refresh and sync"]
                   ["y" "Copy path"]

@@ -7,6 +7,7 @@
 (local reviews (require :storage.reviews))
 (local search (require :app.search))
 (local selection (require :app.selection))
+(local tree (require :app.tree))
 
 (import-macros {: set-fields} :state.macros)
 
@@ -103,6 +104,27 @@
         (selection.invalidate-rows state)
         (selection.set-tree-row state state.tree_selected_row)))))
 
+(fn nested-changed-folders [state]
+  (icollect [_ row (ipairs (tree.rows state.entries {}))]
+    (when (and (= row.type :folder) (< 0 row.depth)) row.path)))
+
+(fn all-expanded? [state paths]
+  (accumulate [all? true _ path (ipairs paths)]
+    (and all? (not (= nil (. state.expanded_folders path))))))
+
+(fn toggle-expand-all [state]
+  (when (= state.view_mode :tree)
+    (let [paths (nested-changed-folders state)]
+      (when (< 0 (length paths))
+        (if (all-expanded? state paths)
+            (each [_ path (ipairs paths)]
+              (tset state.expanded_folders path nil))
+            (each [_ path (ipairs paths)]
+              (tset state.expanded_folders path
+                    (folder-preview.folder-entries state path))))
+        (selection.invalidate-rows state)
+        (selection.set-tree-row state state.tree_selected_row)))))
+
 (fn toggle-help [state]
   (set state.show_help? (not state.show_help?)))
 
@@ -129,6 +151,7 @@
                  : toggle-wrap
                  : toggle-tree
                  : toggle-expand
+                 :expand-all toggle-expand-all
                  : toggle-help
                  :refresh refresh-and-sync
                  :copy-path copy-selected-path

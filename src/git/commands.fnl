@@ -1,5 +1,13 @@
 (local sys (require :platform.core))
 
+(local staged-revision :staged)
+
+(fn staged? [revision]
+  (= revision staged-revision))
+
+(fn diff-ref [revision]
+  (if (staged? revision) "--cached" (sys.shell-quote revision)))
+
 (fn revision-exists-command [revision]
   (.. "git rev-parse --verify --quiet "
       (sys.shell-quote (.. revision "^{commit}")) " >/dev/null 2>&1"))
@@ -15,11 +23,11 @@
 
 (fn diff-command [revision]
   (.. "git diff --name-status --find-renames --find-copies "
-      (sys.shell-quote revision) " 2>&1"))
+      (diff-ref revision) " 2>&1"))
 
 (fn diff-stats-command [revision]
-  (.. "git diff --numstat --find-renames --find-copies "
-      (sys.shell-quote revision) " 2>&1"))
+  (.. "git diff --numstat --find-renames --find-copies " (diff-ref revision)
+      " 2>&1"))
 
 (fn linked-pr-url-command [branch]
   (.. "gh pr view " (sys.shell-quote branch)
@@ -27,7 +35,7 @@
 
 (fn preview-command [revision entry color]
   (.. "git diff --no-ext-diff --color=" color " --find-renames --find-copies "
-      (sys.shell-quote revision) " -- " (sys.shell-quote entry.path)))
+      (diff-ref revision) " -- " (sys.shell-quote entry.path)))
 
 (fn plain-preview-command [revision entry]
   (.. (preview-command revision entry "never") " 2>&1"))
@@ -45,4 +53,6 @@
  : plain-preview-command
  : preview-command
  : repo-root-command
- : revision-exists-command}
+ : revision-exists-command
+ : staged-revision
+ : staged?}

@@ -1,5 +1,16 @@
 (local args (require :app.args))
+(local commands (require :git.commands))
 (local faith (require :faith))
+
+(fn test-parses-staged-keyword []
+  (let [(_options revision err) (args.parse ["staged"])]
+    (faith.= nil err)
+    (faith.= commands.staged-revision revision)))
+
+(fn test-parses-staged-shorthand []
+  (let [(_options revision err) (args.parse ["s"])]
+    (faith.= nil err)
+    (faith.= commands.staged-revision revision)))
 
 (fn test-parses-editor-and-revision []
   (let [(options revision err) (args.parse ["--editor" "nvim" "main" "HEAD"])]
@@ -44,6 +55,8 @@
     (faith.= "--editor needs a value" err)))
 
 {: test-parses-editor-and-revision
+ : test-parses-staged-keyword
+ : test-parses-staged-shorthand
  : test-parses-explicit-triple-dot-range
  : test-parses-inline-editor
  : test-no-revision-defers-to-default-revision-lookup

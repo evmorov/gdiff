@@ -18,6 +18,16 @@
            (commands.preview-command "main...feature" {:path "src/a b.rb"}
                                      "never")))
 
+(fn test-staged-commands-use-cached []
+  (faith.= "git diff --name-status --find-renames --find-copies --cached 2>&1"
+           (commands.diff-command commands.staged-revision))
+  (faith.= "git diff --numstat --find-renames --find-copies --cached 2>&1"
+           (commands.diff-stats-command commands.staged-revision))
+  (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --cached -- 'src/a b.rb'"
+           (commands.preview-command commands.staged-revision
+                                     {:path "src/a b.rb"} "never")))
+
 {: test-basic-git-adapter-commands-are-centralized
  : test-preview-command-quotes-revision-and-path
+ : test-staged-commands-use-cached
  : test-revision-exists-command-quotes-commit-revision}

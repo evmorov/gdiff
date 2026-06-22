@@ -38,6 +38,21 @@
                                             :status "R"}}
              (entries-by-path entries))))
 
+(fn test-diff-entries-with-staged-reports-only-index []
+  (setup-changed-repo)
+  (let [(entries err) (git.diff-entries git.staged-revision)]
+    (faith.= nil err)
+    (faith.= {"added.txt" {:kind "A" :reviewed false :status "A"}
+              "spec/tardis/api/v2_spec.rb" {:kind "R"
+                                            :old_path "spec/tardis/api_spec.rb"
+                                            :reviewed false
+                                            :status "R"}}
+             (entries-by-path entries))))
+
+(fn test-comparison-revision-passes-staged-through []
+  (faith.= git.staged-revision
+           (git.comparison-revision git.staged-revision "current")))
+
 (fn test-diff-stats-reports-total-additions-and-deletions []
   (setup-changed-repo)
   (let [(stats err) (git.diff-stats "HEAD")]
@@ -104,7 +119,9 @@
  : test-comparison-right-selects-pr-branch
  : test-comparison-revision-expands-single-revision
  : test-comparison-revision-keeps-explicit-range
+ : test-comparison-revision-passes-staged-through
  : test-diff-entries-reports-working-tree-changes
+ : test-diff-entries-with-staged-reports-only-index
  : test-diff-stats-indexes-renamed-files-by-new-path
  : test-diff-stats-reports-total-additions-and-deletions
  : test-linked-pr-url-command-quotes-branch}

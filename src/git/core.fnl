@@ -33,12 +33,15 @@
         "HEAD")))
 
 (fn comparison-revision [revision ?current-branch]
-  (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
-    (if left
-        (.. (if (> (length left) 0) left (or ?current-branch (current-branch)))
-            "..." (if (> (length right) 0) right
-                     (or ?current-branch (current-branch))))
-        (.. revision "..." (or ?current-branch (current-branch))))))
+  (if (commands.staged? revision) revision
+      (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
+        (if left
+            (.. (if (> (length left) 0) left
+                    (or ?current-branch (current-branch)))
+                "..."
+                (if (> (length right) 0) right
+                    (or ?current-branch (current-branch))))
+            (.. revision "..." (or ?current-branch (current-branch)))))))
 
 (fn comparison-right [revision ?current-branch]
   (let [current-branch (or ?current-branch (current-branch))
@@ -100,5 +103,7 @@
  : linked-pr-url
  : linked-pr-url-command
  : preview-context
+ :staged-revision commands.staged-revision
+ :staged? commands.staged?
  : preview-output
  : repo-root}

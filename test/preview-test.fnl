@@ -159,8 +159,9 @@
     (faith.= nil err)
     (faith.= "A" entry.status)
     (faith.= true entry.untracked?)
-    (faith.= ["alpha" "" "beta"] lines)
+    (faith.= "notes.txt" (. lines 1))
     (faith.match "alpha" text)
+    (faith.match "beta" text)
     (faith.= lines (. state.preview_cache key))))
 
 (fn test-selection-lines-previews-expanded-listing-file []
@@ -168,7 +169,9 @@
   (t.write-file "util.rb" "puts :hi\n")
   (let [state {:view_mode :tree}
         row {:type :file :unchanged true :path "util.rb"}
-        text (t.text (preview.selection-lines state nil row))]
+        lines (preview.selection-lines state nil row)
+        text (t.text lines)]
+    (faith.= "util.rb" (. lines 1))
     (faith.match "puts :hi" text)))
 
 (fn test-preview-file-split-keeps-empty-lines-and-drops-trailing-newline []

@@ -1,4 +1,9 @@
+(local symbols (require :tui.symbols))
 (local tui (require :tui.core))
+
+(fn header [state title]
+  (let [divider (string.rep symbols.line.horizontal (tui.visible-length title))]
+    [title (tui.color state.theme :muted divider)]))
 
 (fn line-color [line]
   (let [first (line:sub 1 1)]
@@ -43,6 +48,7 @@
 
 {: asset
  : color-line
+ : header
  : line-color
  : loading
  : no-selection

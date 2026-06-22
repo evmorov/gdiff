@@ -11,9 +11,11 @@
 (fn test-decode-maps-escape-sequences []
   (faith.= :up (keys.decode {} ansi.esc "[" "A"))
   (faith.= :down (keys.decode {} ansi.esc "[" "B"))
+  (faith.= :right (keys.decode {} ansi.esc "[" "C"))
+  (faith.= :left (keys.decode {} ansi.esc "[" "D"))
   (faith.= :paste-start (keys.decode {} ansi.esc "[200~"))
   (faith.= :paste-end (keys.decode {} ansi.esc "[201~"))
-  (faith.= :escape (keys.decode {} ansi.esc "[" "C")))
+  (faith.= :escape (keys.decode {} ansi.esc "[" "Z")))
 
 (fn test-decode-treats-escape-as-escape-during-search []
   (let [state {:search {:active? true}}]

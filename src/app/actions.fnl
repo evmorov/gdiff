@@ -103,6 +103,9 @@
         (selection.invalidate-rows state)
         (selection.set-tree-row state state.tree_selected_row)))))
 
+(fn toggle-help [state]
+  (set state.show_help? (not state.show_help?)))
+
 (fn refresh-and-sync [state]
   (set state.show_sync_notice? true)
   (set state.notice (notice.syncing-remote))
@@ -126,6 +129,7 @@
                  : toggle-wrap
                  : toggle-tree
                  : toggle-expand
+                 : toggle-help
                  :refresh refresh-and-sync
                  :copy-path copy-selected-path
                  :open-pr commands.open-linked-pr

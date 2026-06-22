@@ -325,14 +325,48 @@
           footer-right (tui.strip-ansi view.footer.right)]
       (faith.= "2/2 files │ 100% reviewed │ +100 -20" footer-right))))
 
-(fn test-view-shows-single-refresh-sync-key []
+(fn test-view-shows-trimmed-header []
   (let [state (state [(entry "M" "a.rb")])
         view (app.view state 10 100)
         header (tui.strip-ansi view.header)]
-    (faith.match "r refresh/sync" header)
-    (faith.match "w wrap" header)
-    (faith.= nil (header:find "h/l preview" 1 true))
-    (faith.= nil (header:find "R sync" 1 true))))
+    (faith.is (header:find "? help" 1 true))
+    (faith.is (header:find "Ctrl-C quit" 1 true))
+    (faith.= nil (header:find "refresh/sync" 1 true))
+    (faith.= nil (header:find "w wrap" 1 true))))
+
+(fn test-question-mark-toggles-help-modal []
+  (let [state (state [(entry "M" "a.rb")])]
+    (faith.= nil (. (app.view state 10 100) :overlay))
+    (faith.is (app.handle-key state {} "?"))
+    (faith.is state.show_help?)
+    (faith.= :modal (. (app.view state 10 100) :overlay :type))
+    (faith.is (app.handle-key state {} "q"))
+    (faith.is (not state.show_help?))
+    (faith.= nil (. (app.view state 10 100) :overlay))))
+
+(fn test-help-modal-ignores-action-keys-without-redraw []
+  (let [state (state [(entry "M" "a.rb")])]
+    (app.handle-key state {} "?")
+    (faith.is state.show_help?)
+    (each [_ key (ipairs [:enter "p" "j" "o"])]
+      (faith.is (app.handle-key state {} key))
+      (faith.is state.show_help?)
+      (faith.is state.skip_next_draw?))))
+
+(fn test-help-modal-skips-redraw-on-idle-tick []
+  (let [state (state [(entry "M" "a.rb")])]
+    (app.handle-key state {} "?")
+    (faith.is state.show_help?)
+    (app.handle-key state {} :tick)
+    (faith.is state.show_help?)
+    (faith.is state.skip_next_draw?)))
+
+(fn test-escape-closes-help-modal []
+  (let [state (state [(entry "M" "a.rb")])]
+    (app.handle-key state {} "?")
+    (faith.is state.show_help?)
+    (faith.is (app.handle-key state {} :escape))
+    (faith.is (not state.show_help?))))
 
 (fn test-view-clamps-preview-horizontal-scroll-when-content-fits []
   (let [state (state [(entry "M" "a.rb")])]
@@ -560,7 +594,11 @@
  : test-view-shows-all-reviewed-when-all-files-reviewed
  : test-view-shows-reviewed-file-percent-in-footer-right
  : test-view-shows-diff-stats-in-footer-right
- : test-view-shows-single-refresh-sync-key
+ : test-view-shows-trimmed-header
+ : test-question-mark-toggles-help-modal
+ : test-help-modal-ignores-action-keys-without-redraw
+ : test-help-modal-skips-redraw-on-idle-tick
+ : test-escape-closes-help-modal
  : test-view-clamps-preview-horizontal-scroll-when-content-fits
  : test-view-clamps-file-horizontal-scroll-when-file-rows-fit
  : test-view-keeps-file-list-horizontal-scroll-disabled

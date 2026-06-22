@@ -25,9 +25,14 @@
   (when (or text ?right)
     {:type kind : text :right ?right}))
 
-(defnode screen [header body ?footer] :screen
+(defnode modal [title lines] :modal
+  [:title title]
+  [:lines lines])
+
+(defnode screen [header body ?footer ?overlay] :screen
   [:header header]
   [:body body]
-  [:footer ?footer])
+  [:footer ?footer]
+  [:overlay ?overlay])
 
-{: footer : lines : list : row : screen : split}
+{: footer : lines : list : modal : row : screen : split}

@@ -13,18 +13,7 @@
   (.. " " (tui.color state.theme :muted symbols.line.separator) " "))
 
 (fn header [state]
-  (let [items [state.revision_label
-               "/ search"
-               "C-d/C-u preview"
-               "w wrap"
-               "r refresh/sync"
-               "` tree"
-               "y copy"
-               "p PR"
-               "space check"
-               "a all/none"
-               "enter/o open"
-               "Ctrl-C quit"]]
+  (let [items [state.revision_label "? help" "Ctrl-C quit"]]
     (table.concat items (separator state))))
 
 (fn footer-summary [state count]

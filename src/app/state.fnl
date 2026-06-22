@@ -36,6 +36,7 @@
                :search (search.new-state)
                :sync (sync.new-state revision)
                :show_sync_notice? false
+               :show_help? false
                :skip_next_draw? false
                :force_next_draw? false
                :term_rows nil

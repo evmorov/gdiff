@@ -8,6 +8,8 @@
     (case sequence
       "[A" :up
       "[B" :down
+      "[C" :right
+      "[D" :left
       "[200~" :paste-start
       "[201~" :paste-end
       _ :escape)))

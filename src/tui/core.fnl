@@ -12,6 +12,7 @@
 (local layout (require :tui.layout))
 (local lines-view (require :tui.components.lines))
 (local list-view (require :tui.components.list))
+(local modal-view (require :tui.components.modal))
 (local nodes (require :tui.nodes))
 (local pane (require :tui.components.pane))
 (local renderer (require :tui.renderer))
@@ -35,6 +36,7 @@
               : hscroll
               :lines lines-view
               :list list-view
+              :modal modal-view
               : pane
               :rule rule-view
               :row row-view
@@ -52,6 +54,7 @@
  : layout
  :lines nodes.lines
  :list nodes.list
+ :modal nodes.modal
  :read-key terminal.read-key
  : renderer
  :row nodes.row

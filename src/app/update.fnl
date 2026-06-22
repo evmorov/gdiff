@@ -29,6 +29,10 @@
   (set state.pending-key msg.pending-key)
   commands.none)
 
+(fn handle-ignore [state _config _msg]
+  (set state.skip_next_draw? true)
+  commands.none)
+
 (fn handle-search-input [state _config msg]
   (search.handle-input state msg.key)
   commands.none)
@@ -54,6 +58,7 @@
 
 (local message-handlers
        {:copy-path-finished handle-copy-path-finished
+        :ignore handle-ignore
         :open-pr-finished handle-open-pr-finished
         :open-target-finished handle-open-target-finished
         :pending-key handle-pending-key

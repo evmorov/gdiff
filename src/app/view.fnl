@@ -1,4 +1,5 @@
 (local chrome (require :app.view.chrome))
+(local help-view (require :app.view.help))
 (local left-view (require :app.view.left))
 (local preview-view (require :app.view.preview))
 (local preview (require :preview.core))
@@ -15,7 +16,8 @@
         _ (preview.prepare-entry state selected.entry)
         left (left-view.body state visible)
         right (preview-view.body state visible cols selected)
-        body (tui.split left right state.split_ratio)]
-    (tui.screen (chrome.header state) body (chrome.footer state count))))
+        body (tui.split left right state.split_ratio)
+        overlay (when state.show_help? (help-view.modal state))]
+    (tui.screen (chrome.header state) body (chrome.footer state count) overlay)))
 
 {: view}

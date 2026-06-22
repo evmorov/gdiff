@@ -10,6 +10,9 @@
 (fn pending-key [pending-key]
   (build :pending-key {: pending-key}))
 
+(fn ignore []
+  (build :ignore))
+
 (fn action [message-type pending-key]
   (build message-type {: pending-key}))
 
@@ -33,6 +36,7 @@
 
 {: action
  : build
+ : ignore
  : copy-path-finished
  : open-pr-finished
  : open-target-finished

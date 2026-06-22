@@ -15,6 +15,8 @@
   (chrome.draw-header ctx screen)
   (renderer.draw ctx (body-node screen))
   (chrome.draw-bottom-rule ctx screen)
-  (chrome.draw-footer ctx screen))
+  (chrome.draw-footer ctx screen)
+  (when screen.overlay
+    (renderer.draw ctx screen.overlay)))
 
 {: body-node : draw : legacy-body}

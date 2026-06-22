@@ -40,9 +40,6 @@
                      (or ?current-branch (current-branch))))
         (.. revision "..." (or ?current-branch (current-branch))))))
 
-(fn comparison-label [revision]
-  (comparison-revision revision))
-
 (fn comparison-right [revision ?current-branch]
   (let [current-branch (or ?current-branch (current-branch))
         (_left right) (revision:match "^(.-)%.%.%.(.*)$")]
@@ -93,8 +90,7 @@
         (sys.trim output)
         (or (os.getenv "PWD") "."))))
 
-{: comparison-label
- : comparison-revision
+{: comparison-revision
  : comparison-right
  : current-branch
  : default-revision

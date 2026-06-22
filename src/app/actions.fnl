@@ -9,9 +9,6 @@
 
 (import-macros {: set-fields} :state.macros)
 
-(fn move-selection [state delta]
-  (selection.move state delta))
-
 (fn toggle-folder-reviewed [state row]
   (let [entries (or row.entries [])
         review? (review.toggle-all! entries)]
@@ -43,7 +40,7 @@
   (set state.diff_stats diff-stats)
   (set state.folder_preview_cache {})
   (preview.reset-scroll state)
-  (move-selection state 0)
+  (selection.move state 0)
   (cache-selected-preview state)
   (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed)))
 
@@ -99,8 +96,8 @@
   (set state.notice (notice.syncing-remote))
   (commands.batch (commands.sync-start) (commands.refresh)))
 
-(local handlers {:up #(move-selection $1 -1)
-                 :down #(move-selection $1 1)
+(local handlers {:up #(selection.move $1 -1)
+                 :down #(selection.move $1 1)
                  :open open-selected
                  : toggle-reviewed
                  : toggle-all-reviewed

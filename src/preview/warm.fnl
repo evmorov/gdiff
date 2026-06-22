@@ -81,7 +81,7 @@
           result)))))
 
 (fn remaining [state]
-  (or state.remaining (- state.count (length state.imported))))
+  (or state.remaining 0))
 
 (fn mark-imported [state index]
   (when (not (. state.imported index))
@@ -120,9 +120,6 @@
 
 (fn update [state cache]
   (when state.dir
-    (when (not state.imported)
-      (set state.imported {}))
-    (set state.remaining (remaining state))
     (var checks 0)
     (var imports 0)
     (let [max-checks (math.min state.count max-checks-per-update)]

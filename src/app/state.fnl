@@ -9,7 +9,7 @@
   (let [selected 1
         state {: revision
                :src_dir src-dir
-               :revision_label (git.comparison-label revision)
+               :revision_label (git.comparison-revision revision)
                : entries
                :diff_stats ?diff-stats
                :quit? false

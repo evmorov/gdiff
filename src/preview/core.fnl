@@ -1,5 +1,6 @@
 (local git (require :git.core))
 (local assets (require :preview.assets))
+(local file-preview (require :preview.file))
 (local format (require :preview.format))
 (local folder-preview (require :preview.folder))
 (local preview-key (require :preview.key))
@@ -11,6 +12,16 @@
 
 (import-macros {: set-fields} :state.macros)
 
+(fn file-lines [state entry]
+  (if (assets.asset? entry)
+      (format.asset state entry)
+      (let [(output ok) (file-preview.output entry.path state.bat?)]
+        (if ok
+            (let [lines (file-preview.split-lines output)]
+              (if (> (length lines) 0) lines
+                  (format.output-lines state "" false)))
+            (format.warning state (sys.trim output))))))
+
 (fn lines [state entry]
   (if (not entry)
       (format.no-selection state)
@@ -20,6 +31,10 @@
             cached
             (assets.asset? entry)
             (let [lines (format.asset state entry)]
+              (tset state.preview_cache key lines)
+              lines)
+            entry.untracked?
+            (let [lines (file-lines state entry)]
               (tset state.preview_cache key lines)
               lines)
             (let [(output ok filtered?) (git.preview-output state.preview_context
@@ -49,9 +64,14 @@
   (preview-warm.import-entry state.preview_warm state.preview_cache
                              state.revision entry))
 
+(fn listing-row? [state row]
+  (and (= state.view_mode :tree) row (= row.type :file) row.unchanged row.path))
+
 (fn selection-lines [state selected-entry selected-row]
   (if (and (= state.view_mode :tree) selected-row (= selected-row.type :folder))
       (folder-preview.lines state selected-row)
+      (listing-row? state selected-row)
+      (file-lines state {:path selected-row.path})
       (nonblocking-lines state selected-entry)))
 
 (fn row-count [state]

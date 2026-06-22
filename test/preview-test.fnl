@@ -2,6 +2,7 @@
 (local git (require :git.core))
 (local assets (require :preview.assets))
 (local preview (require :preview.core))
+(local preview-file (require :preview.file))
 (local preview-format (require :preview.format))
 (local preview-key (require :preview.key))
 (local t (require :test-helper))
@@ -139,6 +140,43 @@
       (faith.= lines
                (. state.preview_cache (preview-key.for-entry "HEAD" entry))))))
 
+(fn untracked-entry [entries]
+  (accumulate [found nil _ entry (ipairs entries) &until found]
+    (when entry.untracked? entry)))
+
+(fn test-untracked-file-preview-shows-plain-content-and-caches []
+  (t.init-repo)
+  (t.write-file "app.rb" "before\n")
+  (t.commit-all "initial")
+  (t.write-file "notes.txt" "alpha\n\nbeta\n")
+  (let [(entries err) (git.diff-entries git.working-revision)
+        entry (untracked-entry entries)
+        state (doto (state)
+                (tset :revision git.working-revision)
+                (tset :bat? false))
+        key (preview-key.for-entry git.working-revision entry)
+        lines (preview.lines state entry)
+        text (t.text lines)]
+    (faith.= nil err)
+    (faith.= "A" entry.status)
+    (faith.= true entry.untracked?)
+    (faith.= ["alpha" "" "beta"] lines)
+    (faith.match "alpha" text)
+    (faith.= lines (. state.preview_cache key))))
+
+(fn test-selection-lines-previews-expanded-listing-file []
+  (t.init-repo)
+  (t.write-file "util.rb" "puts :hi\n")
+  (let [state {:view_mode :tree :bat? false}
+        row {:type :file :unchanged true :path "util.rb"}
+        text (t.text (preview.selection-lines state nil row))]
+    (faith.match "puts :hi" text)))
+
+(fn test-preview-file-split-keeps-empty-lines-and-drops-trailing-newline []
+  (faith.= ["a" "" "b"] (preview-file.split-lines "a\n\nb\n"))
+  (faith.= ["a" "b"] (preview-file.split-lines "a\r\nb\r\n"))
+  (faith.= [] (preview-file.split-lines "")))
+
 (fn test-startup-can-cache-selected-preview-before-rendering []
   (setup-repo)
   (let [(entries err) (git.diff-entries "HEAD")
@@ -243,5 +281,8 @@
  : test-scroll-uses-rendered-preview-total-without-loading-diff
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
+ : test-untracked-file-preview-shows-plain-content-and-caches
+ : test-selection-lines-previews-expanded-listing-file
+ : test-preview-file-split-keeps-empty-lines-and-drops-trailing-newline
  : test-visible-count-never-drops-below-one
  : test-visible-lines-renders-and-caches-real-git-preview}

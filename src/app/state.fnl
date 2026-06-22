@@ -3,6 +3,7 @@
 (local search (require :app.search))
 (local selection (require :app.selection))
 (local sync (require :git.sync))
+(local sys (require :platform.core))
 (local theme (require :tui.theme))
 
 (fn init [revision entries review-store review-scope src-dir ?diff-stats]
@@ -28,6 +29,7 @@
                :expanded_folders {}
                :folder_preview_cache {}
                :theme theme.default
+               :bat? (sys.command-available? "bat")
                :preview_cache {}
                :preview_context (git.preview-context)
                :preview_warm (preview-warm.new-state)

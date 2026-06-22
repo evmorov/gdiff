@@ -10,6 +10,11 @@
           (values output ok kind code))
         (values "" false "open" 1))))
 
+(fn command-available? [name]
+  (let [(ok _kind _code) (os.execute (.. "command -v " (shell-quote name)
+                                         " >/dev/null 2>&1"))]
+    (= ok true)))
+
 (fn trim [s]
   (let [s (or s "")]
     (or (s:match "^%s*(.-)%s*$") "")))
@@ -76,6 +81,7 @@
 
 {: background-command
  : background-shell-command
+ : command-available?
  : cpu-count
  : dir-exists?
  : ensure-dir

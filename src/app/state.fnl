@@ -37,6 +37,8 @@
                :show_sync_notice? false
                :skip_next_draw? false
                :force_next_draw? false
+               :term_rows nil
+               :term_cols nil
                :pending-key nil}]
     (selection.set-initial-tree-row state)
     state))

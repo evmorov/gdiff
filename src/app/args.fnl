@@ -4,7 +4,7 @@
   (io.stderr:write "Usage: gdiff [--editor <command>] [left [right]]\n")
   (io.stderr:write "Without a revision, gdiff tries main first, then master.\n")
   (io.stderr:write "Use two revisions to compare them with ...\n")
-  (io.stderr:write "Use 'staged' or 's' to review staged changes.\n")
+  (io.stderr:write "Use 'working' or 'w' to review working changes.\n")
   (io.stderr:write "Example: gdiff --editor nvim main HEAD\n"))
 
 (fn next-arg [argv i option]
@@ -34,8 +34,8 @@
   (case (length positionals)
     0 (values nil nil)
     1 (let [revision (. positionals 1)]
-        (if (or (= revision "staged") (= revision "s"))
-            (values commands.staged-revision nil)
+        (if (or (= revision "working") (= revision "w"))
+            (values commands.working-revision nil)
             (two-dot-range? revision)
             (values revision "Two-dot ranges are not supported; use ...")
             (values revision nil)))

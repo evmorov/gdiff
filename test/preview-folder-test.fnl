@@ -6,6 +6,9 @@
 (fn entry [kind path]
   {: kind :status kind : path :reviewed false})
 
+(fn unstaged-entry [kind path]
+  {: kind :status kind : path :reviewed false :unstaged? true})
+
 (fn state [entries]
   {: entries :folder_preview_cache {}})
 
@@ -106,6 +109,28 @@
                            "\n")
              (t.text (folder.render-lines state row record)))))
 
+(fn test-render-lines-shows-unstaged-leaf-but-real-folder-kind []
+  (let [state (state [(unstaged-entry "M" "src/tardis.rb")])
+        row {:path "src"}
+        record {:ok? true
+                :output (table.concat ["total 0"
+                                       "-rw-r--r--  1 u  g  1 Jan  1 00:00 tardis.rb"
+                                       "-rw-r--r--  1 u  g  1 Jan  1 00:00 other.rb"]
+                                      "\n")}]
+    (faith.= (table.concat ["[M] src/"
+                            "────────"
+                            "[?] tardis.rb"
+                            "    other.rb"] "\n")
+             (t.text (folder.render-lines state row record)))))
+
+(fn test-render-lines-keeps-real-kind-for-subfolder-with-unstaged-child []
+  (let [state (state [(unstaged-entry "M" "src/nested/changed.rb")])
+        row {:path "src"}
+        record {:ok? true
+                :output "total 0\ndrwxr-xr-x  2 u  g  64 Jan  1 00:00 nested\n"}]
+    (faith.= "[M] src/\n────────\n[M] nested/"
+             (t.text (folder.render-lines state row record)))))
+
 (fn test-parsed-listing-returns-fresh-copies-from-cached-parse []
   (let [record {:ok? true
                 :output "total 0\n-rw-r--r--  1 u  g  1 Jan  1 00:00 a.rb\n"}
@@ -160,6 +185,8 @@
  : test-render-lines-adds-missing-deleted-child-folder-to-live-parent
  : test-render-lines-synthesizes-missing-child-folder-as-deleted
  : test-render-lines-sorts-like-left-tree
+ : test-render-lines-shows-unstaged-leaf-but-real-folder-kind
+ : test-render-lines-keeps-real-kind-for-subfolder-with-unstaged-child
  : test-folder-plan-is-cached-on-rows-with-descendants
  : test-folder-plan-without-row-descendants-tracks-state-entries
  : test-parsed-listing-returns-fresh-copies-from-cached-parse

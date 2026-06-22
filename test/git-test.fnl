@@ -9,6 +9,14 @@
                         :reviewed entry.reviewed
                         :status entry.status})))
 
+(fn staging-by-path [entries]
+  (collect [_ entry (ipairs entries)]
+    (values entry.path
+            {:kind entry.kind
+             :status entry.status
+             :unstaged? (= true entry.unstaged?)
+             :untracked? (= true entry.untracked?)})))
+
 (fn setup-changed-repo []
   (t.init-repo)
   (t.mkdir "spec/tardis/api")
@@ -22,7 +30,8 @@
   (t.write-file "modified.txt" "after\n")
   (t.sh "rm added-later.txt")
   (t.sh "rm deleted.txt")
-  (t.sh "git mv spec/tardis/api_spec.rb spec/tardis/api/v2_spec.rb"))
+  (t.sh "git mv spec/tardis/api_spec.rb spec/tardis/api/v2_spec.rb")
+  (t.write-file "untracked.txt" "fresh\n"))
 
 (fn test-diff-entries-reports-working-tree-changes []
   (setup-changed-repo)
@@ -38,20 +47,66 @@
                                             :status "R"}}
              (entries-by-path entries))))
 
-(fn test-diff-entries-with-staged-reports-only-index []
+(fn test-diff-entries-with-working-marks-unstaged-changes []
   (setup-changed-repo)
-  (let [(entries err) (git.diff-entries git.staged-revision)]
+  (let [(entries err) (git.diff-entries git.working-revision)]
     (faith.= nil err)
-    (faith.= {"added.txt" {:kind "A" :reviewed false :status "A"}
+    (faith.= {"added.txt" {:kind "A"
+                           :status "A"
+                           :unstaged? false
+                           :untracked? false}
+              "modified.txt" {:kind "M"
+                              :status "M"
+                              :unstaged? true
+                              :untracked? false}
+              "added-later.txt" {:kind "D"
+                                 :status "D"
+                                 :unstaged? true
+                                 :untracked? false}
+              "deleted.txt" {:kind "D"
+                             :status "D"
+                             :unstaged? true
+                             :untracked? false}
+              "untracked.txt" {:kind "A"
+                               :status "A"
+                               :unstaged? true
+                               :untracked? true}
               "spec/tardis/api/v2_spec.rb" {:kind "R"
-                                            :old_path "spec/tardis/api_spec.rb"
-                                            :reviewed false
-                                            :status "R"}}
-             (entries-by-path entries))))
+                                            :status "R"
+                                            :unstaged? false
+                                            :untracked? false}}
+             (staging-by-path entries))))
 
-(fn test-comparison-revision-passes-staged-through []
-  (faith.= git.staged-revision
-           (git.comparison-revision git.staged-revision "current")))
+(fn test-diff-entries-with-working-shows-modified-unstaged-file []
+  (t.init-repo)
+  (t.write-file "tardis.rb" "before\n")
+  (t.commit-all "initial")
+  (t.write-file "tardis.rb" "after\n")
+  (let [(entries err) (git.diff-entries git.working-revision)]
+    (faith.= nil err)
+    (faith.= {"tardis.rb" {:kind "M"
+                           :status "M"
+                           :unstaged? true
+                           :untracked? false}}
+             (staging-by-path entries))))
+
+(fn test-diff-entries-with-working-keeps-staged-status []
+  (t.init-repo)
+  (t.write-file "kept.txt" "base\n")
+  (t.commit-all "initial")
+  (t.write-file "kept.txt" "staged\n")
+  (t.sh "git add kept.txt")
+  (let [(entries err) (git.diff-entries git.working-revision)]
+    (faith.= nil err)
+    (faith.= {"kept.txt" {:kind "M"
+                          :status "M"
+                          :unstaged? false
+                          :untracked? false}}
+             (staging-by-path entries))))
+
+(fn test-comparison-revision-passes-working-through []
+  (faith.= git.working-revision
+           (git.comparison-revision git.working-revision "current")))
 
 (fn test-diff-stats-reports-total-additions-and-deletions []
   (setup-changed-repo)
@@ -119,9 +174,11 @@
  : test-comparison-right-selects-pr-branch
  : test-comparison-revision-expands-single-revision
  : test-comparison-revision-keeps-explicit-range
- : test-comparison-revision-passes-staged-through
+ : test-comparison-revision-passes-working-through
  : test-diff-entries-reports-working-tree-changes
- : test-diff-entries-with-staged-reports-only-index
+ : test-diff-entries-with-working-marks-unstaged-changes
+ : test-diff-entries-with-working-shows-modified-unstaged-file
+ : test-diff-entries-with-working-keeps-staged-status
  : test-diff-stats-indexes-renamed-files-by-new-path
  : test-diff-stats-reports-total-additions-and-deletions
  : test-linked-pr-url-command-quotes-branch}

@@ -2,15 +2,15 @@
 (local commands (require :git.commands))
 (local faith (require :faith))
 
-(fn test-parses-staged-keyword []
-  (let [(_options revision err) (args.parse ["staged"])]
+(fn test-parses-working-keyword []
+  (let [(_options revision err) (args.parse ["working"])]
     (faith.= nil err)
-    (faith.= commands.staged-revision revision)))
+    (faith.= commands.working-revision revision)))
 
-(fn test-parses-staged-shorthand []
-  (let [(_options revision err) (args.parse ["s"])]
+(fn test-parses-working-shorthand []
+  (let [(_options revision err) (args.parse ["w"])]
     (faith.= nil err)
-    (faith.= commands.staged-revision revision)))
+    (faith.= commands.working-revision revision)))
 
 (fn test-parses-editor-and-revision []
   (let [(options revision err) (args.parse ["--editor" "nvim" "main" "HEAD"])]
@@ -55,8 +55,8 @@
     (faith.= "--editor needs a value" err)))
 
 {: test-parses-editor-and-revision
- : test-parses-staged-keyword
- : test-parses-staged-shorthand
+ : test-parses-working-keyword
+ : test-parses-working-shorthand
  : test-parses-explicit-triple-dot-range
  : test-parses-inline-editor
  : test-no-revision-defers-to-default-revision-lookup

@@ -24,7 +24,9 @@
     _ :reset))
 
 (fn status-text [state entry]
-  (tui.color state.theme (status-color entry) (.. "[" entry.status "]")))
+  (if entry.unstaged?
+      (tui.color state.theme :status-untracked "[?]")
+      (tui.color state.theme (status-color entry) (.. "[" entry.status "]"))))
 
 (fn reviewed-text [state entry]
   (if entry.reviewed

@@ -62,9 +62,14 @@
           (and same? (= first-kind entry.kind))) first-kind
         "M")))
 
+(fn record-unstaged [unstaged entry info]
+  (when (and (not info.folder?) entry.unstaged?)
+    (tset unstaged info.name true)))
+
 (fn folder-plan [folder entries]
   (let [statuses {}
         deleted {}
+        unstaged {}
         orders {}
         counts {1 0 2 0}
         children []]
@@ -74,9 +79,11 @@
           (table.insert children {: entry : info})
           (record-order orders counts info)
           (record-status statuses entry info)
+          (record-unstaged unstaged entry info)
           (record-deleted-status deleted entry info))))
     {: statuses
      : deleted
+     : unstaged
      : orders
      : children
      :folder-kind (folder-status-kind entries)}))
@@ -88,6 +95,7 @@
     "D" :status-deleted
     "R" :status-renamed
     "C" :status-copied
+    "?" :status-untracked
     _ nil))
 
 (fn marker [state kind]
@@ -180,10 +188,12 @@
                               (< left-name right-name)))))
   entries)
 
-(fn render-entry [state statuses entry]
+(fn render-entry [state statuses unstaged entry]
   (let [kind (. statuses entry.name)]
     (if entry.deleted?
         (.. (marker state "D") (display-name entry))
+        (and (not entry.folder?) (. unstaged entry.name))
+        (.. (marker state "?") (display-name entry))
         (.. (marker state kind) (display-name entry)))))
 
 (fn display-entries [record plan]
@@ -201,7 +211,7 @@
     (if (= 0 (length entries))
         [(empty-message state record)]
         (icollect [_ entry (ipairs entries)]
-          (render-entry state plan.statuses entry)))))
+          (render-entry state plan.statuses plan.unstaged entry)))))
 
 (fn header-lines [state folder entries ?kind]
   (let [header (.. (marker state (or ?kind (folder-status-kind entries)))

@@ -24,6 +24,29 @@
   (icollect [line (string.gmatch (or text "") "[^\r\n]+")]
     (entry-from-name-status-line line)))
 
+(fn parse-untracked [text]
+  (icollect [line (string.gmatch (or text "") "[^\r\n]+")]
+    (doto (entry "A" line)
+      (tset :unstaged? true)
+      (tset :untracked? true))))
+
+(fn parse-path-set [text]
+  (collect [line (string.gmatch (or text "") "[^\r\n]+")]
+    (values line true)))
+
+(fn mark-unstaged [entries staged]
+  (each [_ entry (ipairs entries)]
+    (when (not (. staged entry.path))
+      (set entry.unstaged? true)))
+  entries)
+
+(fn parse-working [name-status-text staged-text untracked-text]
+  (let [staged (parse-path-set staged-text)
+        entries (mark-unstaged (parse-name-status name-status-text) staged)]
+    (each [_ untracked (ipairs (parse-untracked untracked-text))]
+      (table.insert entries untracked))
+    entries))
+
 (fn trim [s]
   (or (and s (s:match "^%s*(.-)%s*$")) ""))
 
@@ -73,5 +96,8 @@
  : entry-from-name-status-line
  : parse-name-status
  : parse-numstat
+ : parse-path-set
+ : parse-untracked
+ : parse-working
  : rename-target-path
  : split-tabs}

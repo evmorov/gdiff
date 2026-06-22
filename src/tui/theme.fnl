@@ -8,6 +8,7 @@
                     :status-deleted "\27[31m"
                     :status-renamed "\27[36m"
                     :status-copied "\27[35m"
+                    :status-untracked "\27[90m"
                     :notice "\27[90m"
                     :faint "\27[38;5;242m"
                     :warning "\27[31m"

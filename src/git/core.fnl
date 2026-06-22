@@ -33,7 +33,7 @@
         "HEAD")))
 
 (fn comparison-revision [revision ?current-branch]
-  (if (commands.staged? revision) revision
+  (if (commands.working? revision) revision
       (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
         (if left
             (.. (if (> (length left) 0) left
@@ -60,10 +60,21 @@
               (values url nil)
               (values nil (.. "No linked PR for " branch)))))))
 
+(fn read-output [cmd]
+  (let [(output ok _kind _code) (sys.read-command cmd)]
+    (if ok output "")))
+
+(fn working-entries [name-status]
+  (parse.parse-working name-status
+                       (read-output (commands.staged-paths-command))
+                       (read-output (commands.untracked-command))))
+
 (fn diff-entries [revision]
   (let [(output ok _kind _code) (sys.read-command (commands.diff-command revision))]
     (if ok
-        (values (parse.parse-name-status output) nil)
+        (if (commands.working? revision)
+            (values (working-entries output) nil)
+            (values (parse.parse-name-status output) nil))
         (values nil (sys.trim output)))))
 
 (fn diff-stats [revision]
@@ -103,7 +114,7 @@
  : linked-pr-url
  : linked-pr-url-command
  : preview-context
- :staged-revision commands.staged-revision
- :staged? commands.staged?
+ :working-revision commands.working-revision
+ :working? commands.working?
  : preview-output
  : repo-root}

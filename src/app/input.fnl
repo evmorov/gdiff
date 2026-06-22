@@ -16,7 +16,7 @@
     "l" :preview-right
     "o" :open
     " " :toggle-reviewed
-    "A" :toggle-all-reviewed
+    "a" :toggle-all-reviewed
     "\4" :preview-down
     "\21" :preview-up
     "/" :search

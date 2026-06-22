@@ -10,7 +10,7 @@
                   ["C-d / C-u" "Page preview down / up"]
                   ["[ / ]" "Resize split"]
                   ["space" "Toggle reviewed"]
-                  ["A" "Toggle all reviewed"]
+                  ["a" "Toggle all reviewed"]
                   ["/" "Search"]
                   ["n / N" "Next / previous match"]
                   ["q" "Clear search / close help"]

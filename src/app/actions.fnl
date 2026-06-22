@@ -124,7 +124,9 @@
       (when (and path (< 0 (length path)))
         (set-folder-expanded state path (= nil (. state.expanded_folders path)))
         (selection.invalidate-rows state)
-        (settle-cursor state row)))))
+        (settle-cursor state row)
+        (when (search.has-query? state)
+          (search.rebuild state true))))))
 
 (fn nested-changed-folders [state]
   (icollect [_ row (ipairs (tree.rows state.entries {}))]
@@ -143,7 +145,9 @@
           (each [_ path (ipairs paths)]
             (set-folder-expanded state path expand?))
           (selection.invalidate-rows state)
-          (settle-cursor state row))))))
+          (settle-cursor state row)
+          (when (search.has-query? state)
+            (search.rebuild state true)))))))
 
 (fn toggle-help [state]
   (set state.show_help? (not state.show_help?)))

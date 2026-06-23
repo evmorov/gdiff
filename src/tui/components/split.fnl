@@ -22,10 +22,11 @@
         left-scroll node.left.scroll
         left-x-scroll (or node.left.x-scroll 0)
         right-scroll node.right.scroll
-        right-x-scroll (or node.right.x-scroll 0)]
+        right-x-scroll (or node.right.x-scroll 0)
+        right-highlight node.right.highlight]
     (for [i 1 body.rows]
       (split-row.draw (layout.row body i) ctx (. rows i) (. preview i)
                       left-scroll right-scroll i body.rows left-cols right-cols
-                      left-x-scroll right-x-scroll))))
+                      left-x-scroll right-x-scroll right-highlight))))
 
 {: draw : horizontal-text : widths}

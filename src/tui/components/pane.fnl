@@ -21,9 +21,9 @@
 (fn window-text [text width x-scroll]
   (ansi.pad-right (ansi.window text x-scroll width) width))
 
-(fn line-text [line width x-scroll]
+(fn line-text [line width x-scroll ?selected? ?ctx]
   (if (and line (> width 0))
-      (window-text line width x-scroll)
+      (row-view.render ?ctx (window-text line width x-scroll) ?selected? width)
       (blank width)))
 
 (fn row-text [ctx row width x-scroll]

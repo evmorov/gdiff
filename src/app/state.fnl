@@ -15,6 +15,8 @@
                :quit? false
                : selected
                :preview_scroll 0
+               :preview_cursor 1
+               :focus :left
                :preview_x_scroll 0
                :preview_x_max_scroll 0
                :files_x_scroll 0
@@ -35,6 +37,7 @@
                :review_store review-store
                :review_scope review-scope
                :search (search.new-state)
+               :preview_search (search.new-state)
                :sync (sync.new-state revision)
                :show_sync_notice? false
                :show_help? false

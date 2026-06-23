@@ -1,4 +1,5 @@
 (local preview (require :preview.core))
+(local preview-search (require :app.preview-search))
 (local selection (require :app.selection))
 (local tui (require :tui.core))
 
@@ -21,14 +22,34 @@
   (preview.apply-horizontal-scroll-limit state raw-lines cols
                                          (has-vertical-scroll? state)))
 
+(fn cursor-highlight [state visible-lines]
+  (when (= state.focus :right)
+    (let [row (- (or state.preview_cursor 1) (or state.preview_scroll 0))]
+      (when (and (>= row 1) (<= row (length visible-lines)))
+        row))))
+
+(fn search-highlight [state lines]
+  (if (preview-search.has-query? state)
+      (icollect [_ line (ipairs lines)]
+        (preview-search.highlight state line))
+      lines))
+
+(fn sync-search [state display]
+  (when (and (= state.focus :right) (preview-search.has-query? state)
+             (not (= state.preview_search.matches_source display)))
+    (set state.preview_search.matches_source display)
+    (preview-search.rebuild state true)))
+
 (fn body [state visible cols ?selected]
   (let [selected (or ?selected (selection.selected-context state))
         raw (raw-lines state selected.entry selected.row)
         display (lines-for-width state raw visible cols)
+        _ (sync-search state display)
         _ (set-scroll state display visible)
         visible-lines (visible-lines state display visible)
         _ (update-horizontal-scroll state raw cols)]
-    (tui.lines visible-lines (preview.scroll-info state) state.preview_x_scroll
-               state.preview_x_max_scroll)))
+    (tui.lines (search-highlight state visible-lines)
+               (preview.scroll-info state) state.preview_x_scroll
+               state.preview_x_max_scroll (cursor-highlight state visible-lines))))
 
 {: body}

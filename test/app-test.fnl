@@ -10,6 +10,7 @@
 (local sys (require :platform.core))
 (local t (require :test-helper))
 (local tui (require :tui.core))
+(local update (require :app.update))
 
 (fn entry [status path ?old-path]
   {: status :kind (status:sub 1 1) : path :old_path ?old-path :reviewed false})
@@ -516,6 +517,41 @@
       (faith.= 3 state.preview_total)
       (faith.= 0 state.preview_x_scroll))))
 
+(fn test-view-highlights-preview-cursor-only-when-diff-focused []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        key (preview-key.for-entry "HEAD" selected)]
+    (tset state.preview_cache key ["one" "two" "three" "four" "five"])
+    (faith.= nil (. (app.view state 10 80) :body :right :highlight))
+    (set state.focus :right)
+    (set state.preview_cursor 3)
+    (let [view (app.view state 10 80)
+          highlighted (tui.strip-ansi (. view.body.right.lines 3))]
+      (faith.= 3 view.body.right.highlight)
+      (faith.= "three" (t.text [highlighted]))
+      (faith.is (not (string.find (. view.body.right.lines 3) ">"))))))
+
+(fn test-toggling-full-context-rebuilds-the-preview-search []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        normal (preview-key.for-entry "HEAD" selected false)
+        full (preview-key.for-entry "HEAD" selected true)]
+    (tset state.preview_cache normal ["alpha" "beta apple" "gamma"])
+    (tset state.preview_cache full ["apple one" "two" "three" "four apple"])
+    (set state.focus :right)
+    (update.update state {} (update.read-msg state "/"))
+    (each [_ ch (ipairs ["a" "p" "p" "l" "e"])]
+      (update.update state {} (update.read-msg state ch)))
+    (update.update state {} (update.read-msg state :enter))
+    (app.view state 10 80)
+    (faith.= 1 (length state.preview_search.matches))
+    (faith.= 2 (. state.preview_search.matches 1 :line))
+    (update.update state {} (update.read-msg state "f"))
+    (app.view state 10 80)
+    (faith.= 2 (length state.preview_search.matches))
+    (faith.= 1 (. state.preview_search.matches 1 :line))
+    (faith.= 4 (. state.preview_search.matches 2 :line))))
+
 (fn test-view-clamps-file-horizontal-scroll-when-file-rows-fit []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.files_x_scroll 8)
@@ -709,6 +745,8 @@
  : test-help-modal-skips-redraw-on-idle-tick
  : test-escape-closes-help-modal
  : test-view-clamps-preview-horizontal-scroll-when-content-fits
+ : test-view-highlights-preview-cursor-only-when-diff-focused
+ : test-toggling-full-context-rebuilds-the-preview-search
  : test-view-clamps-file-horizontal-scroll-when-file-rows-fit
  : test-view-keeps-file-list-horizontal-scroll-disabled
  : test-view-folder-preview-for-real-deleted-folders

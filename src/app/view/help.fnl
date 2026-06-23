@@ -8,6 +8,7 @@
                   ["← / h" "Scroll preview left"]
                   ["→ / l" "Scroll preview right"]
                   ["C-d / C-u" "Page preview down / up"]
+                  ["tab" "Switch focus: files / diff"]
                   ["[ / ]" "Resize split"]
                   ["space" "Toggle reviewed"]
                   ["a" "Toggle all reviewed"]

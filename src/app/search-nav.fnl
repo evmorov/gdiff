@@ -1,5 +1,5 @@
 (fn position [found]
-  (or found.tree-row found.entry))
+  (or found.tree-row found.entry found.line))
 
 (fn first-at-or-after [cursor matches]
   (var index 1)

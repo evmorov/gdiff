@@ -4,7 +4,7 @@
 (local input (require :app.input))
 (local notice (require :app.notice))
 (local preview-warm (require :preview.warm))
-(local search (require :app.search))
+(local search (require :app.pane-search))
 (local app-state (require :app.state))
 (local sync (require :git.sync))
 

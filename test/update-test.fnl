@@ -60,6 +60,34 @@
     (faith.= "Syncing remote..." state.notice)
     (faith.= true state.show_sync_notice?)))
 
+(fn refresh-loaded-msg [entries]
+  {:type :refresh-loaded : entries :reviewed {}})
+
+(fn seed-preview-cache [state]
+  (set state.preview_cache
+       {(preview-key.for-entry "HEAD" (entry "M" "a.rb")) (fcollect [i 1 10]
+                                                            (.. "line " i))})
+  (set state.preview_total 10)
+  (set state.preview_rows 5))
+
+(fn test-refresh-keeps-preview-cursor-when-diff-focused []
+  (let [state (state [(entry "M" "a.rb")])]
+    (seed-preview-cache state)
+    (update.update state {} (update.read-msg state "\t"))
+    (for [_ 1 4]
+      (update.update state {} (update.read-msg state "j")))
+    (faith.= 5 state.preview_cursor)
+    (update.update state {} (refresh-loaded-msg [(entry "M" "a.rb")]))
+    (faith.= 5 state.preview_cursor)))
+
+(fn test-refresh-resets-preview-cursor-when-files-focused []
+  (let [state (state [(entry "M" "a.rb")])]
+    (seed-preview-cache state)
+    (set state.preview_cursor 5)
+    (faith.= :left state.focus)
+    (update.update state {} (refresh-loaded-msg [(entry "M" "a.rb")]))
+    (faith.= 1 state.preview_cursor)))
+
 (fn test-uppercase-r-does-not-start-sync []
   (let [state (state [(entry "M" "a.rb")])
         (_ command) (update.update state {} (update.read-msg state "R"))]
@@ -164,6 +192,122 @@
     (update.update state {} (update.read-msg state "j"))
     (faith.= false state.full_context?)))
 
+(fn test-tab-toggles-focus-between-panes []
+  (let [state (state [(entry "M" "a.rb")])]
+    (faith.= :left state.focus)
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= :right state.focus)
+    (faith.= 1 state.preview_cursor)
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= :left state.focus)))
+
+(fn test-jk-move-preview-cursor-when-diff-is-focused []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
+    (set state.preview_total 10)
+    (set state.preview_rows 5)
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= 1 state.preview_cursor)
+    (update.update state {} (update.read-msg state "j"))
+    (faith.= 2 state.preview_cursor)
+    (faith.= 1 state.selected)
+    (update.update state {} (update.read-msg state "k"))
+    (faith.= 1 state.preview_cursor)
+    (faith.= 1 state.selected)))
+
+(fn test-preview-cursor-scrolls-the-diff-into-view []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.preview_total 10)
+    (set state.preview_rows 3)
+    (update.update state {} (update.read-msg state "\t"))
+    (for [_ 1 4]
+      (update.update state {} (update.read-msg state "j")))
+    (faith.= 5 state.preview_cursor)
+    (faith.= 2 state.preview_scroll)))
+
+(fn test-gg-and-G-move-preview-cursor-when-diff-is-focused []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.preview_total 10)
+    (set state.preview_rows 3)
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "G"))
+    (faith.= 10 state.preview_cursor)
+    (faith.= 7 state.preview_scroll)
+    (faith.= 1 state.selected)
+    (update.update state {} (update.read-msg state "g"))
+    (update.update state {} (update.read-msg state "g"))
+    (faith.= 1 state.preview_cursor)
+    (faith.= 0 state.preview_scroll)))
+
+(fn test-jk-still-move-file-selection-when-files-are-focused []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
+    (faith.= :left state.focus)
+    (update.update state {} (update.read-msg state "j"))
+    (faith.= 2 state.selected)
+    (faith.= 1 state.preview_cursor)))
+
+(fn type-keys [state keys]
+  (each [_ ch (ipairs keys)]
+    (update.update state {} (update.read-msg state ch))))
+
+(fn diff-state []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
+    (set state.preview_display_cache
+         {:display ["alpha" "beta apple" "gamma" "apple pie"]})
+    (set state.preview_total 4)
+    (set state.preview_rows 4)
+    state))
+
+(fn test-right-pane-search-matches-diff-lines-and-moves-the-cursor []
+  (let [state (diff-state)]
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["a" "p" "p" "l" "e"])
+    (faith.= "apple" state.preview_search.query)
+    (faith.= 2 (length state.preview_search.matches))
+    (faith.= 2 state.preview_cursor)
+    (faith.= "" state.search.query)
+    (faith.= 1 state.selected)
+    (update.update state {} (update.read-msg state :enter))
+    (update.update state {} (update.read-msg state "n"))
+    (faith.= 4 state.preview_cursor)))
+
+(fn test-left-pane-search-leaves-the-preview-search-untouched []
+  (let [state (diff-state)]
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["b" "." "r" "b"])
+    (faith.= "b.rb" state.search.query)
+    (faith.= 1 (length state.search.matches))
+    (faith.= "" state.preview_search.query)
+    (faith.= 1 state.preview_cursor)))
+
+(fn test-each-pane-keeps-its-own-search-across-focus-switches []
+  (let [state (diff-state)]
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["a" "." "r" "b"])
+    (update.update state {} (update.read-msg state :enter))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["a" "p" "p" "l" "e"])
+    (update.update state {} (update.read-msg state :enter))
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= "a.rb" state.search.query)
+    (faith.= "apple" state.preview_search.query)))
+
+(fn test-tab-shows-the-focused-panes-search-status []
+  (let [state (diff-state)]
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["a" "." "r" "b"])
+    (update.update state {} (update.read-msg state :enter))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["a" "p" "p" "l" "e"])
+    (update.update state {} (update.read-msg state :enter))
+    (faith.is (string.find state.notice "apple" 1 true))
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.is (string.find state.notice "a.rb" 1 true))
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.is (string.find state.notice "apple" 1 true))))
+
 (fn test-command-dispatches-back-through-update []
   (let [state (state [(entry "M" "a.rb")])
         command (fn [dispatch _get-state]
@@ -219,10 +363,21 @@
     (faith.= "File not found: missing.rb" state.notice)))
 
 {: test-f-toggles-full-context-and-navigation-resets-it
+ : test-tab-toggles-focus-between-panes
+ : test-jk-move-preview-cursor-when-diff-is-focused
+ : test-preview-cursor-scrolls-the-diff-into-view
+ : test-gg-and-G-move-preview-cursor-when-diff-is-focused
+ : test-jk-still-move-file-selection-when-files-are-focused
+ : test-right-pane-search-matches-diff-lines-and-moves-the-cursor
+ : test-left-pane-search-leaves-the-preview-search-untouched
+ : test-each-pane-keeps-its-own-search-across-focus-switches
+ : test-tab-shows-the-focused-panes-search-status
  : test-command-dispatches-back-through-update
  : test-copy-path-copies-selected-tree-folder-path
  : test-h-l-scroll-preview-horizontally
  : test-local-refresh-does-not-start-remote-sync
+ : test-refresh-keeps-preview-cursor-when-diff-focused
+ : test-refresh-resets-preview-cursor-when-files-focused
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-open-pr-finished-updates-notice
  : test-open-target-finished-updates-notice

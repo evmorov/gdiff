@@ -1,4 +1,4 @@
-(local search (require :app.search))
+(local search (require :app.pane-search))
 (local messages (require :app.messages))
 
 (fn event-key [key]
@@ -10,6 +10,7 @@
     :enter :open
     :quit :quit
     :tick :tick
+    "\t" :toggle-focus
     "k" :up
     "j" :down
     "h" :preview-left

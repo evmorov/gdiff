@@ -17,14 +17,17 @@
           left-cols
           right-cols
           left-x-scroll
-          right-x-scroll]
+          right-x-scroll
+          ?right-highlight]
   (let [left (pane-measure left-cols left-scroll body-rows)
-        right (pane-measure right-cols right-scroll body-rows)]
+        right (pane-measure right-cols right-scroll body-rows)
+        right-selected? (= row-index ?right-highlight)]
     (.. (pane.row-text ctx left-row left.content-cols left-x-scroll)
         (if left.scroll?
             (pane.scroll-marker ctx left-scroll row-index body-rows)
             "") (theme.color ctx.theme :muted symbols.line.vertical)
-        (pane.line-text right-line right.content-cols right-x-scroll)
+        (pane.line-text right-line right.content-cols right-x-scroll
+                        right-selected? ctx)
         (if right.scroll?
             (pane.scroll-marker ctx right-scroll row-index body-rows)
             ""))))

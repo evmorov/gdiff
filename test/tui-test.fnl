@@ -159,6 +159,17 @@
                                             0)]
     (faith.= "left    │right      " (tui.strip-ansi line))))
 
+(fn test-split-row-highlights-selected-preview-line []
+  (let [ctx (tui.context 5 20 (theme.new {:r 16 :g 24 :b 32}))
+        row (tui.row "left" false)
+        highlighted (tui.components.split-row.line ctx row "diff" nil nil 2 5 8
+                                                   11 0 0 2)
+        plain (tui.components.split-row.line ctx row "diff" nil nil 1 5 8 11 0
+                                             0 2)]
+    (faith.= "left    │diff       " (tui.strip-ansi highlighted))
+    (faith.is (highlighted:find "48;2;" 1 true))
+    (faith.= nil (plain:find "48;2;" 1 true))))
+
 (fn test-split-row-measure-reserves-scrollbar-column []
   (faith.= {:content-cols 9 :scroll? true}
            (tui.components.split-row.pane-measure 10
@@ -276,6 +287,7 @@
  : test-screen-builds-declarative-view-tree
  : test-split-component-calculates-widths
  : test-split-row-composes-panes-and-divider
+ : test-split-row-highlights-selected-preview-line
  : test-split-row-measure-reserves-scrollbar-column
  : test-scrollbar-only-visible-for-overflow
  : test-scrollbar-thumb-tracks-offset

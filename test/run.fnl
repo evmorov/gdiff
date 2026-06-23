@@ -12,6 +12,7 @@
             :platform-test
             :review-test
             :search-match-test
+            :preview-search-match-test
             :search-nav-test
             :search-plan-test
             :search-status-test

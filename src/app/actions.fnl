@@ -6,6 +6,7 @@
 (local review (require :app.review))
 (local reviews (require :storage.reviews))
 (local search (require :app.search))
+(local pane-search (require :app.pane-search))
 (local selection (require :app.selection))
 (local tree (require :app.tree))
 
@@ -37,14 +38,19 @@
   state)
 
 (fn apply-refresh [state entries reviewed diff-stats]
-  (set state.entries (reviews.apply entries reviewed))
-  (selection.invalidate-rows state)
-  (set state.diff_stats diff-stats)
-  (set state.folder_preview_cache {})
-  (preview.reset-scroll state)
-  (selection.move state 0)
-  (cache-selected-preview state)
-  (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed)))
+  (let [keep-cursor? (= state.focus :right)
+        prev-cursor state.preview_cursor
+        prev-scroll state.preview_scroll]
+    (set state.entries (reviews.apply entries reviewed))
+    (selection.invalidate-rows state)
+    (set state.diff_stats diff-stats)
+    (set state.folder_preview_cache {})
+    (preview.reset-scroll state)
+    (selection.move state 0)
+    (cache-selected-preview state)
+    (when keep-cursor?
+      (preview.restore-cursor state prev-cursor prev-scroll))
+    (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed))))
 
 (fn open-selected [state config]
   (let [target (action-plan.selected-target state.view_mode
@@ -65,6 +71,29 @@
 
 (fn move-split [state delta]
   (set state.split_ratio (action-plan.split-ratio state.split_ratio delta)))
+
+(fn move-preview-cursor [state preview-fn]
+  (let [changed? (preview-fn state)]
+    (set state.skip_next_draw? (not changed?))
+    changed?))
+
+(fn navigate [state delta]
+  (if (= state.focus :right)
+      (move-preview-cursor state #(preview.move-cursor $1 delta))
+      (selection.move state delta)))
+
+(fn jump [state preview-fn select-fn]
+  (if (= state.focus :right)
+      (move-preview-cursor state preview-fn)
+      (select-fn state)))
+
+(fn toggle-focus [state]
+  (if (= state.focus :right)
+      (set state.focus :left)
+      (do
+        (set state.focus :right)
+        (preview.focus-cursor state)))
+  (pane-search.refresh-status state))
 
 (fn scroll-horizontal [state delta]
   (let [changed? (preview.scroll-horizontal state delta)]
@@ -162,8 +191,9 @@
   (set state.notice (notice.syncing-remote))
   (commands.batch (commands.sync-start) (commands.refresh)))
 
-(local handlers {:up #(selection.move $1 -1)
-                 :down #(selection.move $1 1)
+(local handlers {:up #(navigate $1 -1)
+                 :down #(navigate $1 1)
+                 : toggle-focus
                  :open open-selected
                  : toggle-reviewed
                  : toggle-all-reviewed
@@ -171,12 +201,12 @@
                  :preview-up scroll-preview-page-up
                  :preview-left #(scroll-horizontal $1 -8)
                  :preview-right #(scroll-horizontal $1 8)
-                 :search search.start
-                 :search-next search.next
-                 :search-previous search.previous
-                 :clear-search search.clear
-                 :top selection.top
-                 :bottom selection.bottom
+                 :search pane-search.start
+                 :search-next pane-search.next
+                 :search-previous pane-search.previous
+                 :clear-search pane-search.clear
+                 :top #(jump $1 preview.cursor-top selection.top)
+                 :bottom #(jump $1 preview.cursor-bottom selection.bottom)
                  : toggle-wrap
                  : toggle-full-context
                  : toggle-tree

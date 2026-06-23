@@ -1,14 +1,14 @@
 (local engine (require :app.search-engine))
-(local matcher (require :app.search-match))
-(local selection (require :app.selection))
+(local matcher (require :app.preview-search-match))
+(local preview (require :preview.core))
 (local search-plan (require :app.search-plan))
 
 (local context
-       {:get (fn [state] state.search)
-        :set (fn [state search] (set state.search search))
-        :cursor-position (fn [state] (selection.cursor-position state))
+       {:get (fn [state] state.preview_search)
+        :set (fn [state search] (set state.preview_search search))
+        :cursor-position (fn [state] (or state.preview_cursor 1))
         :collect (fn [state query] (matcher.collect-matches state query))
-        :apply (fn [state found] (selection.set-match state found))})
+        :apply (fn [state found] (preview.cursor-jump state found.line))})
 
 (fn new-state []
   (search-plan.new-state))

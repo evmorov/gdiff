@@ -137,8 +137,59 @@
           display))))
 
 (fn reset-scroll [state]
-  (set-fields state [:preview_scroll 0] [:preview_x_scroll 0]
-              [:preview_x_max_scroll 0] [:preview_display_cache nil]))
+  (set-fields state [:preview_scroll 0] [:preview_cursor 1]
+              [:preview_x_scroll 0] [:preview_x_max_scroll 0]
+              [:preview_display_cache nil]))
+
+(fn keep-cursor-visible [state]
+  (let [visible (row-count state)
+        cursor (or state.preview_cursor 1)
+        scroll (or state.preview_scroll 0)
+        scroll (if (< cursor (+ scroll 1)) (- cursor 1)
+                   (> cursor (+ scroll visible)) (- cursor visible)
+                   scroll)]
+    (set state.preview_scroll (math-util.clamp scroll 0 (max-scroll state nil)))))
+
+(fn move-cursor [state delta]
+  (let [before (or state.preview_cursor 1)
+        cursor (math-util.clamp (+ before delta) 1
+                                (math.max 1 (or state.preview_total 0)))]
+    (set state.preview_cursor cursor)
+    (keep-cursor-visible state)
+    (not (= before cursor))))
+
+(fn focus-cursor [state]
+  (set state.preview_cursor
+       (math-util.clamp (+ (or state.preview_scroll 0) 1) 1
+                        (math.max 1 (or state.preview_total 0)))))
+
+(fn restore-cursor [state cursor scroll]
+  (set state.preview_cursor
+       (math-util.clamp (or cursor 1) 1 (math.max 1 (or state.preview_total 0))))
+  (set state.preview_scroll
+       (math-util.clamp (or scroll 0) 0 (max-scroll state nil)))
+  (keep-cursor-visible state))
+
+(fn cursor-jump [state line]
+  (set state.preview_cursor
+       (math-util.clamp (or line 1) 1 (math.max 1 (or state.preview_total 0))))
+  (keep-cursor-visible state))
+
+(fn display-lines [state]
+  (or (and state.preview_display_cache state.preview_display_cache.display) []))
+
+(fn cursor-top [state]
+  (let [before (or state.preview_cursor 1)]
+    (set state.preview_cursor 1)
+    (keep-cursor-visible state)
+    (not (= before 1))))
+
+(fn cursor-bottom [state]
+  (let [before (or state.preview_cursor 1)
+        target (math.max 1 (or state.preview_total 0))]
+    (set state.preview_cursor target)
+    (keep-cursor-visible state)
+    (not (= before target))))
 
 (fn scroll [state entry delta]
   (set-scroll state entry (+ (or state.preview_scroll 0) delta)))
@@ -197,6 +248,13 @@
 
 {: lines
  : apply-display-lines
+ : cursor-top
+ : cursor-bottom
+ : cursor-jump
+ : display-lines
+ : focus-cursor
+ : restore-cursor
+ : move-cursor
  : nonblocking-lines
  : page-step
  : prepare-entry

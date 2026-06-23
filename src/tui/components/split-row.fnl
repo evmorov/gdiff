@@ -21,7 +21,9 @@
           ?right-highlight]
   (let [left (pane-measure left-cols left-scroll body-rows)
         right (pane-measure right-cols right-scroll body-rows)
-        right-selected? (= row-index ?right-highlight)]
+        right-selected? (if (= (type ?right-highlight) :table)
+                            (. ?right-highlight row-index)
+                            (= row-index ?right-highlight))]
     (.. (pane.row-text ctx left-row left.content-cols left-x-scroll)
         (if left.scroll?
             (pane.scroll-marker ctx left-scroll row-index body-rows)

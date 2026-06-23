@@ -339,6 +339,101 @@
         (faith.= {:type :copy-path-finished :path "script/" :ok? true}
                  (. messages 1))))))
 
+(fn test-v-starts-and-exits-line-selection-in-right-pane []
+  (let [state (diff-state)]
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= nil state.preview_selection_anchor)
+    (update.update state {} (update.read-msg state "v"))
+    (faith.= 1 state.preview_selection_anchor)
+    (update.update state {} (update.read-msg state "v"))
+    (faith.= nil state.preview_selection_anchor)))
+
+(fn test-v-is-ignored-when-files-are-focused []
+  (let [state (diff-state)]
+    (faith.= :left state.focus)
+    (update.update state {} (update.read-msg state "v"))
+    (faith.= nil state.preview_selection_anchor)))
+
+(fn test-q-exits-line-selection-before-clearing-search []
+  (let [state (diff-state)]
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "v"))
+    (faith.= 1 state.preview_selection_anchor)
+    (update.update state {} (update.read-msg state "q"))
+    (faith.= nil state.preview_selection_anchor)))
+
+(fn test-tab-back-to-files-clears-line-selection []
+  (let [state (diff-state)]
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "v"))
+    (faith.= 1 state.preview_selection_anchor)
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= nil state.preview_selection_anchor)))
+
+(fn test-y-yanks-the-selected-diff-lines []
+  (let [state (diff-state)
+        copied []
+        old-copy clipboard.copy]
+    (set clipboard.copy (fn [text]
+                          (table.insert copied text)
+                          true))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "v"))
+    (update.update state {} (update.read-msg state "j"))
+    (let [(_ command) (update.update state {} (update.read-msg state "y"))
+          messages []]
+      (command #(table.insert messages $1) (fn [] state))
+      (set clipboard.copy old-copy)
+      (faith.= ["alpha\nbeta apple"] copied)
+      (faith.= nil state.preview_selection_anchor)
+      (faith.= {:type :yank-finished :count 2 :ok? true} (. messages 1)))))
+
+(fn test-y-yanks-the-cursor-line-without-a-selection []
+  (let [state (diff-state)
+        copied []
+        old-copy clipboard.copy]
+    (set clipboard.copy (fn [text]
+                          (table.insert copied text)
+                          true))
+    (update.update state {} (update.read-msg state "\t"))
+    (let [(_ command) (update.update state {} (update.read-msg state "y"))]
+      (command #nil (fn [] state))
+      (set clipboard.copy old-copy)
+      (faith.= ["alpha"] copied))))
+
+(fn wrapped-diff-state []
+  (let [state (diff-state)]
+    (set state.preview_display_cache
+         {:display ["alpha↪" "beta" "gamma"]
+          :source ["alphabeta" "gamma"]
+          :source-map [1 1 2]})
+    (set state.preview_total 3)
+    state))
+
+(fn test-y-yanks-one-line-for-a-wrapped-selection []
+  (let [state (wrapped-diff-state)
+        copied []
+        old-copy clipboard.copy]
+    (set clipboard.copy (fn [text]
+                          (table.insert copied text)
+                          true))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "v"))
+    (update.update state {} (update.read-msg state "j"))
+    (let [(_ command) (update.update state {} (update.read-msg state "y"))
+          messages []]
+      (command #(table.insert messages $1) (fn [] state))
+      (set clipboard.copy old-copy)
+      (faith.= ["alphabeta"] copied)
+      (faith.= {:type :yank-finished :count 1 :ok? true} (. messages 1)))))
+
+(fn test-yank-finished-updates-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (update.update state {} {:type :yank-finished :count 1 :ok? true})
+    (faith.= "Copied 1 line" state.notice)
+    (update.update state {} {:type :yank-finished :count 3 :ok? true})
+    (faith.= "Copied 3 lines" state.notice)))
+
 (fn test-open-pr-finished-updates-notice []
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {}
@@ -388,6 +483,14 @@
  : test-refresh-resets-preview-cursor-when-files-focused
  : test-refresh-clears-stale-preview-cache
  : test-lowercase-r-refreshes-files-and-starts-sync
+ : test-v-starts-and-exits-line-selection-in-right-pane
+ : test-v-is-ignored-when-files-are-focused
+ : test-q-exits-line-selection-before-clearing-search
+ : test-tab-back-to-files-clears-line-selection
+ : test-y-yanks-the-selected-diff-lines
+ : test-y-yanks-the-cursor-line-without-a-selection
+ : test-y-yanks-one-line-for-a-wrapped-selection
+ : test-yank-finished-updates-notice
  : test-open-pr-finished-updates-notice
  : test-open-target-finished-updates-notice
  : test-preview-page-scroll-sets-skip-draw-when-clamped

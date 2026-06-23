@@ -7,6 +7,7 @@
 (local reviews (require :storage.reviews))
 (local search (require :app.search))
 (local pane-search (require :app.pane-search))
+(local line-selection (require :app.line-selection))
 (local selection (require :app.selection))
 (local tree (require :app.tree))
 
@@ -46,6 +47,7 @@
     (set state.diff_stats diff-stats)
     (set state.preview_cache {})
     (set state.folder_preview_cache {})
+    (line-selection.stop state)
     (preview.reset-scroll state)
     (selection.move state 0)
     (cache-selected-preview state)
@@ -70,6 +72,42 @@
     (when path
       (commands.copy-path path))))
 
+(fn exit-line-selection [state]
+  (when (line-selection.active? state)
+    (line-selection.stop state)
+    (set state.notice nil)))
+
+(fn yank-preview [state]
+  (let [display (preview.display-lines state)
+        source (preview.display-source state)
+        source-map (preview.display-source-map state)
+        anchor state.preview_selection_anchor
+        cursor (or state.preview_cursor 1)
+        text (line-selection.selected-text display anchor cursor source
+                                           source-map)
+        count (line-selection.line-count display anchor cursor source-map)]
+    (exit-line-selection state)
+    (when (> count 0)
+      (commands.yank text count))))
+
+(fn copy-or-yank [state]
+  (if (= state.focus :right)
+      (yank-preview state)
+      (copy-selected-path state)))
+
+(fn toggle-line-selection [state]
+  (when (= state.focus :right)
+    (if (line-selection.active? state)
+        (exit-line-selection state)
+        (do
+          (line-selection.start state)
+          (set state.notice (notice.selecting-lines))))))
+
+(fn exit-selection-or-clear-search [state]
+  (if (line-selection.active? state)
+      (exit-line-selection state)
+      (pane-search.clear state)))
+
 (fn move-split [state delta]
   (set state.split_ratio (action-plan.split-ratio state.split_ratio delta)))
 
@@ -90,7 +128,9 @@
 
 (fn toggle-focus [state]
   (if (= state.focus :right)
-      (set state.focus :left)
+      (do
+        (exit-line-selection state)
+        (set state.focus :left))
       (do
         (set state.focus :right)
         (preview.focus-cursor state)))
@@ -115,11 +155,13 @@
                   (- (preview.page-step state))))
 
 (fn toggle-wrap [state]
+  (exit-line-selection state)
   (set-fields state [:preview_wrap? (not state.preview_wrap?)]
               [:preview_x_scroll 0] [:preview_x_max_scroll 0]))
 
 (fn toggle-full-context [state]
   (when (selection.selected-entry state)
+    (exit-line-selection state)
     (set state.full_context? (not state.full_context?))
     (preview.reset-scroll state)))
 
@@ -205,7 +247,8 @@
                  :search pane-search.start
                  :search-next pane-search.next
                  :search-previous pane-search.previous
-                 :clear-search pane-search.clear
+                 :clear-search exit-selection-or-clear-search
+                 :toggle-line-selection toggle-line-selection
                  :top #(jump $1 preview.cursor-top selection.top)
                  :bottom #(jump $1 preview.cursor-bottom selection.bottom)
                  : toggle-wrap
@@ -215,7 +258,7 @@
                  :expand-all toggle-expand-all
                  : toggle-help
                  :refresh refresh-and-sync
-                 :copy-path copy-selected-path
+                 :copy-path copy-or-yank
                  :open-pr commands.open-linked-pr
                  :split-left #(move-split $1 -0.05)
                  :split-right #(move-split $1 0.05)})

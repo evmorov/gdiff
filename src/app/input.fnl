@@ -30,6 +30,7 @@
     "e" :toggle-expand
     "E" :expand-all
     "y" :copy-path
+    "v" :toggle-line-selection
     "p" :open-pr
     "[" :split-left
     "]" :split-right

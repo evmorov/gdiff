@@ -4,6 +4,14 @@
 (fn copy-finished [ok? path]
   (with-path (if ok? "Copied" "Copy failed") path))
 
+(fn selecting-lines []
+  "Selecting lines (y yank, q exit)")
+
+(fn yank-finished [ok? count]
+  (if ok?
+      (.. "Copied " count " line" (if (= count 1) "" "s"))
+      "Copy failed"))
+
 (fn open-pr-finished [ok? ?url ?error]
   (if ok?
       (.. "Opened PR: " ?url)
@@ -50,5 +58,7 @@
  : reviewed-all
  : reviewed-entry
  : reviewed-folder
+ : selecting-lines
  : syncing-remote
- : with-path}
+ : with-path
+ : yank-finished}

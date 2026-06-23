@@ -25,6 +25,9 @@
 (fn copy-path-finished [path ok?]
   (build :copy-path-finished {: path : ok?}))
 
+(fn yank-finished [count ok?]
+  (build :yank-finished {: count : ok?}))
+
 (fn open-pr-finished [?url ?error ok?]
   (build :open-pr-finished {:url ?url :error ?error : ok?}))
 
@@ -44,4 +47,5 @@
  : quit
  : refresh-loaded
  : review-persist-failed
- : search-input}
+ : search-input
+ : yank-finished}

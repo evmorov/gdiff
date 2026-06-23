@@ -23,6 +23,23 @@
       (faith.= nil state.preview_total)
       (faith.= 0 state.preview_scroll))))
 
-{: test-lines-for-width-wraps-without-updating-preview-fields
+(fn test-lines-for-width-returns-a-matching-source-map []
+  (let [state (state)]
+    (set state.preview_wrap? true)
+    (let [(lines source-map) (viewport.lines-for-width state ["abcdefghij"] 2
+                                                       10)]
+      (faith.= ["abc↪" "def↪" "ghij"] lines)
+      (faith.= [1 1 1] source-map))))
+
+(fn test-source-map-maps-wrapped-rows-back-to-source-lines []
+  (faith.= [1 1 1 2 2] (viewport.source-map true ["abcdefghij" "short"] 4)))
+
+(fn test-source-map-is-identity-without-wrapping []
+  (faith.= [1 2 3] (viewport.source-map false ["a" "b" "c"] 4)))
+
+{: test-lines-for-width-returns-a-matching-source-map
+ : test-lines-for-width-wraps-without-updating-preview-fields
+ : test-source-map-maps-wrapped-rows-back-to-source-lines
+ : test-source-map-is-identity-without-wrapping
  : test-scroll-state-clamps-offset-to-visible-content
  : test-visible-lines-uses-scroll-state-without-mutating-state}

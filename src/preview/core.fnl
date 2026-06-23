@@ -126,14 +126,17 @@
              (= cache.split-ratio cache-key.split-ratio)
              (= cache.wrap? cache-key.wrap?))
         cache.display
-        (let [display (viewport.lines-for-width state lines visible cols)]
+        (let [(display source-map) (viewport.lines-for-width state lines
+                                                             visible cols)]
           (set state.preview_display_cache
                {: lines
                 : visible
                 : cols
                 :split-ratio state.split_ratio
                 :wrap? state.preview_wrap?
-                : display})
+                : display
+                :source lines
+                :source-map source-map})
           display))))
 
 (fn reset-scroll [state]
@@ -177,6 +180,12 @@
 
 (fn display-lines [state]
   (or (and state.preview_display_cache state.preview_display_cache.display) []))
+
+(fn display-source [state]
+  (and state.preview_display_cache state.preview_display_cache.source))
+
+(fn display-source-map [state]
+  (and state.preview_display_cache state.preview_display_cache.source-map))
 
 (fn cursor-top [state]
   (let [before (or state.preview_cursor 1)]
@@ -252,6 +261,8 @@
  : cursor-bottom
  : cursor-jump
  : display-lines
+ : display-source
+ : display-source-map
  : focus-cursor
  : restore-cursor
  : move-cursor

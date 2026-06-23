@@ -64,6 +64,11 @@
   [dispatch _get-state]
   (dispatch (messages.copy-path-finished path (clipboard.copy path))))
 
+(defcommand yank
+  [text count]
+  [dispatch _get-state]
+  (dispatch (messages.yank-finished count (clipboard.copy text))))
+
 (defcommand open-linked-pr
   []
   [dispatch get-state]
@@ -96,4 +101,5 @@
  : persist-reviewed
  : refresh
  : sync-start
- : warm-preview-cache}
+ : warm-preview-cache
+ : yank}

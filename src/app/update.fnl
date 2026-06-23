@@ -45,6 +45,10 @@
   (set state.notice (notice.copy-finished msg.ok? msg.path))
   commands.none)
 
+(fn handle-yank-finished [state _config msg]
+  (set state.notice (notice.yank-finished msg.ok? msg.count))
+  commands.none)
+
 (fn handle-open-pr-finished [state _config msg]
   (set state.notice (notice.open-pr-finished msg.ok? msg.url msg.error))
   commands.none)
@@ -65,7 +69,8 @@
         :quit handle-quit
         :refresh-loaded handle-refresh-loaded
         :review-persist-failed handle-review-persist-failed
-        :search-input handle-search-input})
+        :search-input handle-search-input
+        :yank-finished handle-yank-finished})
 
 (fn handle-action [state config msg msg-type]
   (set state.pending-key msg.pending-key)

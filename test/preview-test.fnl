@@ -225,7 +225,7 @@
     (faith.= 1 (t.count-pairs state.preview_cache))
     (faith.match "%+after" (t.text (. state.preview_cache key)))))
 
-(fn test-refresh-loaded-keeps-cache-and-caches-selected-preview []
+(fn test-refresh-loaded-clears-stale-cache-and-caches-selected-preview []
   (setup-repo)
   (let [(entries err) (git.diff-entries "HEAD")
         state (update.init "HEAD" entries {:version 1 :reviews {}} "scope"
@@ -240,7 +240,7 @@
     (tset state.preview_cache old-key ["old preview"])
     (faith.= 1 (t.count-pairs state.preview_cache))
     (update.update state {} {:type :refresh-loaded : entries :reviewed {}})
-    (faith.= ["old preview"] (. state.preview_cache old-key))
+    (faith.= nil (. state.preview_cache old-key))
     (faith.match "%+after" (t.text (. state.preview_cache key)))))
 
 (fn test-refresh-loaded-clears-folder-preview-cache []
@@ -313,7 +313,7 @@
  : test-horizontal-scroll-limit-uses-visible-line-width
  : test-preview-format-colors-diff-lines
  : test-refresh-loaded-clears-folder-preview-cache
- : test-refresh-loaded-keeps-cache-and-caches-selected-preview
+ : test-refresh-loaded-clears-stale-cache-and-caches-selected-preview
  : test-selection-lines-renders-folder-rows-through-preview-core
  : test-scroll-uses-rendered-preview-total-without-loading-diff
  : test-scroll-info-only-appears-when-preview-overflows

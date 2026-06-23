@@ -88,6 +88,14 @@
     (update.update state {} (refresh-loaded-msg [(entry "M" "a.rb")]))
     (faith.= 1 state.preview_cursor)))
 
+(fn test-refresh-clears-stale-preview-cache []
+  (let [state (state [(entry "M" "a.rb")])
+        stale-key (preview-key.for-entry "HEAD" (entry "M" "gone.rb"))]
+    (seed-preview-cache state)
+    (tset state.preview_cache stale-key ["stale"])
+    (update.update state {} (refresh-loaded-msg [(entry "M" "a.rb")]))
+    (faith.= nil (. state.preview_cache stale-key))))
+
 (fn test-uppercase-r-does-not-start-sync []
   (let [state (state [(entry "M" "a.rb")])
         (_ command) (update.update state {} (update.read-msg state "R"))]
@@ -378,6 +386,7 @@
  : test-local-refresh-does-not-start-remote-sync
  : test-refresh-keeps-preview-cursor-when-diff-focused
  : test-refresh-resets-preview-cursor-when-files-focused
+ : test-refresh-clears-stale-preview-cache
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-open-pr-finished-updates-notice
  : test-open-target-finished-updates-notice

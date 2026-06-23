@@ -44,6 +44,7 @@
     (set state.entries (reviews.apply entries reviewed))
     (selection.invalidate-rows state)
     (set state.diff_stats diff-stats)
+    (set state.preview_cache {})
     (set state.folder_preview_cache {})
     (preview.reset-scroll state)
     (selection.move state 0)

@@ -69,6 +69,11 @@
   [dispatch _get-state]
   (dispatch (messages.yank-finished count (clipboard.copy text))))
 
+(defcommand yank-fenced
+  [text path count]
+  [dispatch _get-state]
+  (dispatch (messages.yank-fenced-finished path count (clipboard.copy text))))
+
 (defcommand open-linked-pr
   []
   [dispatch get-state]
@@ -102,4 +107,5 @@
  : refresh
  : sync-start
  : warm-preview-cache
- : yank}
+ : yank
+ : yank-fenced}

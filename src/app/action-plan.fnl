@@ -14,7 +14,20 @@
         (.. target.path "/")
         target.path)))
 
+(fn copy-full-path [target ?root]
+  (let [relative (copy-path target)]
+    (when relative
+      (if (and ?root (< 0 (length ?root)))
+          (.. ?root "/" relative)
+          relative))))
+
+(fn fenced-snippet [path text]
+  (let [fenced (.. "```\n" text "\n```")]
+    (if (and path (< 0 (length path)))
+        (.. path "\n\n" fenced)
+        fenced)))
+
 (fn split-ratio [current delta]
   (math-util.clamp (+ (or current 0.4) delta) 0.1 0.9))
 
-{: copy-path : selected-target : split-ratio}
+{: copy-full-path : copy-path : fenced-snippet : selected-target : split-ratio}

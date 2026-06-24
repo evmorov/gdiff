@@ -64,11 +64,18 @@
           (commands.open-folder target.path)
           (commands.open-editor config (or target.entry {:path target.path}))))))
 
+(fn current-target [state]
+  (action-plan.selected-target state.view_mode
+                               (selection.selected-tree-row state)
+                               (selection.selected-entry state)))
+
 (fn copy-selected-path [state]
-  (let [target (action-plan.selected-target state.view_mode
-                                            (selection.selected-tree-row state)
-                                            (selection.selected-entry state))
-        path (action-plan.copy-path target)]
+  (let [path (action-plan.copy-path (current-target state))]
+    (when path
+      (commands.copy-path path))))
+
+(fn copy-full-selected-path [state]
+  (let [path (action-plan.copy-full-path (current-target state) state.repo_root)]
     (when path
       (commands.copy-path path))))
 
@@ -77,23 +84,38 @@
     (line-selection.stop state)
     (set state.notice nil)))
 
-(fn yank-preview [state]
+(fn preview-selection [state]
   (let [display (preview.display-lines state)
         source (preview.display-source state)
         source-map (preview.display-source-map state)
         anchor state.preview_selection_anchor
-        cursor (or state.preview_cursor 1)
-        text (line-selection.selected-text display anchor cursor source
-                                           source-map)
-        count (line-selection.line-count display anchor cursor source-map)]
+        cursor (or state.preview_cursor 1)]
+    (values (line-selection.selected-text display anchor cursor source
+                                          source-map)
+            (line-selection.line-count display anchor cursor source-map))))
+
+(fn yank-preview [state]
+  (let [(text count) (preview-selection state)]
     (exit-line-selection state)
     (when (> count 0)
       (commands.yank text count))))
+
+(fn yank-preview-with-path [state]
+  (let [(text count) (preview-selection state)
+        path (action-plan.copy-path (current-target state))]
+    (exit-line-selection state)
+    (when (> count 0)
+      (commands.yank-fenced (action-plan.fenced-snippet path text) path count))))
 
 (fn copy-or-yank [state]
   (if (= state.focus :right)
       (yank-preview state)
       (copy-selected-path state)))
+
+(fn copy-full-or-yank-with-path [state]
+  (if (= state.focus :right)
+      (yank-preview-with-path state)
+      (copy-full-selected-path state)))
 
 (fn toggle-line-selection [state]
   (when (= state.focus :right)
@@ -259,6 +281,7 @@
                  : toggle-help
                  :refresh refresh-and-sync
                  :copy-path copy-or-yank
+                 :copy-full-path copy-full-or-yank-with-path
                  :open-pr commands.open-linked-pr
                  :split-left #(move-split $1 -0.05)
                  :split-right #(move-split $1 0.05)})

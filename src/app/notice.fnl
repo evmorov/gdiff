@@ -5,11 +5,16 @@
   (with-path (if ok? "Copied" "Copy failed") path))
 
 (fn selecting-lines []
-  "Selecting lines (y yank, q exit)")
+  "Selecting lines (y yank, Y yank fenced, q exit)")
 
 (fn yank-finished [ok? count]
   (if ok?
       (.. "Copied " count " line" (if (= count 1) "" "s"))
+      "Copy failed"))
+
+(fn yank-fenced-finished [ok? path count]
+  (if ok?
+      (.. "Copied " path " (" count " line" (if (= count 1) "" "s") ", fenced)")
       "Copy failed"))
 
 (fn open-pr-finished [ok? ?url ?error]
@@ -61,4 +66,5 @@
  : selecting-lines
  : syncing-remote
  : with-path
- : yank-finished}
+ : yank-finished
+ : yank-fenced-finished}

@@ -30,12 +30,29 @@
   (faith.= "src/a.rb" (action-plan.copy-path {:kind :file :path "src/a.rb"}))
   (faith.= nil (action-plan.copy-path nil)))
 
+(fn test-copy-full-path-prefixes-the-repo-root []
+  (faith.= "/repo/src/a.rb"
+           (action-plan.copy-full-path {:kind :file :path "src/a.rb"} "/repo"))
+  (faith.= "/repo/src/"
+           (action-plan.copy-full-path {:kind :folder :path "src"} "/repo"))
+  (faith.= "src/a.rb" (action-plan.copy-full-path {:kind :file
+                                                   :path "src/a.rb"}
+                                                  nil))
+  (faith.= nil (action-plan.copy-full-path nil "/repo")))
+
+(fn test-fenced-snippet-prefixes-the-path-and-fences-the-text []
+  (faith.= "a/b.rb\n\n```\nline1\nline2\n```"
+           (action-plan.fenced-snippet "a/b.rb" "line1\nline2"))
+  (faith.= "```\nline1\n```" (action-plan.fenced-snippet nil "line1")))
+
 (fn test-split-ratio-is-clamped []
   (faith.= 0.45 (action-plan.split-ratio 0.4 0.05))
   (faith.= 0.1 (action-plan.split-ratio 0.1 -0.05))
   (faith.= 0.9 (action-plan.split-ratio 0.9 0.05)))
 
-{: test-copy-path-adds-slash-only-for-folders
+{: test-copy-full-path-prefixes-the-repo-root
+ : test-fenced-snippet-prefixes-the-path-and-fences-the-text
+ : test-copy-path-adds-slash-only-for-folders
  : test-selected-target-prefers-tree-folder
  : test-selected-target-uses-entry-for-files-and-flat-mode
  : test-selected-target-uses-path-for-unchanged-tree-files

@@ -2,36 +2,38 @@
 
 (local gap 3)
 
-(local groups
-       [{:title "Common"
-         :items [["↑ / k" "Move up"]
-                 ["↓ / j" "Move down"]
-                 ["gg" "Jump to top"]
-                 ["G" "Jump to bottom"]
-                 ["tab" "Switch focus: files / preview"]
-                 ["[ / ]" "Resize split"]
-                 ["/" "Search"]
-                 ["n / N" "Next / previous match"]
-                 ["q" "Clear search / exit selection"]
-                 ["r" "Refresh and sync"]
-                 ["p" "Open pull request"]
-                 ["?" "Toggle this help"]
-                 ["Ctrl-C" "Quit"]]}
-        {:title "Files"
-         :items [["enter / o" "Open file or folder"]
-                 ["space" "Toggle reviewed"]
-                 ["a" "Toggle all reviewed"]
-                 ["`" "Toggle file tree"]
-                 ["e" "Expand / collapse folder"]
-                 ["E" "Expand / collapse all nested"]]}
-        {:title "Preview"
-         :items [["← / h" "Scroll preview left"]
-                 ["→ / l" "Scroll preview right"]
-                 ["C-d / C-u" "Page preview down / up"]
-                 ["w" "Toggle wrap"]
-                 ["f" "Toggle full file context"]
-                 ["v" "Select lines in diff (toggle)"]
-                 ["y" "Copy path / yank diff selection"]]}])
+(local groups [{:title "Common"
+                :items [["↑ / k" "Move up"]
+                        ["↓ / j" "Move down"]
+                        ["gg" "Jump to top"]
+                        ["G" "Jump to bottom"]
+                        ["tab" "Switch focus: files / preview"]
+                        ["[ / ]" "Resize split"]
+                        ["/" "Search"]
+                        ["n / N" "Next / previous match"]
+                        ["q" "Clear search / exit selection"]
+                        ["r" "Refresh and sync"]
+                        ["p" "Open pull request"]
+                        ["?" "Toggle this help"]
+                        ["Ctrl-C" "Quit"]]}
+               {:title "Files"
+                :items [["enter / o" "Open file or folder"]
+                        ["y" "Copy relative path"]
+                        ["Y" "Copy full path"]
+                        ["space" "Toggle reviewed"]
+                        ["a" "Toggle all reviewed"]
+                        ["`" "Toggle file tree"]
+                        ["e" "Expand / collapse folder"]
+                        ["E" "Expand / collapse all nested"]]}
+               {:title "Preview"
+                :items [["← / h" "Scroll preview left"]
+                        ["→ / l" "Scroll preview right"]
+                        ["C-d / C-u" "Page preview down / up"]
+                        ["w" "Toggle wrap"]
+                        ["f" "Toggle full file context"]
+                        ["v" "Select lines in diff (toggle)"]
+                        ["y" "Yank line or selection"]
+                        ["Y" "Yank with path, fenced"]]}])
 
 (fn pad [text width]
   (let [missing (- width (tui.visible-length text))]

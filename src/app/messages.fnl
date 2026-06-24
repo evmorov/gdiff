@@ -28,6 +28,9 @@
 (fn yank-finished [count ok?]
   (build :yank-finished {: count : ok?}))
 
+(fn yank-fenced-finished [path count ok?]
+  (build :yank-fenced-finished {: path : count : ok?}))
+
 (fn open-pr-finished [?url ?error ok?]
   (build :open-pr-finished {:url ?url :error ?error : ok?}))
 
@@ -48,4 +51,5 @@
  : refresh-loaded
  : review-persist-failed
  : search-input
- : yank-finished}
+ : yank-finished
+ : yank-fenced-finished}

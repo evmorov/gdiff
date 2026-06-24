@@ -339,6 +339,39 @@
         (faith.= {:type :copy-path-finished :path "script/" :ok? true}
                  (. messages 1))))))
 
+(fn test-shift-y-copies-the-full-path-in-the-left-pane []
+  (let [state (state [(entry "M" "script/a.sh")])]
+    (set state.repo_root "/repo")
+    (set state.tree_selected_row 1)
+    (let [copied []
+          old-copy clipboard.copy]
+      (set clipboard.copy (fn [path]
+                            (table.insert copied path)
+                            true))
+      (let [(_ command) (update.update state {} (update.read-msg state "Y"))]
+        (command #nil (fn [] state))
+        (set clipboard.copy old-copy)
+        (faith.= ["/repo/script/"] copied)))))
+
+(fn test-shift-y-yanks-the-selection-with-path-and-fences []
+  (let [state (diff-state)
+        copied []
+        old-copy clipboard.copy]
+    (set clipboard.copy (fn [text]
+                          (table.insert copied text)
+                          true))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "v"))
+    (update.update state {} (update.read-msg state "j"))
+    (let [(_ command) (update.update state {} (update.read-msg state "Y"))
+          messages []]
+      (command #(table.insert messages $1) (fn [] state))
+      (set clipboard.copy old-copy)
+      (faith.= ["a.rb\n\n```\nalpha\nbeta apple\n```"] copied)
+      (faith.= nil state.preview_selection_anchor)
+      (faith.= {:type :yank-fenced-finished :path "a.rb" :count 2 :ok? true}
+               (. messages 1)))))
+
 (fn test-v-starts-and-exits-line-selection-in-right-pane []
   (let [state (diff-state)]
     (update.update state {} (update.read-msg state "\t"))
@@ -483,6 +516,8 @@
  : test-refresh-resets-preview-cursor-when-files-focused
  : test-refresh-clears-stale-preview-cache
  : test-lowercase-r-refreshes-files-and-starts-sync
+ : test-shift-y-copies-the-full-path-in-the-left-pane
+ : test-shift-y-yanks-the-selection-with-path-and-fences
  : test-v-starts-and-exits-line-selection-in-right-pane
  : test-v-is-ignored-when-files-are-focused
  : test-q-exits-line-selection-before-clearing-search

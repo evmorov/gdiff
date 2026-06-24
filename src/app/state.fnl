@@ -9,6 +9,7 @@
   (let [selected 1
         state {: revision
                :src_dir src-dir
+               :repo_root (git.repo-root)
                :revision_label (git.comparison-revision revision)
                : entries
                :diff_stats ?diff-stats

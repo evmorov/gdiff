@@ -1,14 +1,9 @@
-(fn trim [s]
-  (let [s (or s "")]
-    (or (s:match "^%s*(.-)%s*$") "")))
+(local sys (require :platform.core))
+(local str (require :util.string))
 
-(fn read-command [cmd]
-  (let [f (io.popen cmd "r")]
-    (if f
-        (let [output (f:read "*a")
-              (ok kind code) (f:close)]
-          (values output ok kind code))
-        (values "" false "open" 1))))
+(local read-command sys.read-command)
+
+(local trim str.trim)
 
 (fn parse-size [output]
   (let [output (or output "")

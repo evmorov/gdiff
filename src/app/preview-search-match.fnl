@@ -1,9 +1,8 @@
 (local preview (require :preview.core))
 (local tui (require :tui.core))
+(local str (require :util.string))
 
-(fn contains? [text query]
-  (let [text (or text "")]
-    (not (= nil (text:find query 1 true)))))
+(local contains? str.contains?)
 
 (fn collect-matches [state query]
   (let [matches []

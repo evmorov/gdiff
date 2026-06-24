@@ -13,6 +13,7 @@
             :notice-test
             :platform-test
             :review-test
+            :search-facade-test
             :search-match-test
             :preview-search-match-test
             :search-nav-test
@@ -41,4 +42,6 @@
             :tui-terminal-osc-test
             :tui-terminal-probe-test
             :update-test
-            :util-math-test])
+            :util-math-test
+            :util-string-test
+            :view-purity-test])

@@ -14,8 +14,10 @@
         visible (body-row-count rows)
         selected (selection.selected-context state)
         _ (preview.prepare-entry state selected.entry)
+        _ (left-view.prepare state)
+        _ (preview-view.prepare state visible cols selected)
         left (left-view.body state visible)
-        right (preview-view.body state visible cols selected)
+        right (preview-view.body state visible)
         body (tui.split left right state.split_ratio)
         overlay (when state.show_help? (help-view.modal state))]
     (tui.screen (chrome.header state) body (chrome.footer state count) overlay)))

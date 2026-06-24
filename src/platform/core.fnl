@@ -1,3 +1,7 @@
+(local str (require :util.string))
+
+(local trim str.trim)
+
 (fn shell-quote [s]
   (let [escaped (string.gsub (tostring s) "'" "'\\''")]
     (.. "'" escaped "'")))
@@ -9,10 +13,6 @@
               (ok kind code) (f:close)]
           (values output ok kind code))
         (values "" false "open" 1))))
-
-(fn trim [s]
-  (let [s (or s "")]
-    (or (s:match "^%s*(.-)%s*$") "")))
 
 (fn first-number [s]
   (let [s (or s "")]

@@ -1,3 +1,7 @@
+(local str (require :util.string))
+
+(local trim str.trim)
+
 (fn split-tabs [line]
   (icollect [part (string.gmatch line "([^\t]+)")]
     part))
@@ -46,9 +50,6 @@
     (each [_ untracked (ipairs (parse-untracked untracked-text))]
       (table.insert entries untracked))
     entries))
-
-(fn trim [s]
-  (or (and s (s:match "^%s*(.-)%s*$")) ""))
 
 (fn insert-unique [items value]
   (when (and value (< 0 (length value)))

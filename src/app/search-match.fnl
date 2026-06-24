@@ -1,9 +1,8 @@
 (local entry-view (require :app.entry))
 (local selection (require :app.selection))
+(local str (require :util.string))
 
-(fn contains? [text query]
-  (let [text (or text "")]
-    (not (= nil (text:find query 1 true)))))
+(local contains? str.contains?)
 
 (fn path-match [query entry-index entry]
   (if (contains? (entry-view.path-text entry) query)

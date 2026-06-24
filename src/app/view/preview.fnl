@@ -55,16 +55,19 @@
     (set state.preview_search.matches_source display)
     (preview-search.rebuild state true)))
 
-(fn body [state visible cols ?selected]
+(fn prepare [state visible cols ?selected]
   (let [selected (or ?selected (selection.selected-context state))
         raw (raw-lines state selected.entry selected.row)
-        display (lines-for-width state raw visible cols)
-        _ (sync-search state display)
-        _ (set-scroll state display visible)
-        visible-lines (visible-lines state display visible)
-        _ (update-horizontal-scroll state raw cols)]
+        display (lines-for-width state raw visible cols)]
+    (sync-search state display)
+    (set-scroll state display visible)
+    (update-horizontal-scroll state raw cols)))
+
+(fn body [state visible]
+  (let [display (preview.display-lines state)
+        visible-lines (visible-lines state display visible)]
     (tui.lines (search-highlight state visible-lines)
                (preview.scroll-info state) state.preview_x_scroll
                state.preview_x_max_scroll (cursor-highlight state visible-lines))))
 
-{: body}
+{: body : prepare}

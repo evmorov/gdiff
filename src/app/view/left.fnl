@@ -70,6 +70,10 @@
   (fcollect [i first-row last-row]
     (display-row state (. rows i) i)))
 
+(fn prepare [state]
+  (set state.files_x_scroll 0)
+  (set state.files_x_max_scroll 0))
+
 (fn body [state visible]
   (let [rows (selection.rows state)
         count (length rows)
@@ -77,8 +81,6 @@
         (first-row last-row) (viewport selected count visible)
         visible-rows (visible-rows state rows first-row last-row)
         scroll (scroll-info first-row count visible)]
-    (set state.files_x_scroll 0)
-    (set state.files_x_max_scroll 0)
     (tui.list visible-rows scroll 0 0)))
 
-{: body}
+{: body : prepare}

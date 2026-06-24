@@ -5,6 +5,17 @@
 (local diff-stats-command commands.diff-stats-command)
 (local linked-pr-url-command commands.linked-pr-url-command)
 
+(fn read-trimmed [cmd]
+  (let [(output ok) (sys.read-command cmd)
+        text (sys.trim output)]
+    (if (and ok (> (length text) 0)) text)))
+
+(fn run-result [cmd ok-fn]
+  (let [(output ok) (sys.read-command cmd)]
+    (if ok
+        (ok-fn output)
+        (values nil (sys.trim output)))))
+
 (fn revision-exists? [revision]
   (let [(ok _kind _code) (os.execute (commands.revision-exists-command revision))]
     ok))
@@ -17,20 +28,13 @@
       (values nil "No revision provided, and neither main nor master exists.")))
 
 (fn diff-filter []
-  (let [(output ok _kind _code) (sys.read-command (commands.diff-filter-command))
-        filter (sys.trim output)]
-    (if (and ok (< 0 (length filter)))
-        filter)))
+  (read-trimmed (commands.diff-filter-command)))
 
 (fn preview-context []
   {:diff-filter (diff-filter)})
 
 (fn current-branch []
-  (let [(output ok _kind _code) (sys.read-command (commands.current-branch-command))
-        branch (sys.trim output)]
-    (if (and ok (> (length branch) 0))
-        branch
-        "HEAD")))
+  (or (read-trimmed (commands.current-branch-command)) "HEAD"))
 
 (fn comparison-revision [revision ?current-branch]
   (if (commands.working? revision) revision
@@ -54,14 +58,13 @@
   (let [branch (comparison-right revision)]
     (if (= branch "HEAD")
         (values nil "No branch to check for a linked PR")
-        (let [(output ok _kind _code) (sys.read-command (linked-pr-url-command branch))
-              url (sys.trim output)]
-          (if (and ok (> (length url) 0))
+        (let [url (read-trimmed (linked-pr-url-command branch))]
+          (if url
               (values url nil)
               (values nil (.. "No linked PR for " branch)))))))
 
 (fn read-output [cmd]
-  (let [(output ok _kind _code) (sys.read-command cmd)]
+  (let [(output ok) (sys.read-command cmd)]
     (if ok output "")))
 
 (fn working-entries [name-status]
@@ -70,42 +73,36 @@
                        (read-output (commands.untracked-command))))
 
 (fn diff-entries [revision]
-  (let [(output ok _kind _code) (sys.read-command (commands.diff-command revision))]
-    (if ok
-        (if (commands.working? revision)
-            (values (working-entries output) nil)
-            (values (parse.parse-name-status output) nil))
-        (values nil (sys.trim output)))))
+  (run-result (commands.diff-command revision)
+              (fn [output]
+                (if (commands.working? revision)
+                    (values (working-entries output) nil)
+                    (values (parse.parse-name-status output) nil)))))
 
 (fn diff-stats [revision]
-  (let [(output ok _kind _code) (sys.read-command (commands.diff-stats-command revision))]
-    (if ok
-        (values (parse.parse-numstat output) nil)
-        (values nil (sys.trim output)))))
+  (run-result (commands.diff-stats-command revision)
+              #(values (parse.parse-numstat $) nil)))
 
 (fn preview-output [context revision entry ?full-context?]
   (let [filter context.diff-filter]
     (if filter
-        (let [(output ok _kind _code) (sys.read-command (commands.filtered-preview-command revision
-                                                                                           entry
-                                                                                           filter
-                                                                                           ?full-context?))]
+        (let [(output ok) (sys.read-command (commands.filtered-preview-command revision
+                                                                               entry
+                                                                               filter
+                                                                               ?full-context?))]
           (if ok
               (values output true true)
-              (let [(output ok _kind _code) (sys.read-command (commands.plain-preview-command revision
-                                                                                              entry
-                                                                                              ?full-context?))]
+              (let [(output ok) (sys.read-command (commands.plain-preview-command revision
+                                                                                  entry
+                                                                                  ?full-context?))]
                 (values output ok false))))
-        (let [(output ok _kind _code) (sys.read-command (commands.plain-preview-command revision
-                                                                                        entry
-                                                                                        ?full-context?))]
+        (let [(output ok) (sys.read-command (commands.plain-preview-command revision
+                                                                            entry
+                                                                            ?full-context?))]
           (values output ok false)))))
 
 (fn repo-root []
-  (let [(output ok _kind _code) (sys.read-command (commands.repo-root-command))]
-    (if ok
-        (sys.trim output)
-        (or (os.getenv "PWD") "."))))
+  (or (read-trimmed (commands.repo-root-command)) (os.getenv "PWD") "."))
 
 {: comparison-revision
  : comparison-right

@@ -10,9 +10,9 @@
   (let [f (io.popen cmd "r")]
     (if f
         (let [output (f:read "*a")
-              (ok kind code) (f:close)]
-          (values output ok kind code))
-        (values "" false "open" 1))))
+              ok (f:close)]
+          (values output ok))
+        (values "" false))))
 
 (fn first-number [s]
   (let [s (or s "")]

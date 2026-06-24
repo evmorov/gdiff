@@ -25,13 +25,9 @@
       (empty-store)))
 
 (fn load-store []
-  (let [path (state-path)
-        source (sys.read-file path)]
-    (if source
-        (let [(ok result) (fennel-command.eval-source source path)]
-          (if ok
-              (normalize-store result)
-              (empty-store)))
+  (let [(ok result) (fennel-command.load-file (state-path))]
+    (if ok
+        (normalize-store result)
         (empty-store))))
 
 (fn save-store [store]

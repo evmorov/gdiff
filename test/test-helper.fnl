@@ -2,7 +2,7 @@
 (local sys (require :platform.core))
 
 (fn output [cmd]
-  (let [(out ok _kind _code) (sys.read-command cmd)]
+  (let [(out ok) (sys.read-command cmd)]
     (faith.is ok (.. "command failed: " cmd))
     out))
 

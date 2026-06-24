@@ -6,11 +6,9 @@
 (local sys (require :platform.core))
 
 (fn read-manifest [path]
-  (let [source (sys.read-file path)]
-    (when source
-      (let [(ok result) (fennel-command.eval-source source path)]
-        (when ok
-          result)))))
+  (let [(ok result) (fennel-command.load-file path)]
+    (when ok
+      result)))
 
 (fn write-output [dir index lines]
   (let [path (plan.output-path dir index)

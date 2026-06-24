@@ -1,5 +1,4 @@
 (local fennel-command (require :platform.fennel))
-(local sys (require :platform.core))
 
 (fn path []
   (let [xdg (os.getenv "XDG_CONFIG_HOME")
@@ -10,13 +9,10 @@
 
 (fn load []
   (let [path (path)
-        source (sys.read-file path)]
-    (if source
-        (let [(ok result) (fennel-command.eval-source source path)]
-          (if ok
-              (or result {})
-              (error (.. "Could not load " path ": " result))))
-        {})))
+        (ok result) (fennel-command.load-file path)]
+    (if (= ok nil) {}
+        ok (or result {})
+        (error (.. "Could not load " path ": " result)))))
 
 (fn editor-command [config]
   (or config.editor (os.getenv "GDIFF_EDITOR") (os.getenv "VISUAL")

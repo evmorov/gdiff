@@ -74,11 +74,9 @@
           (cleanup state))))))
 
 (fn read-lines [path]
-  (let [source (sys.read-file path)]
-    (when source
-      (let [(ok result) (fennel-command.eval-source source path)]
-        (when ok
-          result)))))
+  (let [(ok result) (fennel-command.load-file path)]
+    (when ok
+      result)))
 
 (fn remaining [state]
   (or state.remaining 0))

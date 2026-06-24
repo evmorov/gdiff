@@ -245,7 +245,7 @@
   state.folder_preview_cache)
 
 (fn load-record [path]
-  (let [(output ok _kind _code) (sys.read-command (command path))]
+  (let [(output ok) (sys.read-command (command path))]
     {:ok? ok : output}))
 
 (fn record-for [state path]

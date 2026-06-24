@@ -1,11 +1,13 @@
 (local symbols (require :tui.symbols))
 (local surface (require :tui.surface))
 (local theme (require :tui.theme))
+(local scroll-util (require :util.scroll))
 
 (local thumb symbols.line.scroll-thumb)
 
 (fn visible? [scroll height]
-  (if (and scroll (> height 0) (> (or scroll.total 0) (or scroll.visible 0)))
+  (if (and scroll (> height 0)
+           (scroll-util.scrolls? scroll.total scroll.visible))
       true))
 
 (fn thumb-size [scroll height]

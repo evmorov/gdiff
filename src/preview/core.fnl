@@ -9,6 +9,7 @@
 (local sys (require :platform.core))
 (local tui (require :tui.core))
 (local math-util (require :util.math))
+(local scroll-util (require :util.scroll))
 
 (import-macros {: set-fields} :state.macros)
 
@@ -93,7 +94,7 @@
   (math.max 1 (math.floor (/ (row-count state) 2))))
 
 (fn max-scroll [state _entry]
-  (math.max 0 (- (or state.preview_total 0) (row-count state))))
+  (scroll-util.max-offset (or state.preview_total 0) (row-count state)))
 
 (fn set-scroll [state entry scroll]
   (let [before (or state.preview_scroll 0)
@@ -228,9 +229,8 @@
         width)))
 
 (fn set-horizontal-scroll-limit [state lines width]
-  (let [max-scroll (math.max 0
-                             (- (cached-max-line-width state lines)
-                                (math.max 0 width)))]
+  (let [max-scroll (scroll-util.max-offset (cached-max-line-width state lines)
+                                           (math.max 0 width))]
     (set-fields state [:preview_x_max_scroll max-scroll]
                 [:preview_x_scroll
                  (math-util.clamp (or state.preview_x_scroll 0) 0 max-scroll)])))
@@ -250,10 +250,8 @@
     (visible-display-lines state lines visible)))
 
 (fn scroll-info [state]
-  (let [visible (or state.preview_rows 0)
-        total (or state.preview_total 0)]
-    (when (> total visible)
-      {:offset (or state.preview_scroll 0) : visible : total})))
+  (scroll-util.info (or state.preview_scroll 0) (or state.preview_total 0)
+                    (or state.preview_rows 0)))
 
 {: lines
  : apply-display-lines

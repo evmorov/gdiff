@@ -43,5 +43,6 @@
             :tui-terminal-probe-test
             :update-test
             :util-math-test
+            :util-scroll-test
             :util-string-test
             :view-purity-test])

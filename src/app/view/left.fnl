@@ -3,6 +3,7 @@
 (local selection (require :app.selection))
 (local tui (require :tui.core))
 (local math-util (require :util.math))
+(local scroll-util (require :util.scroll))
 
 (fn viewport [selected count visible]
   (let [top (math-util.clamp (- selected (math.floor (/ visible 2))) 1
@@ -11,8 +12,7 @@
     (values top bottom)))
 
 (fn scroll-info [top count visible]
-  (when (> count visible)
-    {:offset (- top 1) : visible :total count}))
+  (scroll-util.info (- top 1) count visible))
 
 (fn status-color [entry]
   (case entry.kind

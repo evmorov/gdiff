@@ -1,10 +1,11 @@
 (local ansi (require :tui.ansi))
 (local scrollbar (require :tui.components.scrollbar))
 (local symbols (require :tui.symbols))
+(local scroll-util (require :util.scroll))
 
 (fn scroll [x-scroll x-max-scroll visible]
-  (when (and (< 0 (or x-max-scroll 0)) (< 0 visible))
-    {:offset (or x-scroll 0) : visible :total (+ visible x-max-scroll)}))
+  (when (< 0 visible)
+    (scroll-util.info (or x-scroll 0) (+ visible (or x-max-scroll 0)) visible)))
 
 (fn thumb [line start-col width x-scroll x-max-scroll]
   (let [scroll (scroll x-scroll x-max-scroll width)]

@@ -38,15 +38,14 @@
               ?span (when p.new
                       (. (word-diff.spans old (. added p.new)) :old))
               emph (word-diff.emphasize state.theme old ?span :emphasis-deleted)]
-          (table.insert out
-                        (tui.color state.theme :status-deleted (.. " " emph))))))
+          (table.insert out (tui.color state.theme :status-deleted emph)))))
     (each [_ p (ipairs pairs)]
       (when p.new
         (let [new (. added p.new)
               ?span (when p.old
                       (. (word-diff.spans (. removed p.old) new) :new))
               emph (word-diff.emphasize state.theme new ?span :emphasis-added)]
-          (table.insert out (tui.color state.theme :status-added (.. " " emph))))))
+          (table.insert out (tui.color state.theme :status-added emph)))))
     out))
 
 (fn flush [state acc]
@@ -86,7 +85,7 @@
         nil
         (do
           (flush state acc)
-          (table.insert acc.out (color-line state line))))))
+          (table.insert acc.out (line:sub 2))))))
 
 (fn diff-lines [state output]
   (let [acc {:out [] :removed [] :added [] :in-hunk? false}]

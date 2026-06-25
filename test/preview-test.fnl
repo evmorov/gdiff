@@ -219,6 +219,13 @@
     (faith.= ["  "] (emphasized-parts (. matches 1)))
     (faith.= [] (emphasized-parts (. matches 2)))))
 
+(fn test-preview-format-has-no-leading-gutter []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1,2 +1,2 @@\n ctx line\n-old line\n+new line")]
+    (faith.= "ctx line" (tui.strip-ansi (line-with lines "ctx line")))
+    (faith.= "old line" (tui.strip-ansi (line-with lines "old line")))
+    (faith.= "new line" (tui.strip-ansi (line-with lines "new line")))))
+
 (fn test-preview-format-keeps-shared-words-as-anchors []
   (let [lines (preview-format.diff-lines (state)
                                          "@@ -1 +1 @@\n-aaa bbb ccc ddd\n+aaa xxx ccc yyy")]
@@ -397,6 +404,7 @@
  : test-preview-format-keeps-prefix-only-changes-plain
  : test-preview-format-pairs-by-similarity-not-position
  : test-preview-format-emphasizes-only-the-extra-leading-space
+ : test-preview-format-has-no-leading-gutter
  : test-preview-format-keeps-shared-words-as-anchors
  : test-refresh-loaded-clears-folder-preview-cache
  : test-refresh-loaded-clears-stale-cache-and-caches-selected-preview

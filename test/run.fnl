@@ -48,4 +48,5 @@
             :util-math-test
             :util-scroll-test
             :util-string-test
-            :view-purity-test])
+            :view-purity-test
+            :view-split-ratio-test])

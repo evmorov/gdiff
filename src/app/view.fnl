@@ -7,8 +7,22 @@
 (local selection (require :app.selection))
 (local tui (require :tui.core))
 
+(local left-gap 2)
+(local min-split-ratio 0.1)
+(local max-split-ratio 0.4)
+
 (fn body-row-count [rows]
   (math.max 1 (- rows 4)))
+
+(fn auto-split-ratio [state cols]
+  (let [desired (+ (left-view.content-width state) left-gap)
+        ratio (/ desired (math.max 1 (- cols 1)))]
+    (math.max min-split-ratio (math.min max-split-ratio ratio))))
+
+(fn ensure-split-ratio [state cols]
+  (when (and state.split_ratio_auto? cols (> cols 0))
+    (set state.split_ratio (auto-split-ratio state cols))
+    (set state.split_ratio_auto? false)))
 
 (fn split? [state entry]
   (and state.split_mode? (preview.splittable? state entry)))
@@ -24,6 +38,7 @@
         (preview-view.body state visible))))
 
 (fn view [state rows cols]
+  (ensure-split-ratio state cols)
   (let [count (length state.entries)
         visible (body-row-count rows)
         selected (selection.selected-context state)

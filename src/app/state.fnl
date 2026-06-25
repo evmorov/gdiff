@@ -30,10 +30,11 @@
                :preview_selection_anchor nil
                :preview_wrap? true
                :full_context? false
-               :split_mode? false
+               :split_mode? true
                :split_side :old
                :split_cache {}
                :split_ratio 0.4
+               :split_ratio_auto? true
                :view_mode :tree
                :tree_selected_row nil
                :expanded_folders {}

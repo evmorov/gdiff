@@ -478,11 +478,11 @@
 
 (fn test-s-toggles-split-mode []
   (let [state (state [(entry "M" "a.rb")])]
-    (faith.= false state.split_mode?)
-    (update.update state {} (update.read-msg state "s"))
     (faith.= true state.split_mode?)
     (update.update state {} (update.read-msg state "s"))
-    (faith.= false state.split_mode?)))
+    (faith.= false state.split_mode?)
+    (update.update state {} (update.read-msg state "s"))
+    (faith.= true state.split_mode?)))
 
 (fn test-tab-cycles-left-old-new-left-in-split []
   (let [state (split-state)]

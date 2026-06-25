@@ -60,11 +60,18 @@
           (.. " " (tui.color state.theme :faint "(expanded)"))
           "")))
 
+(fn row-text [state descriptor selected?]
+  (if (= descriptor.type :folder)
+      (folder-row-text state descriptor selected?)
+      (file-row-text state descriptor selected?)))
+
+(fn content-width [state]
+  (accumulate [width 0 _ descriptor (ipairs (selection.rows state))]
+    (math.max width (tui.visible-length (row-text state descriptor false)))))
+
 (fn display-row [state descriptor row-index]
   (let [selected? (selection.selected-row? state descriptor row-index)]
-    (if (= descriptor.type :folder)
-        (tui.row (folder-row-text state descriptor selected?) selected?)
-        (tui.row (file-row-text state descriptor selected?) selected?))))
+    (tui.row (row-text state descriptor selected?) selected?)))
 
 (fn visible-rows [state rows first-row last-row]
   (fcollect [i first-row last-row]
@@ -83,4 +90,4 @@
         scroll (scroll-info first-row count visible)]
     (tui.list visible-rows scroll 0 0)))
 
-{: body : prepare}
+{: body : content-width : prepare}

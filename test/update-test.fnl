@@ -515,6 +515,30 @@
     (set clipboard.copy old-copy)
     (faith.= ["old1\nold2" "new2"] copied)))
 
+(fn test-yank-collapses-wrapped-split-rows []
+  (let [state (split-state)
+        copied []
+        old-copy clipboard.copy]
+    (set state.split_logical_rows (split-rows))
+    (set state.split_source_map [1 1 2])
+    (set state.split_rows
+         [{:kind :change :old "old" :new "ne"}
+          {:kind :change :old nil :new "w1"}
+          {:kind :change :old "old2" :new "new2"}])
+    (set state.preview_total 3)
+    (set state.preview_rows 3)
+    (set clipboard.copy (fn [text]
+                          (table.insert copied text)
+                          true))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "v"))
+    (update.update state {} (update.read-msg state "j"))
+    (update.update state {} (update.read-msg state "j"))
+    (let [(_ command) (update.update state {} (update.read-msg state "y"))]
+      (command #nil (fn [] state)))
+    (set clipboard.copy old-copy)
+    (faith.= ["old1\nold2"] copied)))
+
 (fn test-split-search-is-scoped-to-the-focused-side []
   (let [state (split-state)]
     (update.update state {} (update.read-msg state "\t"))
@@ -598,6 +622,7 @@
  : test-s-toggles-split-mode
  : test-tab-cycles-left-old-new-left-in-split
  : test-yank-copies-the-focused-split-column
+ : test-yank-collapses-wrapped-split-rows
  : test-split-search-is-scoped-to-the-focused-side
  : test-yank-finished-updates-notice
  : test-open-pr-finished-updates-notice

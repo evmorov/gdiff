@@ -24,6 +24,7 @@
             :selection-plan-test
             :preview-test
             :preview-split-test
+            :preview-split-view-test
             :preview-folder-test
             :preview-warm-test
             :preview-warm-plan-test

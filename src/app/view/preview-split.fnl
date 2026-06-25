@@ -8,16 +8,21 @@
 (local symbols (require :tui.symbols))
 (local theme (require :tui.theme))
 (local tui (require :tui.core))
+(local wrap (require :tui.wrap))
 
 (fn scrolling? [state]
   (> (or state.preview_total 0) (or state.preview_rows 0)))
 
+(fn split-halves [content]
+  (let [available (math.max 0 (- content 1))
+        old-w (math.floor (/ available 2))]
+    (values old-w (- available old-w))))
+
 (fn half-widths [state cols]
   (let [content (viewport.content-width state.split_ratio cols
                                         (scrolling? state))
-        available (math.max 0 (- content 1))
-        old-w (math.floor (/ available 2))]
-    (values content old-w (- available old-w))))
+        (old-w new-w) (split-halves content)]
+    (values content old-w new-w)))
 
 (fn max-raw-width [rows]
   (accumulate [w 0 _ row (ipairs rows)]
@@ -86,22 +91,71 @@
     (set state.preview_search.matches_source rows)
     (preview-search.rebuild state true)))
 
-(fn prepare [state visible cols ?selected]
-  (let [rows (entry-rows state ?selected)
-        (_content old-w _new-w) (do
-                                  (preview.apply-display-lines state rows
-                                                               visible)
-                                  (half-widths state cols))]
-    (set state.split_rows rows)
-    (sync-search state rows)
+(fn visual-rows-for [row old-w new-w content]
+  (if (full-row? row)
+      (icollect [_ frag (ipairs (wrap.line (or row.old "") content))]
+        {:kind row.kind :old frag :new frag})
+      (let [olds (and row.old (wrap.line row.old old-w))
+            news (and row.new (wrap.line row.new new-w))
+            n (math.max 1 (length (or olds [])) (length (or news [])))]
+        (fcollect [i 1 n]
+          {:kind row.kind
+           :old (and olds (. olds i))
+           :new (and news (. news i))}))))
+
+(fn wrap-rows [rows old-w new-w content]
+  (let [display []
+        source-map []]
+    (each [index row (ipairs (or rows []))]
+      (each [_ vrow (ipairs (visual-rows-for row old-w new-w content))]
+        (table.insert display vrow)
+        (table.insert source-map index)))
+    (values display source-map)))
+
+(fn store-widths [state content old-w new-w]
+  (set state.split_widths {: content :old old-w :new new-w}))
+
+(fn prepare-truncated [state rows visible cols]
+  (preview.apply-display-lines state rows visible)
+  (set state.split_rows rows)
+  (set state.split_source_map nil)
+  (let [(content old-w new-w) (half-widths state cols)]
+    (store-widths state content old-w new-w)
     (set state.preview_x_max_scroll
          (scroll-util.max-offset (max-raw-width rows) old-w))
     (set state.preview_x_scroll
          (math.min (or state.preview_x_scroll 0) state.preview_x_max_scroll))))
 
-(fn body [state visible cols]
+(fn prepare-wrapped [state rows visible cols]
+  (let [wide (viewport.content-width state.split_ratio cols false)
+        (old-wide new-wide) (split-halves wide)
+        (display-wide _) (wrap-rows rows old-wide new-wide wide)
+        scroll? (scroll-util.scrolls? (length display-wide)
+                                      (math.max 1 (or visible 1)))
+        content (viewport.content-width state.split_ratio cols scroll?)
+        (old-w new-w) (split-halves content)
+        (display source-map) (wrap-rows rows old-w new-w content)]
+    (preview.apply-display-lines state display visible)
+    (set state.split_rows display)
+    (set state.split_source_map source-map)
+    (store-widths state content old-w new-w)
+    (set state.preview_x_scroll 0)
+    (set state.preview_x_max_scroll 0)))
+
+(fn prepare [state visible cols ?selected]
+  (let [rows (entry-rows state ?selected)]
+    (set state.split_logical_rows rows)
+    (if state.preview_wrap?
+        (prepare-wrapped state rows visible cols)
+        (prepare-truncated state rows visible cols))
+    (sync-search state state.split_rows)))
+
+(fn body [state visible _cols]
   (let [rows (or state.split_rows [])
-        (content old-w new-w) (half-widths state cols)
+        widths (or state.split_widths {})
+        content (or widths.content 0)
+        old-w (or widths.old 0)
+        new-w (or widths.new 0)
         x-scroll (or state.preview_x_scroll 0)
         offset (or state.preview_scroll 0)
         visible-rows (preview.visible-display-lines state rows visible)
@@ -110,4 +164,4 @@
                              x-scroll))]
     (tui.lines lines (preview.scroll-info state) 0 0 nil)))
 
-{: body : prepare}
+{: body : prepare : wrap-rows : split-halves}

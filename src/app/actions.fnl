@@ -90,18 +90,25 @@
     (line-selection.stop state)
     (set state.notice nil)))
 
-(fn split-side-lines [rows lo hi side]
-  (let [out []]
-    (for [i (math.max 1 lo) (math.min (length rows) hi)]
-      (let [row (. rows i)
+(fn split-side-lines [logical-rows source-map display-len lo hi side]
+  (let [seen {}
+        out []]
+    (for [i (math.max 1 lo) (math.min display-len hi)]
+      (let [src (if source-map (. source-map i) i)
+            row (and src (. logical-rows src))
             value (and row (. row side))]
-        (when value (table.insert out value))))
+        (when (and value (not (. seen src)))
+          (tset seen src true)
+          (table.insert out value))))
     out))
 
 (fn split-selection [state]
   (let [(lo hi) (line-selection.range state.preview_selection_anchor
                                       (or state.preview_cursor 1))
-        lines (split-side-lines (or state.split_rows []) lo hi state.split_side)]
+        display (or state.split_rows [])
+        logical (or state.split_logical_rows display)
+        lines (split-side-lines logical state.split_source_map (length display)
+                                lo hi state.split_side)]
     (values (table.concat lines "\n") (length lines))))
 
 (fn preview-selection [state]
@@ -187,10 +194,12 @@
   (if (not= state.focus :right)
       (do
         (focus-right state :old)
-        (resync-split-search state)) (= state.split_side :old)
+        (resync-split-search state))
+      (= state.split_side :old)
       (do
         (set state.split_side :new)
-        (resync-split-search state)) (focus-left state)))
+        (resync-split-search state))
+      (focus-left state)))
 
 (fn toggle-focus [state]
   (if (split-active? state) (cycle-split-focus state)

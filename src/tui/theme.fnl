@@ -13,7 +13,10 @@
                     :faint "\27[38;5;242m"
                     :warning "\27[31m"
                     :search-match "\27[1;4m"
-                    :search-match-end "\27[22;24m"})
+                    :search-match-end "\27[22;24m"
+                    :emphasis-deleted "\27[48;5;224m"
+                    :emphasis-added "\27[48;5;194m"
+                    :emphasis-end "\27[49m"})
 
 (fn styles [?background-rgb]
   (let [search-background (colors.background-style ?background-rgb 0.28)]

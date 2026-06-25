@@ -25,6 +25,7 @@
             :preview-test
             :preview-split-test
             :preview-split-view-test
+            :preview-word-diff-test
             :preview-folder-test
             :preview-warm-test
             :preview-warm-plan-test

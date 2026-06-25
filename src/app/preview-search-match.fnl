@@ -9,7 +9,7 @@
         side (or state.split_side :old)]
     (each [index row (ipairs (or state.split_rows []))]
       (let [value (. row side)]
-        (when (and value (contains? value query))
+        (when (and value (contains? (tui.strip-ansi value) query))
           (table.insert matches {:line index}))))
     matches))
 

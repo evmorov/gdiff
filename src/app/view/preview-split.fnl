@@ -8,7 +8,9 @@
 (local symbols (require :tui.symbols))
 (local theme (require :tui.theme))
 (local tui (require :tui.core))
+(local ansi (require :tui.ansi))
 (local wrap (require :tui.wrap))
+(local word-diff (require :preview.word-diff))
 
 (fn scrolling? [state]
   (> (or state.preview_total 0) (or state.preview_rows 0)))
@@ -123,9 +125,29 @@
 (fn store-widths [state content old-w new-w]
   (set state.split_widths {: content :old old-w :new new-w}))
 
+(fn emphasize [theme-table raw ?span style-key]
+  (if (and ?span (ansi.color?) (< ?span.from ?span.to))
+      (.. (raw:sub 1 (- ?span.from 1)) (theme.style-for theme-table style-key)
+          (raw:sub ?span.from (- ?span.to 1))
+          (theme.style-for theme-table :emphasis-end) (raw:sub ?span.to))
+      raw))
+
+(fn display-row [theme-table row]
+  (if (and (= row.kind :change) row.old row.new)
+      (let [spans (word-diff.spans row.old row.new)]
+        {:kind :change
+         :old (emphasize theme-table row.old spans.old :emphasis-deleted)
+         :new (emphasize theme-table row.new spans.new :emphasis-added)})
+      row))
+
+(fn emphasize-rows [theme-table rows]
+  (icollect [_ row (ipairs (or rows []))]
+    (display-row theme-table row)))
+
 (fn prepare-truncated [state rows visible cols]
-  (preview.apply-display-lines state rows visible)
-  (set state.split_rows rows)
+  (let [display (emphasize-rows state.theme rows)]
+    (preview.apply-display-lines state display visible)
+    (set state.split_rows display))
   (set state.split_source_map nil)
   (let [(content old-w new-w) (half-widths state cols)]
     (store-widths state content old-w new-w)
@@ -135,14 +157,15 @@
          (math.min (or state.preview_x_scroll 0) state.preview_x_max_scroll))))
 
 (fn prepare-wrapped [state rows visible cols]
-  (let [wide (viewport.content-width state.split_ratio cols false)
+  (let [emphasized (emphasize-rows state.theme rows)
+        wide (viewport.content-width state.split_ratio cols false)
         (old-wide new-wide) (split-halves wide)
-        (display-wide _) (wrap-rows rows old-wide new-wide wide)
+        (display-wide _) (wrap-rows emphasized old-wide new-wide wide)
         scroll? (scroll-util.scrolls? (length display-wide)
                                       (math.max 1 (or visible 1)))
         content (viewport.content-width state.split_ratio cols scroll?)
         (old-w new-w) (split-halves content)
-        (display source-map) (wrap-rows rows old-w new-w content)]
+        (display source-map) (wrap-rows emphasized old-w new-w content)]
     (preview.apply-display-lines state display visible)
     (set state.split_rows display)
     (set state.split_source_map source-map)

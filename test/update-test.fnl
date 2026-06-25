@@ -460,6 +460,61 @@
       (faith.= ["alphabeta"] copied)
       (faith.= {:type :yank-finished :count 1 :ok? true} (. messages 1)))))
 
+(fn split-rows []
+  [{:kind :change :old "old1" :new "new1"}
+   {:kind :change :old "old2" :new "new2"}])
+
+(fn split-state []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        rows (split-rows)]
+    (set state.split_mode? true)
+    (tset state.split_cache (.. (preview-key.for-entry "HEAD" selected)
+                                "\0split") rows)
+    (set state.split_rows rows)
+    (set state.preview_total 2)
+    (set state.preview_rows 2)
+    state))
+
+(fn test-s-toggles-split-mode []
+  (let [state (state [(entry "M" "a.rb")])]
+    (faith.= false state.split_mode?)
+    (update.update state {} (update.read-msg state "s"))
+    (faith.= true state.split_mode?)
+    (update.update state {} (update.read-msg state "s"))
+    (faith.= false state.split_mode?)))
+
+(fn test-tab-cycles-left-old-new-left-in-split []
+  (let [state (split-state)]
+    (faith.= :left state.focus)
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= :right state.focus)
+    (faith.= :old state.split_side)
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= :right state.focus)
+    (faith.= :new state.split_side)
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= :left state.focus)))
+
+(fn test-yank-copies-the-focused-split-column []
+  (let [state (split-state)
+        copied []
+        old-copy clipboard.copy]
+    (set clipboard.copy (fn [text]
+                          (table.insert copied text)
+                          true))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "v"))
+    (update.update state {} (update.read-msg state "j"))
+    (let [(_ command) (update.update state {} (update.read-msg state "y"))]
+      (command #nil (fn [] state)))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "v"))
+    (let [(_ command) (update.update state {} (update.read-msg state "y"))]
+      (command #nil (fn [] state)))
+    (set clipboard.copy old-copy)
+    (faith.= ["old1\nold2" "new2"] copied)))
+
 (fn test-yank-finished-updates-notice []
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {} {:type :yank-finished :count 1 :ok? true})
@@ -525,6 +580,9 @@
  : test-y-yanks-the-selected-diff-lines
  : test-y-yanks-the-cursor-line-without-a-selection
  : test-y-yanks-one-line-for-a-wrapped-selection
+ : test-s-toggles-split-mode
+ : test-tab-cycles-left-old-new-left-in-split
+ : test-yank-copies-the-focused-split-column
  : test-yank-finished-updates-notice
  : test-open-pr-finished-updates-notice
  : test-open-target-finished-updates-notice

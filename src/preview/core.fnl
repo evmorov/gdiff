@@ -4,6 +4,7 @@
 (local format (require :preview.format))
 (local folder-preview (require :preview.folder))
 (local preview-key (require :preview.key))
+(local split (require :preview.split))
 (local preview-warm (require :preview.warm))
 (local viewport (require :preview.viewport))
 (local sys (require :platform.core))
@@ -53,6 +54,24 @@
                             (format.warning state (sys.trim output)))]
               (tset state.preview_cache key lines)
               lines)))))
+
+(fn split-rows [state entry]
+  (if (or (not entry) entry.untracked? (assets.asset? entry))
+      []
+      (let [key (.. (preview-key.for-entry state.revision entry
+                                           state.full_context?)
+                    "\0split")
+            cached (. state.split_cache key)]
+        (if cached
+            cached
+            (let [(output ok) (git.plain-diff-output state.revision entry
+                                                     state.full_context?)
+                  rows (if ok (split.parse-rows output) [])]
+              (tset state.split_cache key rows)
+              rows)))))
+
+(fn splittable? [state entry]
+  (split.splittable? (split-rows state entry)))
 
 (fn warming? [state]
   (and state.preview_warm state.preview_warm.dir))
@@ -254,6 +273,8 @@
                     (or state.preview_rows 0)))
 
 {: lines
+ : split-rows
+ : splittable?
  : apply-display-lines
  : cursor-top
  : cursor-bottom

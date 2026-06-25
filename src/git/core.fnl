@@ -101,6 +101,10 @@
                                                                             ?full-context?))]
           (values output ok false)))))
 
+(fn plain-diff-output [revision entry ?full-context?]
+  (sys.read-command (commands.plain-preview-command revision entry
+                                                    ?full-context?)))
+
 (fn repo-root []
   (or (read-trimmed (commands.repo-root-command)) (os.getenv "PWD") "."))
 
@@ -117,4 +121,5 @@
  :working-revision commands.working-revision
  :working? commands.working?
  : preview-output
+ : plain-diff-output
  : repo-root}

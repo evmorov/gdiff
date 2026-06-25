@@ -13,6 +13,10 @@
 
 (import-macros {: set-fields} :state.macros)
 
+(fn split-active? [state]
+  (and state.split_mode?
+       (preview.splittable? state (selection.selected-entry state))))
+
 (fn toggle-folder-reviewed [state row]
   (let [entries (or row.entries [])
         review? (review.toggle-all! entries)]
@@ -46,6 +50,7 @@
     (selection.invalidate-rows state)
     (set state.diff_stats diff-stats)
     (set state.preview_cache {})
+    (set state.split_cache {})
     (set state.folder_preview_cache {})
     (line-selection.stop state)
     (preview.reset-scroll state)
@@ -84,15 +89,31 @@
     (line-selection.stop state)
     (set state.notice nil)))
 
+(fn split-side-lines [rows lo hi side]
+  (let [out []]
+    (for [i (math.max 1 lo) (math.min (length rows) hi)]
+      (let [row (. rows i)
+            value (and row (. row side))]
+        (when value (table.insert out value))))
+    out))
+
+(fn split-selection [state]
+  (let [(lo hi) (line-selection.range state.preview_selection_anchor
+                                      (or state.preview_cursor 1))
+        lines (split-side-lines (or state.split_rows []) lo hi state.split_side)]
+    (values (table.concat lines "\n") (length lines))))
+
 (fn preview-selection [state]
-  (let [display (preview.display-lines state)
-        source (preview.display-source state)
-        source-map (preview.display-source-map state)
-        anchor state.preview_selection_anchor
-        cursor (or state.preview_cursor 1)]
-    (values (line-selection.selected-text display anchor cursor source
-                                          source-map)
-            (line-selection.line-count display anchor cursor source-map))))
+  (if (split-active? state)
+      (split-selection state)
+      (let [display (preview.display-lines state)
+            source (preview.display-source state)
+            source-map (preview.display-source-map state)
+            anchor state.preview_selection_anchor
+            cursor (or state.preview_cursor 1)]
+        (values (line-selection.selected-text display anchor cursor source
+                                              source-map)
+                (line-selection.line-count display anchor cursor source-map)))))
 
 (fn yank-preview [state]
   (let [(text count) (preview-selection state)]
@@ -148,15 +169,32 @@
       (move-preview-cursor state preview-fn)
       (select-fn state)))
 
+(fn focus-right [state side]
+  (set state.focus :right)
+  (set state.split_side side)
+  (preview.focus-cursor state))
+
+(fn focus-left [state]
+  (exit-line-selection state)
+  (set state.focus :left))
+
+(fn cycle-split-focus [state]
+  (if (not= state.focus :right) (focus-right state :old)
+      (= state.split_side :old) (set state.split_side :new)
+      (focus-left state)))
+
 (fn toggle-focus [state]
-  (if (= state.focus :right)
-      (do
-        (exit-line-selection state)
-        (set state.focus :left))
-      (do
-        (set state.focus :right)
-        (preview.focus-cursor state)))
+  (if (split-active? state) (cycle-split-focus state)
+      (= state.focus :right) (focus-left state)
+      (focus-right state state.split_side))
   (pane-search.refresh-status state))
+
+(fn toggle-split [state]
+  (set state.split_mode? (not state.split_mode?))
+  (exit-line-selection state)
+  (preview.reset-scroll state)
+  (when (and state.split_mode? (= state.focus :right))
+    (set state.split_side :old)))
 
 (fn scroll-horizontal [state delta]
   (let [changed? (preview.scroll-horizontal state delta)]
@@ -274,6 +312,7 @@
                  :top #(jump $1 preview.cursor-top selection.top)
                  :bottom #(jump $1 preview.cursor-bottom selection.bottom)
                  : toggle-wrap
+                 : toggle-split
                  : toggle-full-context
                  : toggle-tree
                  : toggle-expand

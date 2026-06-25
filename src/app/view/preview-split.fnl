@@ -30,7 +30,8 @@
               (tui.visible-length (or row.new "")))))
 
 (fn full-row? [row]
-  (or (= row.kind :meta) (= row.kind :hunk)))
+  (or (= row.kind :meta) (= row.kind :hunk) (= row.kind :filename)
+      (= row.kind :rule)))
 
 (fn change-role [row side]
   (let [value (. row side)]
@@ -65,16 +66,21 @@
 (fn divider [state]
   (tui.color state.theme :muted symbols.line.vertical))
 
-(fn full-row [state row content selected?]
-  (let [colored (tui.color state.theme :muted (or row.old ""))
+(fn full-width [state text content selected? ?color]
+  (let [colored (if ?color (tui.color state.theme ?color text) text)
         searched (highlighted state true colored)
         windowed (pane.window-text searched content 0)]
     (styled state windowed content selected?)))
 
 (fn compose-row [state row index old-w new-w content x-scroll]
   (let [selected? (highlight-row? state index)]
-    (if (full-row? row)
-        (full-row state row content selected?)
+    (if (= row.kind :filename)
+        (full-width state (or row.new row.old "") content selected?)
+        (= row.kind :rule)
+        (full-width state (string.rep symbols.line.horizontal content) content
+                    selected? :muted)
+        (full-row? row)
+        (full-width state (or row.old "") content selected? :muted)
         (.. (half state row :old old-w x-scroll
                   (and selected? (= state.split_side :old)))
             (divider state)

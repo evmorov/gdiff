@@ -11,13 +11,9 @@
                              "+new line"
                              " tail"] "\n"))
 
-(fn test-parse-rows-pairs-changes-with-context-and-headers []
-  (faith.= [{:kind :meta :old "diff --git a/f b/f" :new "diff --git a/f b/f"}
-            {:kind :meta
-             :old "index 111..222 100644"
-             :new "index 111..222 100644"}
-            {:kind :meta :old "--- a/f" :new "--- a/f"}
-            {:kind :meta :old "+++ b/f" :new "+++ b/f"}
+(fn test-parse-rows-replaces-headers-with-a-filename-title []
+  (faith.= [{:kind :filename :old "f"}
+            {:kind :rule}
             {:kind :hunk :old "@@ -1,3 +1,3 @@" :new "@@ -1,3 +1,3 @@"}
             {:kind :context :old "ctx" :new "ctx"}
             {:kind :change :old "old line" :new "new line"}
@@ -50,7 +46,7 @@
   (faith.is (not (split.splittable? (split.parse-rows ""))))
   (faith.is (not (split.splittable? []))))
 
-{: test-parse-rows-pairs-changes-with-context-and-headers
+{: test-parse-rows-replaces-headers-with-a-filename-title
  : test-parse-rows-handles-pure-additions
  : test-parse-rows-handles-pure-deletions
  : test-parse-rows-pairs-uneven-runs

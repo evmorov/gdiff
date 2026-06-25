@@ -19,15 +19,27 @@
 (fn full-row [acc kind line]
   (table.insert acc.rows {: kind :old line :new line}))
 
+(fn diff-path [line]
+  (let [stripped (line:sub 5)
+        trimmed (stripped:gsub "%s+$" "")]
+    (if (= trimmed "/dev/null")
+        ""
+        (or (trimmed:match "^[ab]/(.+)$") trimmed))))
+
+(fn meta-step [acc line]
+  (if (line:match "^%-%-%- ") (set acc.old-path (diff-path line))
+      (line:match "^%+%+%+ ") (set acc.new-path (diff-path line))))
+
 (fn step [acc line]
   (case (classify line acc.in-hunk?)
     :file (do
-            (flush acc) (set acc.in-hunk? false)
-            (full-row acc :meta line))
+            (flush acc)
+            (set acc.in-hunk? false))
     :hunk (do
-            (flush acc) (set acc.in-hunk? true)
+            (flush acc)
+            (set acc.in-hunk? true)
             (full-row acc :hunk line))
-    :meta (full-row acc :meta line)
+    :meta (meta-step acc line)
     :added (table.insert acc.added (line:sub 2))
     :removed (table.insert acc.removed (line:sub 2))
     :context (do
@@ -37,15 +49,31 @@
                               :old (line:sub 2)
                               :new (line:sub 2)}))))
 
+(fn has-content? [rows]
+  (accumulate [found false _ row (ipairs (or rows [])) &until found]
+    (or (= row.kind :change) (= row.kind :context))))
+
+(fn header-title [acc]
+  (let [new acc.new-path
+        old acc.old-path]
+    (if (and new (< 0 (length new))) new
+        (and old (< 0 (length old))) old)))
+
+(fn prepend-header [acc]
+  (let [title (header-title acc)]
+    (when (and title (has-content? acc.rows))
+      (table.insert acc.rows 1 {:kind :rule})
+      (table.insert acc.rows 1 {:kind :filename :old title}))))
+
 (fn parse-rows [text]
   (let [acc {:rows [] :removed [] :added [] :in-hunk? false}]
     (each [line (string.gmatch (or text "") "[^\r\n]+")]
       (step acc line))
     (flush acc)
+    (prepend-header acc)
     acc.rows))
 
 (fn splittable? [rows]
-  (accumulate [found false _ row (ipairs (or rows [])) &until found]
-    (or (= row.kind :change) (= row.kind :context))))
+  (has-content? rows))
 
 {: parse-rows : splittable?}

@@ -54,6 +54,16 @@
         right
         current-branch)))
 
+(fn comparison-sides [revision ?current-branch]
+  (if (commands.working? revision)
+      (values "HEAD" "working tree")
+      (let [current (or ?current-branch (current-branch))
+            (left right) (revision:match "^(.-)%.%.%.(.*)$")]
+        (if left
+            (values (if (> (length left) 0) left current)
+                    (if (> (length right) 0) right current))
+            (values revision current)))))
+
 (fn linked-pr-url [revision]
   (let [branch (comparison-right revision)]
     (if (= branch "HEAD")
@@ -110,6 +120,7 @@
 
 {: comparison-revision
  : comparison-right
+ : comparison-sides
  : current-branch
  : default-revision
  : diff-entries

@@ -7,10 +7,13 @@
 
 (fn init [revision entries review-store review-scope src-dir ?diff-stats]
   (let [selected 1
+        (old-ref new-ref) (git.comparison-sides revision)
         state {: revision
                :src_dir src-dir
                :repo_root (git.repo-root)
                :revision_label (git.comparison-revision revision)
+               :revision_old_label old-ref
+               :revision_new_label new-ref
                : entries
                :diff_stats ?diff-stats
                :quit? false

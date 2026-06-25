@@ -50,24 +50,29 @@
   (accumulate [found false _ row (ipairs (or rows [])) &until found]
     (or (= row.kind :change) (= row.kind :context))))
 
-(fn header-title [acc]
-  (let [new acc.new-path
-        old acc.old-path]
-    (if (and new (< 0 (length new))) new
-        (and old (< 0 (length old))) old)))
+(fn header-path [primary fallback]
+  (or (and primary (< 0 (length primary)) primary)
+      (and fallback (< 0 (length fallback)) fallback)))
 
-(fn prepend-header [acc]
-  (let [title (header-title acc)]
-    (when (and title (has-content? acc.rows))
-      (table.insert acc.rows 1 {:kind :rule})
-      (table.insert acc.rows 1 {:kind :filename :old title}))))
+(fn header-title [path ?ref]
+  (if (and ?ref (< 0 (length ?ref))) (.. path " (" ?ref ")") path))
 
-(fn parse-rows [text]
+(fn prepend-header [acc ?old-ref ?new-ref]
+  (let [old-path (header-path acc.old-path acc.new-path)
+        new-path (header-path acc.new-path acc.old-path)]
+    (when (and old-path (has-content? acc.rows))
+      (let [old-title (header-title old-path ?old-ref)
+            new-title (header-title new-path ?new-ref)]
+        (table.insert acc.rows 1 {:kind :rule :old old-title :new new-title})
+        (table.insert acc.rows 1
+                      {:kind :filename :old old-title :new new-title})))))
+
+(fn parse-rows [text ?old-ref ?new-ref]
   (let [acc {:rows [] :removed [] :added [] :in-hunk? false}]
     (each [line (string.gmatch (or text "") "[^\r\n]+")]
       (step acc line))
     (flush acc)
-    (prepend-header acc)
+    (prepend-header acc ?old-ref ?new-ref)
     acc.rows))
 
 (fn splittable? [rows]

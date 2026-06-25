@@ -31,9 +31,6 @@
     (math.max w (tui.visible-length (or row.old ""))
               (tui.visible-length (or row.new "")))))
 
-(fn full-row? [row]
-  (or (= row.kind :filename) (= row.kind :rule)))
-
 (fn change-role [row side]
   (if (= row.kind :hunk) :muted
       (let [value (. row side)]
@@ -67,24 +64,26 @@
 (fn divider [state]
   (tui.color state.theme :muted symbols.line.vertical))
 
-(fn full-width [state text content selected? ?color]
+(fn header-half [state text width selected? ?color]
   (let [colored (if ?color (tui.color state.theme ?color text) text)
-        searched (highlighted state true colored)
-        windowed (pane.window-text searched content 0)]
-    (styled state windowed content selected?)))
+        windowed (pane.window-text colored width 0)]
+    (styled state windowed width selected?)))
 
-(fn rule-line [state old-w new-w]
-  (tui.color state.theme :muted
-             (.. (string.rep symbols.line.horizontal old-w)
-                 symbols.line.join-down
-                 (string.rep symbols.line.horizontal new-w))))
-
-(fn compose-row [state row index old-w new-w content x-scroll]
+(fn compose-row [state row index old-w new-w _content x-scroll]
   (let [selected? (highlight-row? state index)]
     (if (= row.kind :filename)
-        (full-width state (or row.new row.old "") content selected?)
+        (.. (header-half state (or row.old "") old-w
+                         (and selected? (= state.split_side :old)))
+            (divider state)
+            (header-half state (or row.new "") new-w
+                         (and selected? (= state.split_side :new))))
         (= row.kind :rule)
-        (rule-line state old-w new-w)
+        (.. (header-half state (or row.old "") old-w
+                         (and selected? (= state.split_side :old)) :muted)
+            (divider state) (header-half state (or row.new "") new-w
+                                        (and selected?
+                                             (= state.split_side :new))
+                                        :muted))
         (.. (half state row :old old-w x-scroll
                   (and selected? (= state.split_side :old)))
             (divider state)
@@ -101,23 +100,18 @@
     (set state.preview_search.matches_source rows)
     (preview-search.rebuild state true)))
 
-(fn visual-rows-for [row old-w new-w content]
-  (if (full-row? row)
-      (icollect [_ frag (ipairs (wrap.line (or row.old "") content))]
-        {:kind row.kind :old frag :new frag})
-      (let [olds (and row.old (wrap.line row.old old-w))
-            news (and row.new (wrap.line row.new new-w))
-            n (math.max 1 (length (or olds [])) (length (or news [])))]
-        (fcollect [i 1 n]
-          {:kind row.kind
-           :old (and olds (. olds i))
-           :new (and news (. news i))}))))
+(fn visual-rows-for [row old-w new-w]
+  (let [olds (and row.old (wrap.line row.old old-w))
+        news (and row.new (wrap.line row.new new-w))
+        n (math.max 1 (length (or olds [])) (length (or news [])))]
+    (fcollect [i 1 n]
+      {:kind row.kind :old (and olds (. olds i)) :new (and news (. news i))})))
 
-(fn wrap-rows [rows old-w new-w content]
+(fn wrap-rows [rows old-w new-w _content]
   (let [display []
         source-map []]
     (each [index row (ipairs (or rows []))]
-      (each [_ vrow (ipairs (visual-rows-for row old-w new-w content))]
+      (each [_ vrow (ipairs (visual-rows-for row old-w new-w))]
         (table.insert display vrow)
         (table.insert source-map index)))
     (values display source-map)))
@@ -132,12 +126,17 @@
           (theme.style-for theme-table :emphasis-end) (raw:sub ?span.to))
       raw))
 
+(fn underline [text]
+  (string.rep symbols.line.horizontal (tui.visible-length (or text ""))))
+
 (fn display-row [theme-table row]
   (if (and (= row.kind :change) row.old row.new)
       (let [spans (word-diff.spans row.old row.new)]
         {:kind :change
          :old (emphasize theme-table row.old spans.old :emphasis-deleted)
          :new (emphasize theme-table row.new spans.new :emphasis-added)})
+      (= row.kind :rule)
+      {:kind :rule :old (underline row.old) :new (underline row.new)}
       row))
 
 (fn emphasize-rows [theme-table rows]

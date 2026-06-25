@@ -12,13 +12,18 @@
                              " tail"] "\n"))
 
 (fn test-parse-rows-replaces-headers-with-a-filename-title []
-  (faith.= [{:kind :filename :old "f"}
-            {:kind :rule}
+  (faith.= [{:kind :filename :old "f" :new "f"}
+            {:kind :rule :old "f" :new "f"}
             {:kind :hunk :old "@@ -1,3 +1,3 @@"}
             {:kind :context :old "ctx" :new "ctx"}
             {:kind :change :old "old line" :new "new line"}
             {:kind :context :old "tail" :new "tail"}]
            (split.parse-rows sample)))
+
+(fn test-parse-rows-labels-each-column-with-its-ref []
+  (let [rows (split.parse-rows sample "main" "feature")]
+    (faith.= {:kind :filename :old "f (main)" :new "f (feature)"} (. rows 1))
+    (faith.= {:kind :rule :old "f (main)" :new "f (feature)"} (. rows 2))))
 
 (fn test-parse-rows-handles-pure-additions []
   (faith.= [{:kind :hunk :old "@@ -0,0 +1,2 @@"}
@@ -47,6 +52,7 @@
   (faith.is (not (split.splittable? []))))
 
 {: test-parse-rows-replaces-headers-with-a-filename-title
+ : test-parse-rows-labels-each-column-with-its-ref
  : test-parse-rows-handles-pure-additions
  : test-parse-rows-handles-pure-deletions
  : test-parse-rows-pairs-uneven-runs

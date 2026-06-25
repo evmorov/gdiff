@@ -66,7 +66,10 @@
             cached
             (let [(output ok) (git.plain-diff-output state.revision entry
                                                      state.full_context?)
-                  rows (if ok (split.parse-rows output) [])]
+                  rows (if ok
+                           (split.parse-rows output state.revision_old_label
+                                             state.revision_new_label)
+                           [])]
               (tset state.split_cache key rows)
               rows)))))
 

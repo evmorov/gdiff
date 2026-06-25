@@ -31,16 +31,22 @@
 
 (fn change-lines [state removed added]
   (let [out []
-        n (math.max (length removed) (length added))
-        spans (fcollect [i 1 n] (word-diff.spans (. removed i) (. added i)))]
-    (each [i old (ipairs removed)]
-      (let [emph (word-diff.emphasize state.theme old (?. spans i :old)
-                                      :emphasis-deleted)]
-        (table.insert out (tui.color state.theme :status-deleted (.. " " emph)))))
-    (each [i new (ipairs added)]
-      (let [emph (word-diff.emphasize state.theme new (?. spans i :new)
-                                      :emphasis-added)]
-        (table.insert out (tui.color state.theme :status-added (.. " " emph)))))
+        pairs (word-diff.align removed added)]
+    (each [_ p (ipairs pairs)]
+      (when p.old
+        (let [old (. removed p.old)
+              ?span (when p.new
+                      (. (word-diff.spans old (. added p.new)) :old))
+              emph (word-diff.emphasize state.theme old ?span :emphasis-deleted)]
+          (table.insert out
+                        (tui.color state.theme :status-deleted (.. " " emph))))))
+    (each [_ p (ipairs pairs)]
+      (when p.new
+        (let [new (. added p.new)
+              ?span (when p.old
+                      (. (word-diff.spans (. removed p.old) new) :new))
+              emph (word-diff.emphasize state.theme new ?span :emphasis-added)]
+          (table.insert out (tui.color state.theme :status-added (.. " " emph))))))
     out))
 
 (fn flush [state acc]

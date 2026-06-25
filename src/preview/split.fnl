@@ -1,3 +1,5 @@
+(local word-diff (require :preview.word-diff))
+
 (fn classify [line in-hunk?]
   (let [first (line:sub 1 1)]
     (if (line:match "^diff ") :file
@@ -8,13 +10,37 @@
         (= first "\\") :marker
         :context)))
 
+(fn ordered-pairs [pairs]
+  (let [out []]
+    (var pend-old [])
+    (var pend-new [])
+
+    (fn drain []
+      (each [_ p (ipairs pend-old)]
+        (table.insert out p))
+      (each [_ p (ipairs pend-new)]
+        (table.insert out p))
+      (set pend-old [])
+      (set pend-new []))
+
+    (each [_ p (ipairs pairs)]
+      (if (and p.old p.new) (do
+                              (drain)
+                              (table.insert out p))
+          p.old (table.insert pend-old p)
+          (table.insert pend-new p)))
+    (drain)
+    out))
+
 (fn flush [acc]
-  (let [n (math.max (length acc.removed) (length acc.added))]
-    (for [i 1 n]
-      (table.insert acc.rows
-                    {:kind :change :old (. acc.removed i) :new (. acc.added i)}))
-    (set acc.removed [])
-    (set acc.added [])))
+  (each [_ p (ipairs (ordered-pairs (word-diff.align acc.removed acc.added)))]
+    (let [old (and p.old (. acc.removed p.old))
+          new (and p.new (. acc.added p.new))
+          row {:kind :change : old : new}]
+      (when (and p.old p.new) (set row.emphasize? true))
+      (table.insert acc.rows row)))
+  (set acc.removed [])
+  (set acc.added []))
 
 (fn diff-path [line]
   (let [stripped (line:sub 5)

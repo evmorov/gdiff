@@ -16,7 +16,7 @@
             {:kind :rule :old "f" :new "f"}
             {:kind :hunk :old "@@ -1,3 +1,3 @@"}
             {:kind :context :old "ctx" :new "ctx"}
-            {:kind :change :old "old line" :new "new line"}
+            {:kind :change :old "old line" :new "new line" :emphasize? true}
             {:kind :context :old "tail" :new "tail"}]
            (split.parse-rows sample)))
 
@@ -39,9 +39,19 @@
 
 (fn test-parse-rows-pairs-uneven-runs []
   (faith.= [{:kind :hunk :old "@@ -1,2 +1,1 @@"}
-            {:kind :change :old "x" :new "z"}
-            {:kind :change :old "y"}]
+            {:kind :change :old "x"}
+            {:kind :change :old "y"}
+            {:kind :change :new "z"}]
            (split.parse-rows "@@ -1,2 +1,1 @@\n-x\n-y\n+z")))
+
+(fn test-parse-rows-aligns-similar-lines-onto-one-row []
+  (faith.= [{:kind :hunk :old "@@ -1,1 +1,2 @@"}
+            {:kind :change
+             :old "keep aaa tail"
+             :new "keep bbb tail"
+             :emphasize? true}
+            {:kind :change :new "brand new line"}]
+           (split.parse-rows "@@ -1,1 +1,2 @@\n-keep aaa tail\n+keep bbb tail\n+brand new line")))
 
 (fn test-splittable-detects-real-diffs []
   (faith.is (split.splittable? (split.parse-rows sample))))
@@ -56,5 +66,6 @@
  : test-parse-rows-handles-pure-additions
  : test-parse-rows-handles-pure-deletions
  : test-parse-rows-pairs-uneven-runs
+ : test-parse-rows-aligns-similar-lines-onto-one-row
  : test-splittable-detects-real-diffs
  : test-not-splittable-for-binary-or-empty}

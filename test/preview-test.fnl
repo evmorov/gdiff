@@ -5,6 +5,7 @@
 (local preview-file (require :preview.file))
 (local preview-format (require :preview.format))
 (local preview-key (require :preview.key))
+(local tui (require :tui.core))
 (local t (require :test-helper))
 (local update (require :app.update))
 
@@ -148,6 +149,54 @@
     (faith.= nil (string.find text "diff %-%-git"))
     (faith.= nil (string.find text "+added" 1 true))
     (faith.= nil (string.find text "-context" 1 true))))
+
+(fn line-with [lines needle]
+  (accumulate [found nil _ l (ipairs lines) &until found]
+    (when (string.find (tui.strip-ansi l) needle 1 true) l)))
+
+(fn emphasized? [?line]
+  (if (and ?line (or (string.find ?line "48;5;224" 1 true)
+                     (string.find ?line "48;5;194" 1 true)))
+      true
+      false))
+
+(fn test-preview-format-emphasizes-balanced-word-change []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1 +1 @@\n-foo bar baz\n+foo qux baz")]
+    (faith.is (emphasized? (line-with lines "foo bar baz"))
+              "removed word should be emphasized")
+    (faith.is (emphasized? (line-with lines "foo qux baz"))
+              "added word should be emphasized")))
+
+(fn test-preview-format-emphasizes-the-similar-line-in-an-unbalanced-block []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1,2 +1,3 @@\n-    class Configuration\n-      attr_reader :socket_path\n+    class Configuration < Base\n+      config_name :metrics\n+      # comment")]
+    (faith.is (emphasized? (line-with lines "class Configuration < Base"))
+              "the similar class line should be emphasized")
+    (faith.= false (emphasized? (line-with lines "config_name :metrics")))
+    (faith.= false (emphasized? (line-with lines "attr_reader :socket_path")))
+    (faith.= false (emphasized? (line-with lines "# comment")))))
+
+(fn test-preview-format-skips-emphasis-for-too-different-lines []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1 +1 @@\n-the quick brown fox\n+a slow green turtle swims")]
+    (faith.= false (emphasized? (line-with lines "quick brown")))
+    (faith.= false (emphasized? (line-with lines "slow green")))))
+
+(fn test-preview-format-keeps-prefix-only-changes-plain []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1,4 +1,5 @@\n around do\n   example.run\n-    Epoxy::Metrics.instance_variable_set(:@configuration, nil)\n+  ensure\n+    Epoxy::Metrics.reset_configuration!\n   end")]
+    (faith.= false (emphasized? (line-with lines "instance_variable_set")))
+    (faith.= false (emphasized? (line-with lines "reset_configuration")))
+    (faith.= false (emphasized? (line-with lines "ensure")))))
+
+(fn test-preview-format-pairs-by-similarity-not-position []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1,3 +1 @@\n-totally different\n-another unrelated\n-keep aaa tail\n+keep bbb tail")]
+    (faith.is (emphasized? (line-with lines "keep aaa tail")))
+    (faith.is (emphasized? (line-with lines "keep bbb tail")))
+    (faith.= false (emphasized? (line-with lines "totally different")))
+    (faith.= false (emphasized? (line-with lines "another unrelated")))))
 
 (fn test-asset-preview-is-cheap-and-cached-without-git-diff []
   (let [entry {:status "M" :kind "M" :path "icons/logo.svg" :reviewed false}
@@ -313,6 +362,11 @@
  : test-horizontal-width-cache-follows-current-lines-table
  : test-horizontal-scroll-limit-uses-visible-line-width
  : test-preview-format-colors-diff-lines
+ : test-preview-format-emphasizes-balanced-word-change
+ : test-preview-format-emphasizes-the-similar-line-in-an-unbalanced-block
+ : test-preview-format-skips-emphasis-for-too-different-lines
+ : test-preview-format-keeps-prefix-only-changes-plain
+ : test-preview-format-pairs-by-similarity-not-position
  : test-refresh-loaded-clears-folder-preview-cache
  : test-refresh-loaded-clears-stale-cache-and-caches-selected-preview
  : test-selection-lines-renders-folder-rows-through-preview-core

@@ -122,7 +122,7 @@
   (string.rep symbols.line.horizontal (tui.visible-length (or text ""))))
 
 (fn display-row [theme-table row]
-  (if (and (= row.kind :change) row.old row.new)
+  (if (and (= row.kind :change) row.old row.new row.emphasize?)
       (let [spans (word-diff.spans row.old row.new)]
         {:kind :change
          :old (word-diff.emphasize theme-table row.old spans.old

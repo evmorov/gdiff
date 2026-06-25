@@ -160,6 +160,19 @@
       true
       false))
 
+(fn emphasized-parts [?line]
+  (if (not ?line)
+      []
+      (let [marked (-> ?line
+                       (: :gsub "\27%[48;5;224m" "\0")
+                       (: :gsub "\27%[48;5;194m" "\0")
+                       (: :gsub "\27%[49m" "\1"))
+            clean (tui.strip-ansi marked)
+            out []]
+        (each [part (clean:gmatch "%z([^\1]*)\1")]
+          (table.insert out part))
+        out)))
+
 (fn test-preview-format-emphasizes-balanced-word-change []
   (let [lines (preview-format.diff-lines (state)
                                          "@@ -1 +1 @@\n-foo bar baz\n+foo qux baz")]
@@ -197,6 +210,22 @@
     (faith.is (emphasized? (line-with lines "keep bbb tail")))
     (faith.= false (emphasized? (line-with lines "totally different")))
     (faith.= false (emphasized? (line-with lines "another unrelated")))))
+
+(fn test-preview-format-emphasizes-only-the-extra-leading-space []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1,3 +1,3 @@\n def foo\n-      it \"x\" do\n+    it \"x\" do\n end")
+        matches (icollect [_ l (ipairs lines)]
+                  (when (string.find (tui.strip-ansi l) "it \"x\" do" 1 true) l))]
+    (faith.= ["  "] (emphasized-parts (. matches 1)))
+    (faith.= [] (emphasized-parts (. matches 2)))))
+
+(fn test-preview-format-keeps-shared-words-as-anchors []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1 +1 @@\n-aaa bbb ccc ddd\n+aaa xxx ccc yyy")]
+    (faith.= ["bbb" "ddd"]
+             (emphasized-parts (line-with lines "aaa bbb ccc ddd")))
+    (faith.= ["xxx" "yyy"]
+             (emphasized-parts (line-with lines "aaa xxx ccc yyy")))))
 
 (fn test-asset-preview-is-cheap-and-cached-without-git-diff []
   (let [entry {:status "M" :kind "M" :path "icons/logo.svg" :reviewed false}
@@ -367,6 +396,8 @@
  : test-preview-format-skips-emphasis-for-too-different-lines
  : test-preview-format-keeps-prefix-only-changes-plain
  : test-preview-format-pairs-by-similarity-not-position
+ : test-preview-format-emphasizes-only-the-extra-leading-space
+ : test-preview-format-keeps-shared-words-as-anchors
  : test-refresh-loaded-clears-folder-preview-cache
  : test-refresh-loaded-clears-stale-cache-and-caches-selected-preview
  : test-selection-lines-renders-folder-rows-through-preview-core

@@ -8,6 +8,7 @@
                         ["gg" "Jump to top"]
                         ["G" "Jump to bottom"]
                         ["tab" "Switch focus: files / old / new"]
+                        ["shift-tab" "Switch focus in reverse"]
                         ["[ / ]" "Resize split"]
                         ["/" "Search"]
                         ["n / N" "Next / previous match"]

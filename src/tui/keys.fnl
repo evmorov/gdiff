@@ -10,6 +10,7 @@
       "[B" :down
       "[C" :right
       "[D" :left
+      "[Z" :back-tab
       "[200~" :paste-start
       "[201~" :paste-end
       _ :escape)))

@@ -496,6 +496,18 @@
     (update.update state {} (update.read-msg state "\t"))
     (faith.= :left state.focus)))
 
+(fn test-shift-tab-cycles-left-new-old-left-in-split []
+  (let [state (split-state)]
+    (faith.= :left state.focus)
+    (update.update state {} (update.read-msg state :back-tab))
+    (faith.= :right state.focus)
+    (faith.= :new state.split_side)
+    (update.update state {} (update.read-msg state :back-tab))
+    (faith.= :right state.focus)
+    (faith.= :old state.split_side)
+    (update.update state {} (update.read-msg state :back-tab))
+    (faith.= :left state.focus)))
+
 (fn test-yank-copies-the-focused-split-column []
   (let [state (split-state)
         copied []
@@ -621,6 +633,7 @@
  : test-y-yanks-one-line-for-a-wrapped-selection
  : test-s-toggles-split-mode
  : test-tab-cycles-left-old-new-left-in-split
+ : test-shift-tab-cycles-left-new-old-left-in-split
  : test-yank-copies-the-focused-split-column
  : test-yank-collapses-wrapped-split-rows
  : test-split-search-is-scoped-to-the-focused-side

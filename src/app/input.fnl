@@ -11,6 +11,7 @@
     :quit :quit
     :tick :tick
     "\t" :toggle-focus
+    :back-tab :focus-back
     "k" :up
     "j" :down
     "h" :preview-left

@@ -193,22 +193,28 @@
   (when (preview-search.has-query? state)
     (preview-search.rebuild state true)))
 
-(fn cycle-split-focus [state]
+(fn cycle-split-focus [state first second]
   (if (not= state.focus :right)
       (do
-        (focus-right state :old)
+        (focus-right state first)
         (resync-split-search state))
-      (= state.split_side :old)
+      (= state.split_side first)
       (do
-        (set state.split_side :new)
+        (set state.split_side second)
         (resync-split-search state))
       (focus-left state)))
 
-(fn toggle-focus [state]
-  (if (split-active? state) (cycle-split-focus state)
+(fn focus-step [state first second]
+  (if (split-active? state) (cycle-split-focus state first second)
       (= state.focus :right) (focus-left state)
       (focus-right state state.split_side))
   (pane-search.refresh-status state))
+
+(fn toggle-focus [state]
+  (focus-step state :old :new))
+
+(fn toggle-focus-back [state]
+  (focus-step state :new :old))
 
 (fn toggle-split [state]
   (set state.split_mode? (not state.split_mode?))
@@ -318,6 +324,7 @@
 (local handlers {:up #(navigate $1 -1)
                  :down #(navigate $1 1)
                  : toggle-focus
+                 :focus-back toggle-focus-back
                  :open open-selected
                  : toggle-reviewed
                  : toggle-all-reviewed

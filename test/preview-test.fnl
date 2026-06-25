@@ -16,7 +16,6 @@
 
 (fn state []
   {:preview_cache {}
-   :preview_context (git.preview-context)
    :preview_rows 1
    :preview_scroll 0
    :preview_total 0
@@ -29,8 +28,10 @@
         lines (preview.visible-lines state (. entries 1) 20)
         rendered (t.text lines)]
     (faith.= nil err)
-    (faith.match "diff %-%-git" rendered)
-    (faith.match "%+after" rendered)
+    (faith.match "app%.rb" rendered)
+    (faith.match "after" rendered)
+    (faith.= nil (string.find rendered "diff %-%-git"))
+    (faith.= nil (string.find rendered "+after" 1 true))
     (faith.= 1 (t.count-pairs state.preview_cache))
     (t.write-file "app.rb" "changed after cache\n")
     (faith.= lines (preview.visible-lines state (. entries 1) 20))))
@@ -59,7 +60,6 @@
 (fn test-visible-lines-can-be-nonblocking-while-warming []
   (let [entry {:status "M" :kind "M" :path "missing.rb" :reviewed false}
         state {:preview_cache {}
-               :preview_context {}
                :preview_rows 1
                :preview_scroll 0
                :preview_warm {:dir "warm"}
@@ -81,14 +81,14 @@
 (fn test-scroll-uses-rendered-preview-total-without-loading-diff []
   (let [entry {:status "M" :kind "M" :path "missing.rb" :reviewed false}
         state (state)
-        old-preview-output git.preview-output]
+        old-plain-diff-output git.plain-diff-output]
     (set state.preview_rows 10)
     (set state.preview_total 100)
-    (set git.preview-output
+    (set git.plain-diff-output
          (fn [...]
            (error "scroll should not load preview lines")))
     (faith.= true (preview.scroll state entry 5))
-    (set git.preview-output old-preview-output)
+    (set git.plain-diff-output old-plain-diff-output)
     (faith.= 5 state.preview_scroll)))
 
 (fn test-horizontal-scroll-limit-uses-visible-line-width []
@@ -140,23 +140,24 @@
 
 (fn test-preview-format-colors-diff-lines []
   (let [state (state)
-        lines (preview-format.output-lines state
-                                           "diff --git a b\n+added\n-context"
-                                           false)
+        lines (preview-format.diff-lines state
+                                         "diff --git a/f b/f\nindex 1..2 100644\n--- a/f\n+++ b/f\n@@ -1 +1 @@\n-context\n+added")
         text (t.text lines)]
-    (faith.match "diff %-%-git a b" text)
-    (faith.match "%+added" text)
-    (faith.match "%-context" text)))
+    (faith.match "added" text)
+    (faith.match "context" text)
+    (faith.= nil (string.find text "diff %-%-git"))
+    (faith.= nil (string.find text "+added" 1 true))
+    (faith.= nil (string.find text "-context" 1 true))))
 
 (fn test-asset-preview-is-cheap-and-cached-without-git-diff []
   (let [entry {:status "M" :kind "M" :path "icons/logo.svg" :reviewed false}
         state (state)
-        old-preview-output git.preview-output]
-    (set git.preview-output
+        old-plain-diff-output git.plain-diff-output]
+    (set git.plain-diff-output
          (fn [...]
            (error "asset preview should not call git diff")))
     (let [lines (preview.lines state entry)]
-      (set git.preview-output old-preview-output)
+      (set git.plain-diff-output old-plain-diff-output)
       (faith.= "Asset preview skipped: icons/logo.svg" (t.text lines))
       (faith.= lines
                (. state.preview_cache (preview-key.for-entry "HEAD" entry))))))

@@ -40,7 +40,6 @@
                :folder_preview_cache {}
                :theme theme.default
                :preview_cache {}
-               :preview_context (git.preview-context)
                :preview_warm (preview-warm.new-state)
                :review_store review-store
                :review_scope review-scope

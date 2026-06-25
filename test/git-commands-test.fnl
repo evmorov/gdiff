@@ -6,8 +6,6 @@
            (commands.revision-exists-command "feature branch")))
 
 (fn test-basic-git-adapter-commands-are-centralized []
-  (faith.= "git config --get interactive.diffFilter 2>/dev/null"
-           (commands.diff-filter-command))
   (faith.= "git branch --show-current 2>/dev/null"
            (commands.current-branch-command))
   (faith.= "git rev-parse --show-toplevel 2>/dev/null"

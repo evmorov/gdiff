@@ -8,7 +8,6 @@
 (local symbols (require :tui.symbols))
 (local theme (require :tui.theme))
 (local tui (require :tui.core))
-(local ansi (require :tui.ansi))
 (local wrap (require :tui.wrap))
 (local word-diff (require :preview.word-diff))
 
@@ -119,13 +118,6 @@
 (fn store-widths [state content old-w new-w]
   (set state.split_widths {: content :old old-w :new new-w}))
 
-(fn emphasize [theme-table raw ?span style-key]
-  (if (and ?span (ansi.color?) (< ?span.from ?span.to))
-      (.. (raw:sub 1 (- ?span.from 1)) (theme.style-for theme-table style-key)
-          (raw:sub ?span.from (- ?span.to 1))
-          (theme.style-for theme-table :emphasis-end) (raw:sub ?span.to))
-      raw))
-
 (fn underline [text]
   (string.rep symbols.line.horizontal (tui.visible-length (or text ""))))
 
@@ -133,8 +125,10 @@
   (if (and (= row.kind :change) row.old row.new)
       (let [spans (word-diff.spans row.old row.new)]
         {:kind :change
-         :old (emphasize theme-table row.old spans.old :emphasis-deleted)
-         :new (emphasize theme-table row.new spans.new :emphasis-added)})
+         :old (word-diff.emphasize theme-table row.old spans.old
+                                   :emphasis-deleted)
+         :new (word-diff.emphasize theme-table row.new spans.new
+                                   :emphasis-added)})
       (= row.kind :rule)
       {:kind :rule :old (underline row.old) :new (underline row.new)}
       row))

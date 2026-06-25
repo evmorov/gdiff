@@ -1,4 +1,6 @@
 (local txt (require :tui.text))
+(local theme (require :tui.theme))
+(local ansi (require :tui.ansi))
 
 (fn tokenize [s]
   (let [out []
@@ -65,4 +67,11 @@
         {:old (span-for old a prefix suffix)
          :new (span-for new b prefix suffix)})))
 
-{: spans}
+(fn emphasize [theme-table raw ?span style-key]
+  (if (and ?span (ansi.color?) (< ?span.from ?span.to))
+      (.. (raw:sub 1 (- ?span.from 1)) (theme.style-for theme-table style-key)
+          (raw:sub ?span.from (- ?span.to 1))
+          (theme.style-for theme-table :emphasis-end) (raw:sub ?span.to))
+      raw))
+
+{: spans : emphasize}

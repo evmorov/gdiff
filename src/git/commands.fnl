@@ -21,9 +21,6 @@
   (.. "git rev-parse --verify --quiet "
       (sys.shell-quote (.. revision "^{commit}")) " >/dev/null 2>&1"))
 
-(fn diff-filter-command []
-  "git config --get interactive.diffFilter 2>/dev/null")
-
 (fn current-branch-command []
   "git branch --show-current 2>/dev/null")
 
@@ -60,15 +57,9 @@
   (.. (preview-command revision entry "never" ?full-context?) " 2>&1"
       (if (and (working? revision) (untracked? entry)) " || true" "")))
 
-(fn filtered-preview-command [revision entry filter ?full-context?]
-  (.. (preview-command revision entry "always" ?full-context?)
-      " 2>/dev/null | " filter " 2>/dev/null"))
-
 {: current-branch-command
  : diff-command
- : diff-filter-command
  : diff-stats-command
- : filtered-preview-command
  : linked-pr-url-command
  : plain-preview-command
  : preview-command

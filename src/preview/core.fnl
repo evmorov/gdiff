@@ -24,7 +24,7 @@
             (format.binary state entry.path)
             (let [body (file-preview.split-lines content)
                   body (if (> (length body) 0) body
-                           (format.output-lines state "" false))
+                           (format.empty-preview state))
                   out (format.header state entry.path)]
               (each [_ line (ipairs body)]
                 (table.insert out line))
@@ -46,11 +46,10 @@
             (let [lines (file-lines state entry)]
               (tset state.preview_cache key lines)
               lines)
-            (let [(output ok filtered?) (git.preview-output state.preview_context
-                                                            state.revision entry
-                                                            full-context?)
+            (let [(output ok) (git.plain-diff-output state.revision entry
+                                                     full-context?)
                   lines (if ok
-                            (format.output-lines state output filtered?)
+                            (format.diff-lines state output)
                             (format.warning state (sys.trim output)))]
               (tset state.preview_cache key lines)
               lines)))))

@@ -27,12 +27,6 @@
       (values "master" nil)
       (values nil "No revision provided, and neither main nor master exists.")))
 
-(fn diff-filter []
-  (read-trimmed (commands.diff-filter-command)))
-
-(fn preview-context []
-  {:diff-filter (diff-filter)})
-
 (fn current-branch []
   (or (read-trimmed (commands.current-branch-command)) "HEAD"))
 
@@ -93,24 +87,6 @@
   (run-result (commands.diff-stats-command revision)
               #(values (parse.parse-numstat $) nil)))
 
-(fn preview-output [context revision entry ?full-context?]
-  (let [filter context.diff-filter]
-    (if filter
-        (let [(output ok) (sys.read-command (commands.filtered-preview-command revision
-                                                                               entry
-                                                                               filter
-                                                                               ?full-context?))]
-          (if ok
-              (values output true true)
-              (let [(output ok) (sys.read-command (commands.plain-preview-command revision
-                                                                                  entry
-                                                                                  ?full-context?))]
-                (values output ok false))))
-        (let [(output ok) (sys.read-command (commands.plain-preview-command revision
-                                                                            entry
-                                                                            ?full-context?))]
-          (values output ok false)))))
-
 (fn plain-diff-output [revision entry ?full-context?]
   (sys.read-command (commands.plain-preview-command revision entry
                                                     ?full-context?)))
@@ -128,9 +104,7 @@
  : diff-stats-command
  : linked-pr-url
  : linked-pr-url-command
- : preview-context
  :working-revision commands.working-revision
  :working? commands.working?
- : preview-output
  : plain-diff-output
  : repo-root}

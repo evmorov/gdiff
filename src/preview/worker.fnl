@@ -1,6 +1,5 @@
 (local fennel (require :fennel))
 (local fennel-command (require :platform.fennel))
-(local git (require :git.core))
 (local preview (require :preview.core))
 (local plan (require :preview.warm-plan))
 (local sys (require :platform.core))
@@ -19,9 +18,7 @@
 (fn warm [manifest-path dir start step]
   (let [manifest (read-manifest manifest-path)]
     (when manifest
-      (let [state {:revision manifest.revision
-                   :preview_cache {}
-                   :preview_context (git.preview-context)}]
+      (let [state {:revision manifest.revision :preview_cache {}}]
         (var canceled? false)
         (for [i start (length manifest.entries) step]
           (if canceled?

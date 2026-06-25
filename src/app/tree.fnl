@@ -117,12 +117,13 @@
                      :entries (node-entries child)})
       (render-node child (+ depth 1) rows path expanded))))
 
-(fn rows [entries ?expanded]
+(fn rows [entries ?expanded ?visible?]
   (let [root (new-node)
         out []
         expanded (or ?expanded {})]
     (each [index entry (ipairs entries)]
-      (add-entry root entry index))
+      (when (or (not ?visible?) (?visible? entry))
+        (add-entry root entry index)))
     (render-node root 0 out nil expanded)
     out))
 

@@ -2,9 +2,15 @@
 (local selection-plan (require :app.selection-plan))
 (local tree (require :app.tree))
 
-(fn flat-rows [entries]
-  (icollect [index entry (ipairs entries)]
-    {:type :file :depth 0 : entry :entry-index index}))
+(fn visible-entry? [state entry]
+  (or (not state.hide_reviewed?) (not entry.reviewed)))
+
+(fn flat-rows [entries ?visible?]
+  (let [out []]
+    (each [index entry (ipairs entries)]
+      (when (or (not ?visible?) (?visible? entry))
+        (table.insert out {:type :file :depth 0 : entry :entry-index index})))
+    out))
 
 (fn row-cache [state]
   (when (not state.row_cache)
@@ -25,10 +31,16 @@
   state)
 
 (fn tree-rows [state]
-  (cached-rows state :tree #(tree.rows state.entries state.expanded_folders)))
+  (cached-rows state :tree
+               #(tree.rows state.entries state.expanded_folders
+                           #(visible-entry? state $))))
 
 (fn cached-flat-rows [state]
-  (cached-rows state :flat #(flat-rows state.entries)))
+  (cached-rows state :flat #(flat-rows state.entries #(visible-entry? state $))))
+
+(fn flat-row-position [rows selected]
+  (accumulate [found 1 index row (ipairs rows)]
+    (if (= row.entry-index selected) index found)))
 
 (fn rows [state]
   (if (= state.view_mode :tree)
@@ -83,23 +95,30 @@
       (set state.full_context? false)
       (preview.reset-scroll state))))
 
+(fn set-flat-row [state rows row-index]
+  (let [row (. rows row-index)]
+    (when row
+      (set-file state row.entry-index))))
+
 (fn move [state delta]
   (if (= state.view_mode :tree)
       (set-tree-row state
                     (tree.move-row (tree-rows state) state.tree_selected_row
                                    delta))
-      (set-file state (selection-plan.flat-index state.entries state.selected
-                                                 delta))))
+      (let [rows (cached-flat-rows state)
+            position (flat-row-position rows state.selected)]
+        (set-flat-row state rows (tree.move-row rows position delta)))))
 
 (fn top [state]
   (if (= state.view_mode :tree)
       (set-tree-row state (tree.first-row (tree-rows state)))
-      (set-file state 1)))
+      (set-flat-row state (cached-flat-rows state) 1)))
 
 (fn bottom [state]
   (if (= state.view_mode :tree)
       (set-tree-row state (tree.last-row (tree-rows state)))
-      (set-file state (length state.entries))))
+      (let [rows (cached-flat-rows state)]
+        (set-flat-row state rows (length rows)))))
 
 (fn set-match [state found]
   (when found

@@ -24,6 +24,7 @@
                         ["Y" "Copy full path"]
                         ["space" "Toggle reviewed"]
                         ["a" "Toggle all reviewed"]
+                        ["H" "Hide reviewed files"]
                         ["`" "Toggle file tree"]
                         ["e" "Expand / collapse folder"]
                         ["E" "Expand / collapse all nested"]]}

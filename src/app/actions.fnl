@@ -22,6 +22,11 @@
         review? (review.toggle-all! entries)]
     (set state.notice (notice.reviewed-folder review? row.name))))
 
+(fn refresh-hidden [state]
+  (when state.hide_reviewed?
+    (selection.invalidate-rows state)
+    (selection.move state 0)))
+
 (fn toggle-reviewed [state]
   (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))
         entry (selection.selected-entry state)]
@@ -31,11 +36,13 @@
         (do
           (review.toggle-entry! entry)
           (set state.notice (notice.reviewed-entry entry)))))
+  (refresh-hidden state)
   (commands.persist-reviewed))
 
 (fn toggle-all-reviewed [state]
   (let [review? (review.toggle-all! state.entries)]
     (set state.notice (notice.reviewed-all review?))
+    (refresh-hidden state)
     (commands.persist-reviewed)))
 
 (fn cache-selected-preview [state]
@@ -313,6 +320,15 @@
           (when (search.has-query? state)
             (search.rebuild state true)))))))
 
+(fn toggle-hide-reviewed [state]
+  (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))]
+    (exit-line-selection state)
+    (set state.hide_reviewed? (not state.hide_reviewed?))
+    (selection.invalidate-rows state)
+    (if row
+        (settle-cursor state row)
+        (selection.move state 0))))
+
 (fn toggle-help [state]
   (set state.show_help? (not state.show_help?)))
 
@@ -344,6 +360,7 @@
                  : toggle-split
                  : toggle-full-context
                  : toggle-tree
+                 : toggle-hide-reviewed
                  : toggle-expand
                  :expand-all toggle-expand-all
                  : toggle-help

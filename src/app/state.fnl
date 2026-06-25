@@ -29,6 +29,7 @@
                :preview_total 0
                :preview_selection_anchor nil
                :preview_wrap? true
+               :hide_reviewed? false
                :full_context? false
                :split_mode? true
                :split_side :old

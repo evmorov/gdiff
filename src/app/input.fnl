@@ -31,6 +31,7 @@
     "`" :toggle-tree
     "e" :toggle-expand
     "E" :expand-all
+    "H" :toggle-hide-reviewed
     "y" :copy-path
     "Y" :copy-full-path
     "v" :toggle-line-selection

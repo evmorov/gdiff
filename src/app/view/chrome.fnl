@@ -35,9 +35,12 @@
   (.. label " " (if on? "on" "off")))
 
 (fn status-widgets [state]
-  (table.concat [(toggle-label :wrap state.preview_wrap?)
-                 (toggle-label :split state.split_mode?)]
-                (separator state)))
+  (let [hide (toggle-label :hide state.hide_reviewed?)]
+    (table.concat [(toggle-label :wrap state.preview_wrap?)
+                   (toggle-label :split state.split_mode?)
+                   (if state.hide_reviewed?
+                       (tui.color state.theme :status-added hide)
+                       hide)] (separator state))))
 
 (fn footer [state]
   (let [prompt (search.status state)

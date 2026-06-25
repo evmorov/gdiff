@@ -438,21 +438,59 @@
     (faith.= nil (header:find "refresh/sync" 1 true))
     (faith.= nil (header:find "w wrap" 1 true))))
 
-(fn test-view-shows-wrap-and-split-status-in-footer-right []
+(fn test-view-shows-wrap-split-and-hide-status-in-footer-right []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.preview_wrap? true)
     (set state.split_mode? true)
+    (set state.hide_reviewed? false)
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "wrap on │ split on" footer-right))))
+      (faith.= "wrap on │ split on │ hide off" footer-right))))
 
-(fn test-view-reflects-disabled-wrap-and-split-in-footer-right []
+(fn test-view-reflects-disabled-wrap-split-and-enabled-hide-in-footer-right []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.preview_wrap? false)
     (set state.split_mode? false)
+    (set state.hide_reviewed? true)
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "wrap off │ split off" footer-right))))
+      (faith.= "wrap off │ split off │ hide on" footer-right))))
+
+(fn test-uppercase-h-hides-reviewed-entries-from-list []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb") (entry "M" "c.rb")])]
+    (let [second (. state.entries 2)]
+      (set second.reviewed true))
+    (faith.= 3 (length (selection.rows state)))
+    (faith.is (app.handle-key state {} "H"))
+    (faith.= true state.hide_reviewed?)
+    (faith.= 2 (length (selection.rows state)))
+    (faith.is (app.handle-key state {} "H"))
+    (faith.= false state.hide_reviewed?)
+    (faith.= 3 (length (selection.rows state)))))
+
+(fn test-hide-reviewed-skips-hidden-entries-in-flat-navigation []
+  (let [state (flat-state [(entry "M" "a.rb")
+                           (entry "M" "b.rb")
+                           (entry "M" "c.rb")])]
+    (let [second (. state.entries 2)]
+      (set second.reviewed true))
+    (app.handle-key state {} "H")
+    (faith.= 1 state.selected)
+    (app.handle-key state {} "j")
+    (faith.= 3 state.selected)
+    (app.handle-key state {} "j")
+    (faith.= 3 state.selected)))
+
+(fn test-hide-reviewed-keeps-cursor-on-unreviewed-selection []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb") (entry "M" "c.rb")])]
+    (app.handle-key state {} "j")
+    (faith.= 2 state.tree_selected_row)
+    (let [first-entry (. state.entries 1)]
+      (set first-entry.reviewed true))
+    (app.handle-key state {} "H")
+    (let [row (selection.selected-tree-row state)]
+      (faith.= :file row.type)
+      (faith.= "b.rb" row.name))))
 
 (fn test-question-mark-toggles-help-modal []
   (let [state (state [(entry "M" "a.rb")])]
@@ -756,8 +794,11 @@
  : test-view-shows-reviewed-file-percent-in-header-right
  : test-view-shows-diff-stats-in-header-right
  : test-view-shows-trimmed-header
- : test-view-shows-wrap-and-split-status-in-footer-right
- : test-view-reflects-disabled-wrap-and-split-in-footer-right
+ : test-view-shows-wrap-split-and-hide-status-in-footer-right
+ : test-view-reflects-disabled-wrap-split-and-enabled-hide-in-footer-right
+ : test-uppercase-h-hides-reviewed-entries-from-list
+ : test-hide-reviewed-skips-hidden-entries-in-flat-navigation
+ : test-hide-reviewed-keeps-cursor-on-unreviewed-selection
  : test-question-mark-toggles-help-modal
  : test-help-modal-ignores-action-keys-without-redraw
  : test-help-modal-skips-redraw-on-idle-tick

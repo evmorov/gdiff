@@ -74,7 +74,7 @@
               rows)))))
 
 (fn splittable? [state entry]
-  (split.splittable? (split-rows state entry)))
+  (and entry (= entry.kind "M") (split.splittable? (split-rows state entry))))
 
 (fn split-active? [state]
   (and state.split_mode? state.split_rows (next state.split_rows) true))

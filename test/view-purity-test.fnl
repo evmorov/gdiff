@@ -2,6 +2,7 @@
 (local app (require :app.core))
 (local left-view (require :app.view.left))
 (local preview-view (require :app.view.preview))
+(local selection (require :app.selection))
 
 (fn entry [status path]
   {: status :kind (status:sub 1 1) : path :reviewed false})
@@ -45,6 +46,22 @@
       (faith.= before.total s.preview_total)
       (faith.= before.rows s.preview_rows))))
 
+(fn selected-row [s]
+  (set s.tree_selected_row (selection.selected-row-index s))
+  (. (. (left-view.body s 6) :rows) 1))
+
+(fn test-files-selection-has-background-only-when-pane-focused []
+  (let [s (state [(entry "M" "a.rb")])]
+    (set s.focus :left)
+    (let [row (selected-row s)]
+      (faith.is row.selected?)
+      (faith.is (row.text:find "> " 1 true)))
+    (set s.focus :right)
+    (let [row (selected-row s)]
+      (faith.= false row.selected?)
+      (faith.is (row.text:find "> " 1 true)))))
+
 {: test-left-body-does-not-mutate-horizontal-scroll
  : test-left-prepare-resets-horizontal-scroll
+ : test-files-selection-has-background-only-when-pane-focused
  : test-preview-body-does-not-mutate-scroll-state}

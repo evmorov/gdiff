@@ -70,8 +70,9 @@
     (math.max width (tui.visible-length (row-text state descriptor false)))))
 
 (fn display-row [state descriptor row-index]
-  (let [selected? (selection.selected-row? state descriptor row-index)]
-    (tui.row (row-text state descriptor selected?) selected?)))
+  (let [selected? (selection.selected-row? state descriptor row-index)
+        focused-selection? (and selected? (= state.focus :left))]
+    (tui.row (row-text state descriptor selected?) focused-selection?)))
 
 (fn visible-rows [state rows first-row last-row]
   (fcollect [i first-row last-row]

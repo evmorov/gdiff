@@ -224,7 +224,7 @@
     (faith.= 0 (t.count-pairs state.preview_cache))
     (update.cache-selected-preview state)
     (faith.= 1 (t.count-pairs state.preview_cache))
-    (faith.match "%+after" (t.text (. state.preview_cache key)))))
+    (faith.match "after" (t.text (. state.preview_cache key)))))
 
 (fn test-refresh-loaded-clears-stale-cache-and-caches-selected-preview []
   (setup-repo)
@@ -242,7 +242,7 @@
     (faith.= 1 (t.count-pairs state.preview_cache))
     (update.update state {} {:type :refresh-loaded : entries :reviewed {}})
     (faith.= nil (. state.preview_cache old-key))
-    (faith.match "%+after" (t.text (. state.preview_cache key)))))
+    (faith.match "after" (t.text (. state.preview_cache key)))))
 
 (fn test-refresh-loaded-clears-folder-preview-cache []
   (setup-repo)

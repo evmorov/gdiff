@@ -15,6 +15,9 @@
 (fn nonblocking-mode []
   (input-mode 0))
 
+(fn escape-mode []
+  (input-mode 1))
+
 (fn cursor [row col]
   (io.write ansi.esc "[" row ";" col "H"))
 
@@ -75,7 +78,10 @@
 (fn read-key [state]
   (let [c (io.read 1)]
     (if (= c ansi.esc)
-        (let [key (keys.decode state c (read-escape-sequence))]
+        (let [_ (escape-mode)
+              sequence (read-escape-sequence)
+              _ (blocking-mode)
+              key (keys.decode state c sequence)]
           (if (= key :paste-start)
               (do
                 (drain-paste)
@@ -84,13 +90,14 @@
         (keys.decode state c))))
 
 (fn poll-key [state]
-  ;; Restores blocking mode before assembling an escape sequence so a split
-  ;; arrow key or bracketed paste can't be misread or leak paste as commands.
+  ;; Uses a short escape timeout while assembling a sequence so a split arrow
+  ;; key or bracketed paste can't be misread or leak paste as commands, while a
+  ;; lone Escape still resolves promptly instead of stalling.
   (let [c (io.read 1)]
     (when c
       (if (= c ansi.esc)
           (do
-            (blocking-mode)
+            (escape-mode)
             (let [key (keys.decode state c (read-escape-sequence))]
               (if (= key :paste-start)
                   (do

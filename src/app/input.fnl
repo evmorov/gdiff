@@ -38,6 +38,7 @@
     "]" :split-right
     "G" :bottom
     "q" :clear-search
+    :escape :back
     "?" :toggle-help
     _ key))
 

@@ -11,6 +11,7 @@
                         ["[ / ]" "Resize split"]
                         ["/" "Search"]
                         ["n / N" "Next / previous match"]
+                        ["esc" "Exit selection / back to files"]
                         ["q" "Clear search / exit selection"]
                         ["r" "Refresh and sync"]
                         ["p" "Open pull request"]

@@ -154,11 +154,6 @@
           (line-selection.start state)
           (set state.notice (notice.selecting-lines))))))
 
-(fn exit-selection-or-clear-search [state]
-  (if (line-selection.active? state)
-      (exit-line-selection state)
-      (pane-search.clear state)))
-
 (fn move-split [state delta]
   (set state.split_ratio (action-plan.split-ratio state.split_ratio delta)))
 
@@ -185,6 +180,15 @@
 (fn focus-left [state]
   (exit-line-selection state)
   (set state.focus :left))
+
+(fn exit-selection-or-clear-search [state]
+  (if (line-selection.active? state) (exit-line-selection state)
+      (pane-search.clear state)))
+
+(fn back-to-files [state]
+  (if (line-selection.active? state) (exit-line-selection state)
+      (= state.focus :right) (focus-left state)
+      (pane-search.clear state)))
 
 (fn resync-split-search [state]
   (when (preview-search.has-query? state)
@@ -326,6 +330,7 @@
                  :search-next pane-search.next
                  :search-previous pane-search.previous
                  :clear-search exit-selection-or-clear-search
+                 :back back-to-files
                  :toggle-line-selection toggle-line-selection
                  :top #(jump $1 preview.cursor-top selection.top)
                  :bottom #(jump $1 preview.cursor-bottom selection.bottom)

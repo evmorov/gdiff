@@ -12,11 +12,7 @@
 (fn separator [state]
   (.. " " (tui.color state.theme :muted symbols.line.separator) " "))
 
-(fn header [state]
-  (let [items [state.revision_label "? help" "Ctrl-C quit"]]
-    (table.concat items (separator state))))
-
-(fn footer-summary [state count]
+(fn summary [state count]
   (let [reviewed (review.count state.entries)
         stats state.diff_stats
         reviewed-percent (percentage reviewed count)
@@ -31,12 +27,24 @@
                                    (.. "-" stats.deletions)))))
     (table.concat items (separator state))))
 
-(fn footer [state count]
+(fn header [state count]
+  (let [items [state.revision_label "? help" "Ctrl-C quit"]]
+    {:text (table.concat items (separator state)) :right (summary state count)}))
+
+(fn toggle-label [label on?]
+  (.. label " " (if on? "on" "off")))
+
+(fn status-widgets [state]
+  (table.concat [(toggle-label :wrap state.preview_wrap?)
+                 (toggle-label :split state.split_mode?)]
+                (separator state)))
+
+(fn footer [state]
   (let [prompt (search.status state)
         warning (sync.warning state.sync)
-        summary (footer-summary state count)]
-    (if prompt (tui.footer :prompt prompt summary) warning
-        (tui.footer :warning warning summary)
-        (tui.footer :notice state.notice summary))))
+        status (status-widgets state)]
+    (if prompt (tui.footer :prompt prompt status) warning
+        (tui.footer :warning warning status)
+        (tui.footer :notice state.notice status))))
 
 {: footer : header}

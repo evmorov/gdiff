@@ -45,6 +45,6 @@
         right (right-pane state visible cols selected)
         body (tui.split left right state.split_ratio)
         overlay (when state.show_help? (help-view.modal state))]
-    (tui.screen (chrome.header state) body (chrome.footer state count) overlay)))
+    (tui.screen (chrome.header state count) body (chrome.footer state) overlay)))
 
 {: view}

@@ -386,25 +386,25 @@
       (faith.= :file row.type)
       (faith.= "nested.rb" row.name))))
 
-(fn test-view-moves-file-counts-to-footer-right []
+(fn test-view-moves-file-counts-to-header-right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
     (let [first-entry (. state.entries 1)]
       (set first-entry.reviewed true))
     (let [view (app.view state 10 100)
-          header (tui.strip-ansi view.header)
-          footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= nil (header:find "files" 1 true))
-      (faith.= nil (header:find "reviewed" 1 true))
-      (faith.= "1/2 files │ 50% reviewed" footer-right))))
+          header-left (tui.strip-ansi view.header.text)
+          header-right (tui.strip-ansi view.header.right)]
+      (faith.= nil (header-left:find "files" 1 true))
+      (faith.= nil (header-left:find "reviewed" 1 true))
+      (faith.= "1/2 files │ 50% reviewed" header-right))))
 
-(fn test-view-shows-diff-stats-in-footer-right []
+(fn test-view-shows-diff-stats-in-header-right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
     (set state.diff_stats {:additions 42 :deletions 7})
     (let [view (app.view state 10 100)
-          footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "0/2 files │ 0% reviewed │ +42 -7" footer-right))))
+          header-right (tui.strip-ansi view.header.right)]
+      (faith.= "0/2 files │ 0% reviewed │ +42 -7" header-right))))
 
-(fn test-view-shows-reviewed-file-percent-in-footer-right []
+(fn test-view-shows-reviewed-file-percent-in-header-right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
     (let [first-entry (. state.entries 1)]
       (set first-entry.reviewed true))
@@ -414,8 +414,8 @@
           :files {"a.rb" {:additions 3 :deletions 2}
                   "b.rb" {:additions 7 :deletions 3}}})
     (let [view (app.view state 10 100)
-          footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "1/2 files │ 50% reviewed │ +10 -5" footer-right))))
+          header-right (tui.strip-ansi view.header.right)]
+      (faith.= "1/2 files │ 50% reviewed │ +10 -5" header-right))))
 
 (fn test-view-shows-all-reviewed-when-all-files-reviewed []
   (let [state (state [(entry "M" "a.rb") (entry "M" "renamed.rb")])]
@@ -426,17 +426,33 @@
           :deletions 20
           :files {"a.rb" {:additions 10 :deletions 5}}})
     (let [view (app.view state 10 100)
-          footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "2/2 files │ 100% reviewed │ +100 -20" footer-right))))
+          header-right (tui.strip-ansi view.header.right)]
+      (faith.= "2/2 files │ 100% reviewed │ +100 -20" header-right))))
 
 (fn test-view-shows-trimmed-header []
   (let [state (state [(entry "M" "a.rb")])
         view (app.view state 10 100)
-        header (tui.strip-ansi view.header)]
+        header (tui.strip-ansi view.header.text)]
     (faith.is (header:find "? help" 1 true))
     (faith.is (header:find "Ctrl-C quit" 1 true))
     (faith.= nil (header:find "refresh/sync" 1 true))
     (faith.= nil (header:find "w wrap" 1 true))))
+
+(fn test-view-shows-wrap-and-split-status-in-footer-right []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.preview_wrap? true)
+    (set state.split_mode? true)
+    (let [view (app.view state 10 100)
+          footer-right (tui.strip-ansi view.footer.right)]
+      (faith.= "wrap on │ split on" footer-right))))
+
+(fn test-view-reflects-disabled-wrap-and-split-in-footer-right []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.preview_wrap? false)
+    (set state.split_mode? false)
+    (let [view (app.view state 10 100)
+          footer-right (tui.strip-ansi view.footer.right)]
+      (faith.= "wrap off │ split off" footer-right))))
 
 (fn test-question-mark-toggles-help-modal []
   (let [state (state [(entry "M" "a.rb")])]
@@ -735,11 +751,13 @@
  : test-uppercase-e-expand-keeps-cursor-on-changed-file
  : test-uppercase-e-expand-keeps-cursor-on-folder
  : test-uppercase-e-collapse-from-unchanged-file-jumps-to-lowest-file
- : test-view-moves-file-counts-to-footer-right
+ : test-view-moves-file-counts-to-header-right
  : test-view-shows-all-reviewed-when-all-files-reviewed
- : test-view-shows-reviewed-file-percent-in-footer-right
- : test-view-shows-diff-stats-in-footer-right
+ : test-view-shows-reviewed-file-percent-in-header-right
+ : test-view-shows-diff-stats-in-header-right
  : test-view-shows-trimmed-header
+ : test-view-shows-wrap-and-split-status-in-footer-right
+ : test-view-reflects-disabled-wrap-and-split-in-footer-right
  : test-question-mark-toggles-help-modal
  : test-help-modal-ignores-action-keys-without-redraw
  : test-help-modal-skips-redraw-on-idle-tick

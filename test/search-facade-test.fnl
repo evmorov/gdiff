@@ -43,6 +43,8 @@
     (faith.is (not (module.has-query? state)))
     (module.handle-input state "x")
     (faith.= "x" (module.query state))
+    (module.handle-input state {:paste "yz"})
+    (faith.= "xyz" (module.query state))
     (module.clear state)
     (faith.is (not (module.has-query? state)))))
 

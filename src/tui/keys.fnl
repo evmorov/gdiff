@@ -3,6 +3,11 @@
 (fn search-input? [state]
   (and state state.search state.search.active?))
 
+(fn search-active? [state]
+  (and state
+       (or (and state.search state.search.active?)
+           (and state.preview_search state.preview_search.active?)) true))
+
 (fn escape-key [sequence ?b]
   (let [sequence (if ?b (.. (or sequence "") (or ?b "")) (or sequence ""))]
     (case sequence
@@ -24,4 +29,4 @@
       (= c "\3") :quit
       c))
 
-{: decode : escape-key : search-input?}
+{: decode : escape-key : search-active? : search-input?}

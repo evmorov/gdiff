@@ -89,7 +89,11 @@
     "\8" (do
            (backspace ctx state)
            true)
-    _ (if (search-plan.printable? key)
+    _ (if (and (= (type key) :table) key.paste)
+          (do
+            (append-char ctx state key.paste)
+            true)
+          (search-plan.printable? key)
           (do
             (append-char ctx state key)
             true)

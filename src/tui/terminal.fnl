@@ -63,17 +63,35 @@
       (s:sub (- (length s) width -1))
       s))
 
+(fn printable-byte? [ch]
+  (let [byte (string.byte ch)]
+    (and byte (>= byte 32) (not (= byte 127)))))
+
 (fn drain-paste []
-  (var buffer "")
+  (var window "")
+  (var line "")
+  (var collecting? true)
   (var done? false)
   (while (not done?)
     (let [ch (io.read 1)]
       (if ch
           (do
-            (set buffer (tail (.. buffer ch) 6))
-            (when (paste-end? buffer)
+            (set window (tail (.. window ch) 6))
+            (when collecting?
+              (if (or (= ch "\n") (= ch "\r") (= ch ansi.esc))
+                  (set collecting? false)
+                  (printable-byte? ch)
+                  (set line (.. line ch))))
+            (when (paste-end? window)
               (set done? true)))
-          (set done? true)))))
+          (set done? true))))
+  line)
+
+(fn paste-key [state]
+  (let [line (drain-paste)]
+    (if (and (keys.search-active? state) (< 0 (length line)))
+        {:paste line}
+        :tick)))
 
 (fn read-key [state]
   (let [c (io.read 1)]
@@ -83,9 +101,7 @@
               _ (blocking-mode)
               key (keys.decode state c sequence)]
           (if (= key :paste-start)
-              (do
-                (drain-paste)
-                :tick)
+              (paste-key state)
               key))
         (keys.decode state c))))
 
@@ -100,9 +116,7 @@
             (escape-mode)
             (let [key (keys.decode state c (read-escape-sequence))]
               (if (= key :paste-start)
-                  (do
-                    (drain-paste)
-                    :tick)
+                  (paste-key state)
                   key)))
           (keys.decode state c)))))
 

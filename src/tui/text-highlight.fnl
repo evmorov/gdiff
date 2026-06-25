@@ -9,7 +9,12 @@
         (let [(first last) (plain:find query start true)]
           (if first
               (do
-                (table.insert ranges {: first : last})
+                (table.insert ranges
+                              {:first (+ 1
+                                         (txt.visible-length (plain:sub 1
+                                                                        (- first
+                                                                           1))))
+                               :last (txt.visible-length (plain:sub 1 last))})
                 (set start (+ last 1)))
               (set searching? false)))))
     ranges))

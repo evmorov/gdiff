@@ -19,6 +19,7 @@
         (preview-split-view.prepare state visible cols selected)
         (preview-split-view.body state visible cols))
       (do
+        (set state.split_rows nil)
         (preview-view.prepare state visible cols selected)
         (preview-view.body state visible))))
 

@@ -1,4 +1,5 @@
 (local preview (require :preview.core))
+(local preview-search (require :app.preview-search))
 (local selection (require :app.selection))
 (local line-selection (require :app.line-selection))
 (local viewport (require :preview.viewport))
@@ -43,18 +44,27 @@
 (fn styled [state text width selected?]
   (if selected? (theme.selected-row state.theme text width) text))
 
+(fn highlighted [state highlight? text]
+  (if (and highlight? (preview-search.has-query? state))
+      (preview-search.highlight state text)
+      text))
+
 (fn half [state row side width x-scroll selected?]
-  (let [windowed (pane.window-text (or (. row side) "") width x-scroll)
-        role (change-role row side)
-        colored (if role (tui.color state.theme role windowed) windowed)]
-    (styled state colored width selected?)))
+  (let [role (change-role row side)
+        raw (or (. row side) "")
+        colored (if role (tui.color state.theme role raw) raw)
+        searched (highlighted state (= side state.split_side) colored)
+        windowed (pane.window-text searched width x-scroll)]
+    (styled state windowed width selected?)))
 
 (fn divider [state]
   (tui.color state.theme :muted symbols.line.vertical))
 
 (fn full-row [state row content selected?]
-  (let [windowed (pane.window-text (or row.old "") content 0)]
-    (styled state (tui.color state.theme :muted windowed) content selected?)))
+  (let [colored (tui.color state.theme :muted (or row.old ""))
+        searched (highlighted state true colored)
+        windowed (pane.window-text searched content 0)]
+    (styled state windowed content selected?)))
 
 (fn compose-row [state row index old-w new-w content x-scroll]
   (let [selected? (highlight-row? state index)]
@@ -70,6 +80,12 @@
   (let [selected (or ?selected (selection.selected-context state))]
     (preview.split-rows state selected.entry)))
 
+(fn sync-search [state rows]
+  (when (and (= state.focus :right) (preview-search.has-query? state)
+             (not (= state.preview_search.matches_source rows)))
+    (set state.preview_search.matches_source rows)
+    (preview-search.rebuild state true)))
+
 (fn prepare [state visible cols ?selected]
   (let [rows (entry-rows state ?selected)
         (_content old-w _new-w) (do
@@ -77,6 +93,7 @@
                                                                visible)
                                   (half-widths state cols))]
     (set state.split_rows rows)
+    (sync-search state rows)
     (set state.preview_x_max_scroll
          (scroll-util.max-offset (max-raw-width rows) old-w))
     (set state.preview_x_scroll

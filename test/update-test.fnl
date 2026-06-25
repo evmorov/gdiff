@@ -515,6 +515,21 @@
     (set clipboard.copy old-copy)
     (faith.= ["old1\nold2" "new2"] copied)))
 
+(fn test-split-search-is-scoped-to-the-focused-side []
+  (let [state (split-state)]
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["o" "l" "d"])
+    (faith.= 2 (length state.preview_search.matches))
+    (update.update state {} (update.read-msg state :enter))
+    (update.update state {} (update.read-msg state "\t"))
+    (faith.= :new state.split_side)
+    (faith.= 0 (length state.preview_search.matches))
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["n" "e" "w" "2"])
+    (faith.= 1 (length state.preview_search.matches))
+    (faith.= 2 state.preview_cursor)))
+
 (fn test-yank-finished-updates-notice []
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {} {:type :yank-finished :count 1 :ok? true})
@@ -583,6 +598,7 @@
  : test-s-toggles-split-mode
  : test-tab-cycles-left-old-new-left-in-split
  : test-yank-copies-the-focused-split-column
+ : test-split-search-is-scoped-to-the-focused-side
  : test-yank-finished-updates-notice
  : test-open-pr-finished-updates-notice
  : test-open-target-finished-updates-notice

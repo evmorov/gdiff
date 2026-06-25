@@ -7,6 +7,7 @@
 (local reviews (require :storage.reviews))
 (local search (require :app.search))
 (local pane-search (require :app.pane-search))
+(local preview-search (require :app.preview-search))
 (local line-selection (require :app.line-selection))
 (local selection (require :app.selection))
 (local tree (require :app.tree))
@@ -178,10 +179,18 @@
   (exit-line-selection state)
   (set state.focus :left))
 
+(fn resync-split-search [state]
+  (when (preview-search.has-query? state)
+    (preview-search.rebuild state true)))
+
 (fn cycle-split-focus [state]
-  (if (not= state.focus :right) (focus-right state :old)
-      (= state.split_side :old) (set state.split_side :new)
-      (focus-left state)))
+  (if (not= state.focus :right)
+      (do
+        (focus-right state :old)
+        (resync-split-search state)) (= state.split_side :old)
+      (do
+        (set state.split_side :new)
+        (resync-split-search state)) (focus-left state)))
 
 (fn toggle-focus [state]
   (if (split-active? state) (cycle-split-focus state)

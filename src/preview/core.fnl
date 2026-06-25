@@ -73,6 +73,9 @@
 (fn splittable? [state entry]
   (split.splittable? (split-rows state entry)))
 
+(fn split-active? [state]
+  (and state.split_mode? state.split_rows (next state.split_rows) true))
+
 (fn warming? [state]
   (and state.preview_warm state.preview_warm.dir))
 
@@ -275,6 +278,7 @@
 {: lines
  : split-rows
  : splittable?
+ : split-active?
  : apply-display-lines
  : cursor-top
  : cursor-bottom

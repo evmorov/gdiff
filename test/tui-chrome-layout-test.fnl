@@ -23,6 +23,13 @@
     (faith.= "───────────┴▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀───"
              line)))
 
+(fn test-bottom-line-connects-inner-split-dividers []
+  (let [body (tui.split (tui.list []) (tui.lines [] nil nil nil nil [3]) 0.4)
+        line (layout.bottom-line {: body} 30)]
+    (faith.= "───────────┴──┴───────────────"
+             line)))
+
 {: test-body-accepts-modern-or-legacy-view-shapes
  : test-bottom-line-connects-body-and-footer-columns
+ : test-bottom-line-connects-inner-split-dividers
  : test-footer-node-accepts-modern-or-legacy-view-shapes}

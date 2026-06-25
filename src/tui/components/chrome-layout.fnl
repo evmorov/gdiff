@@ -27,8 +27,22 @@
   (footer.rule-cols cols (and footer-node footer-node.text)
                     (and footer-node footer-node.right)))
 
-(fn bottom-rule [cols ?divider-col ?footer-cols]
-  (rule.horizontal cols (when ?divider-col {?divider-col true}) ?footer-cols))
+(fn bottom-rule [cols ?up-cols ?footer-cols]
+  (rule.horizontal cols ?up-cols ?footer-cols))
+
+(fn inner-divider-cols [body cols]
+  (when (and body (= body.type :split) body.right body.right.dividers)
+    (let [(_ _ divider-col) (split.widths cols body.ratio)]
+      (icollect [_ d (ipairs body.right.dividers)]
+        (+ divider-col d)))))
+
+(fn divider-up-cols [body cols]
+  (let [main (split-divider-col body cols)
+        out (if main {main true} {})]
+    (each [_ col (ipairs (or (inner-divider-cols body cols) []))]
+      (when (<= col cols)
+        (tset out col true)))
+    (when (next out) out)))
 
 (fn horizontal-scrollbars [line body cols]
   (if (and body (= body.type :split))
@@ -42,9 +56,9 @@
 (fn bottom-line [view cols]
   (let [body (body view)
         footer-node (footer-node view)
-        divider-col (split-divider-col body cols)
+        up-cols (divider-up-cols body cols)
         footer-cols (footer-rule-cols cols footer-node)]
-    (horizontal-scrollbars (bottom-rule cols divider-col footer-cols) body cols)))
+    (horizontal-scrollbars (bottom-rule cols up-cols footer-cols) body cols)))
 
 {: body
  : bottom-line

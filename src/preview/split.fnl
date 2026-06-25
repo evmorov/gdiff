@@ -16,9 +16,6 @@
     (set acc.removed [])
     (set acc.added [])))
 
-(fn full-row [acc kind line]
-  (table.insert acc.rows {: kind :old line :new line}))
-
 (fn diff-path [line]
   (let [stripped (line:sub 5)
         trimmed (stripped:gsub "%s+$" "")]
@@ -38,7 +35,7 @@
     :hunk (do
             (flush acc)
             (set acc.in-hunk? true)
-            (full-row acc :hunk line))
+            (table.insert acc.rows {:kind :hunk :old line}))
     :meta (meta-step acc line)
     :added (table.insert acc.added (line:sub 2))
     :removed (table.insert acc.removed (line:sub 2))

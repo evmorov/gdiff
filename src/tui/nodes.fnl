@@ -10,12 +10,14 @@
   [:x-scroll ?x-scroll]
   [:x-max-scroll ?x-max-scroll])
 
-(defnode lines [lines ?scroll ?x-scroll ?x-max-scroll ?highlight] :lines
+(defnode lines [lines ?scroll ?x-scroll ?x-max-scroll ?highlight ?dividers]
+  :lines
   [:lines lines]
   [:scroll ?scroll]
   [:x-scroll ?x-scroll]
   [:x-max-scroll ?x-max-scroll]
-  [:highlight ?highlight])
+  [:highlight ?highlight]
+  [:dividers ?dividers])
 
 (defnode split [left right ?ratio] :split
   [:left left]

@@ -30,14 +30,13 @@
               (tui.visible-length (or row.new "")))))
 
 (fn full-row? [row]
-  (or (= row.kind :meta) (= row.kind :hunk) (= row.kind :filename)
-      (= row.kind :rule)))
+  (or (= row.kind :filename) (= row.kind :rule)))
 
 (fn change-role [row side]
-  (let [value (. row side)]
-    (if (and (= row.kind :change) value)
-        (if (= side :old) :status-deleted :status-added)
-        nil)))
+  (if (= row.kind :hunk) :muted
+      (let [value (. row side)]
+        (if (and (= row.kind :change) value)
+            (if (= side :old) :status-deleted :status-added)))))
 
 (fn highlight-row? [state index]
   (and (= state.focus :right)
@@ -72,15 +71,18 @@
         windowed (pane.window-text searched content 0)]
     (styled state windowed content selected?)))
 
+(fn rule-line [state old-w new-w]
+  (tui.color state.theme :muted
+             (.. (string.rep symbols.line.horizontal old-w)
+                 symbols.line.join-down
+                 (string.rep symbols.line.horizontal new-w))))
+
 (fn compose-row [state row index old-w new-w content x-scroll]
   (let [selected? (highlight-row? state index)]
     (if (= row.kind :filename)
         (full-width state (or row.new row.old "") content selected?)
         (= row.kind :rule)
-        (full-width state (string.rep symbols.line.horizontal content) content
-                    selected? :muted)
-        (full-row? row)
-        (full-width state (or row.old "") content selected? :muted)
+        (rule-line state old-w new-w)
         (.. (half state row :old old-w x-scroll
                   (and selected? (= state.split_side :old)))
             (divider state)
@@ -156,6 +158,9 @@
         (prepare-truncated state rows visible cols))
     (sync-search state state.split_rows)))
 
+(fn blank-divider [state old-w new-w]
+  (.. (pane.blank old-w) (divider state) (pane.blank new-w)))
+
 (fn body [state visible _cols]
   (let [rows (or state.split_rows [])
         widths (or state.split_widths {})
@@ -168,6 +173,8 @@
         lines (icollect [i row (ipairs visible-rows)]
                 (compose-row state row (+ offset i) old-w new-w content
                              x-scroll))]
-    (tui.lines lines (preview.scroll-info state) 0 0 nil)))
+    (for [_ (+ (length lines) 1) (math.max 1 (or visible 1))]
+      (table.insert lines (blank-divider state old-w new-w)))
+    (tui.lines lines (preview.scroll-info state) 0 0 nil [(+ old-w 1)])))
 
 {: body : prepare : wrap-rows : split-halves}

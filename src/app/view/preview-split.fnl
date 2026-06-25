@@ -69,25 +69,16 @@
     (styled state windowed width selected?)))
 
 (fn compose-row [state row index old-w new-w _content x-scroll]
-  (let [selected? (highlight-row? state index)]
-    (if (= row.kind :filename)
-        (.. (header-half state (or row.old "") old-w
-                         (and selected? (= state.split_side :old)))
-            (divider state)
-            (header-half state (or row.new "") new-w
-                         (and selected? (= state.split_side :new))))
-        (= row.kind :rule)
-        (.. (header-half state (or row.old "") old-w
-                         (and selected? (= state.split_side :old)) :muted)
-            (divider state) (header-half state (or row.new "") new-w
-                                        (and selected?
-                                             (= state.split_side :new))
-                                        :muted))
-        (.. (half state row :old old-w x-scroll
-                  (and selected? (= state.split_side :old)))
-            (divider state)
-            (half state row :new new-w x-scroll
-                  (and selected? (= state.split_side :new)))))))
+  (let [selected? (highlight-row? state index)
+        old-sel? (and selected? (= state.split_side :old))
+        new-sel? (and selected? (= state.split_side :new))]
+    (if (or (= row.kind :filename) (= row.kind :rule))
+        (let [?color (when (= row.kind :rule) :muted)]
+          (.. (header-half state (or row.old "") old-w old-sel? ?color)
+              (divider state) (header-half state (or row.new "") new-w new-sel?
+                                          ?color)))
+        (.. (half state row :old old-w x-scroll old-sel?) (divider state)
+            (half state row :new new-w x-scroll new-sel?)))))
 
 (fn entry-rows [state ?selected]
   (let [selected (or ?selected (selection.selected-context state))]

@@ -75,6 +75,9 @@
 (fn splittable? [state entry]
   (and entry (= entry.kind "M") (split.splittable? (split-rows state entry))))
 
+(fn split? [state entry]
+  (and state.split_mode? (splittable? state entry)))
+
 (fn split-active? [state]
   (and state.split_mode? state.split_rows (next state.split_rows) true))
 
@@ -280,6 +283,7 @@
 {: lines
  : split-rows
  : splittable?
+ : split?
  : split-active?
  : apply-display-lines
  : cursor-top

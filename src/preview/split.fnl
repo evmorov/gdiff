@@ -1,14 +1,5 @@
 (local word-diff (require :preview.word-diff))
-
-(fn classify [line in-hunk?]
-  (let [first (line:sub 1 1)]
-    (if (line:match "^diff ") :file
-        (line:match "^@@") :hunk
-        (not in-hunk?) :meta
-        (= first "+") :added
-        (= first "-") :removed
-        (= first "\\") :marker
-        :context)))
+(local diff-parse (require :preview.diff-parse))
 
 (fn ordered-pairs [pairs]
   (let [out []]
@@ -32,45 +23,13 @@
     (drain)
     out))
 
-(fn flush [acc]
-  (each [_ p (ipairs (ordered-pairs (word-diff.align acc.removed acc.added)))]
-    (let [old (and p.old (. acc.removed p.old))
-          new (and p.new (. acc.added p.new))
+(fn change-rows [removed added]
+  (icollect [_ p (ipairs (ordered-pairs (word-diff.align removed added)))]
+    (let [old (and p.old (. removed p.old))
+          new (and p.new (. added p.new))
           row {:kind :change : old : new}]
       (when (and p.old p.new) (set row.emphasize? true))
-      (table.insert acc.rows row)))
-  (set acc.removed [])
-  (set acc.added []))
-
-(fn diff-path [line]
-  (let [stripped (line:sub 5)
-        trimmed (stripped:gsub "%s+$" "")]
-    (if (= trimmed "/dev/null")
-        ""
-        (or (trimmed:match "^[ab]/(.+)$") trimmed))))
-
-(fn meta-step [acc line]
-  (if (line:match "^%-%-%- ") (set acc.old-path (diff-path line))
-      (line:match "^%+%+%+ ") (set acc.new-path (diff-path line))))
-
-(fn step [acc line]
-  (case (classify line acc.in-hunk?)
-    :file (do
-            (flush acc)
-            (set acc.in-hunk? false))
-    :hunk (do
-            (flush acc)
-            (set acc.in-hunk? true)
-            (table.insert acc.rows {:kind :hunk :old line}))
-    :meta (meta-step acc line)
-    :added (table.insert acc.added (line:sub 2))
-    :removed (table.insert acc.removed (line:sub 2))
-    :context (do
-               (flush acc)
-               (table.insert acc.rows
-                             {:kind :context
-                              :old (line:sub 2)
-                              :new (line:sub 2)}))))
+      row)))
 
 (fn has-content? [rows]
   (accumulate [found false _ row (ipairs (or rows [])) &until found]
@@ -94,10 +53,18 @@
                       {:kind :filename :old old-title :new new-title})))))
 
 (fn parse-rows [text ?old-ref ?new-ref]
-  (let [acc {:rows [] :removed [] :added [] :in-hunk? false}]
-    (each [line (string.gmatch (or text "") "[^\r\n]+")]
-      (step acc line))
-    (flush acc)
+  (let [acc {:rows []}
+        handlers {:change (fn [removed added]
+                            (each [_ row (ipairs (change-rows removed added))]
+                              (table.insert acc.rows row)))
+                  :hunk (fn [line]
+                          (table.insert acc.rows {:kind :hunk :old line}))
+                  :context (fn [text]
+                             (table.insert acc.rows
+                                           {:kind :context :old text :new text}))
+                  :old-path (fn [path] (set acc.old-path path))
+                  :new-path (fn [path] (set acc.new-path path))}]
+    (diff-parse.parse text handlers)
     (prepend-header acc ?old-ref ?new-ref)
     acc.rows))
 

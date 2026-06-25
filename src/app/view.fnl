@@ -24,11 +24,8 @@
     (set state.split_ratio (auto-split-ratio state cols))
     (set state.split_ratio_auto? false)))
 
-(fn split? [state entry]
-  (and state.split_mode? (preview.splittable? state entry)))
-
 (fn right-pane [state visible cols selected]
-  (if (split? state selected.entry)
+  (if (preview.split? state selected.entry)
       (do
         (preview-split-view.prepare state visible cols selected)
         (preview-split-view.body state visible cols))

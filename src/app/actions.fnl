@@ -15,8 +15,7 @@
 (import-macros {: set-fields} :state.macros)
 
 (fn split-active? [state]
-  (and state.split_mode?
-       (preview.splittable? state (selection.selected-entry state))))
+  (preview.split? state (selection.selected-entry state)))
 
 (fn toggle-folder-reviewed [state row]
   (let [entries (or row.entries [])

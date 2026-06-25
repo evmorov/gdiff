@@ -30,24 +30,6 @@
 (fn current-branch []
   (or (read-trimmed (commands.current-branch-command)) "HEAD"))
 
-(fn comparison-revision [revision ?current-branch]
-  (if (commands.working? revision) revision
-      (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
-        (if left
-            (.. (if (> (length left) 0) left
-                    (or ?current-branch (current-branch)))
-                "..."
-                (if (> (length right) 0) right
-                    (or ?current-branch (current-branch))))
-            (.. revision "..." (or ?current-branch (current-branch)))))))
-
-(fn comparison-right [revision ?current-branch]
-  (let [current-branch (or ?current-branch (current-branch))
-        (_left right) (revision:match "^(.-)%.%.%.(.*)$")]
-    (if (and right (> (length right) 0) (not (= right "HEAD")))
-        right
-        current-branch)))
-
 (fn comparison-sides [revision ?current-branch]
   (if (commands.working? revision)
       (values "HEAD" "working tree")
@@ -57,6 +39,18 @@
             (values (if (> (length left) 0) left current)
                     (if (> (length right) 0) right current))
             (values revision current)))))
+
+(fn comparison-revision [revision ?current-branch]
+  (if (commands.working? revision) revision
+      (let [(left right) (comparison-sides revision ?current-branch)]
+        (.. left "..." right))))
+
+(fn comparison-right [revision ?current-branch]
+  (let [current-branch (or ?current-branch (current-branch))
+        (_left right) (revision:match "^(.-)%.%.%.(.*)$")]
+    (if (and right (> (length right) 0) (not (= right "HEAD")))
+        right
+        current-branch)))
 
 (fn linked-pr-url [revision]
   (let [branch (comparison-right revision)]

@@ -26,16 +26,21 @@
                     (set i nxt)))))))
     out))
 
-(fn lcs-match [a b]
-  (let [m (length a)
-        n (length b)
-        dp (fcollect [_ 0 m] (fcollect [_ 0 n] 0))]
+(fn lcs-table [m n equal? gain]
+  (let [dp (fcollect [_ 0 m] (fcollect [_ 0 n] 0))]
     (for [i 1 m]
       (for [j 1 n]
         (tset (. dp (+ i 1)) (+ j 1)
-              (if (= (. a i :text) (. b j :text))
-                  (+ (. dp i j) (length (. a i :text)))
+              (if (equal? i j)
+                  (+ (. dp i j) (gain i j))
                   (math.max (. dp i (+ j 1)) (. dp (+ i 1) j))))))
+    dp))
+
+(fn lcs-match [a b]
+  (let [m (length a)
+        n (length b)
+        dp (lcs-table m n #(= (. a $1 :text) (. b $2 :text))
+                      #(length (. a $1 :text)))]
     (let [ma (fcollect [_ 1 m]
                false)
           mb (fcollect [_ 1 n]
@@ -92,13 +97,7 @@
 (fn lcs-chars [a b]
   (let [m (length a)
         n (length b)
-        dp (fcollect [_ 0 m] (fcollect [_ 0 n] 0))]
-    (for [i 1 m]
-      (for [j 1 n]
-        (tset (. dp (+ i 1)) (+ j 1)
-              (if (= (. a i) (. b j))
-                  (+ (. dp i j) (length (. a i)))
-                  (math.max (. dp i (+ j 1)) (. dp (+ i 1) j))))))
+        dp (lcs-table m n #(= (. a $1) (. b $2)) #(length (. a $1)))]
     (. dp (+ m 1) (+ n 1))))
 
 (fn word-distance [a b]

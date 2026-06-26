@@ -745,8 +745,8 @@
         state (state [selected warmed])
         selected-key (preview-key.for-entry "HEAD" selected)
         warmed-key (preview-key.for-entry "HEAD" warmed)]
-    (faith.is (sys.write-file "warm/1.fnl" (fennel.view ["selected"])))
-    (faith.is (sys.write-file "warm/2.fnl" (fennel.view ["warmed"])))
+    (faith.is (sys.write-file "warm/1.fnl" (fennel.view {:lines ["selected"]})))
+    (faith.is (sys.write-file "warm/2.fnl" (fennel.view {:lines ["warmed"]})))
     (set state.preview_warm
          {:dir "warm"
           :count 2

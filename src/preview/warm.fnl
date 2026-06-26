@@ -40,8 +40,12 @@
   (set-fields state [:dir nil] [:count 0] [:remaining 0] [:workers 0]
               [:scan-index 1] [:imported {}] [:key-index {}] [:index-key {}]))
 
-(fn write-manifest [path revision entries]
-  (sys.write-file path (fennel.view {: revision : entries})))
+(fn write-manifest [path revision entries ?old-label ?new-label]
+  (sys.write-file path
+                  (fennel.view {: revision
+                                : entries
+                                :old-label ?old-label
+                                :new-label ?new-label})))
 
 (fn start-workers [src-dir manifest dir count]
   (for [i 1 count]
@@ -52,9 +56,9 @@
               [:remaining (length entries)] [:workers 0] [:scan-index 1]
               [:imported {}] [:key-index key-index] [:index-key index-key]))
 
-(fn start-run [state src-dir revision entries dir]
+(fn start-run [state src-dir revision entries dir ?old-label ?new-label]
   (let [manifest (manifest-path dir)]
-    (when (write-manifest manifest revision entries)
+    (when (write-manifest manifest revision entries ?old-label ?new-label)
       (let [(key-index index-key) (plan.index-entries revision entries)
             workers (plan.worker-count entries (sys.cpu-count))]
         (reset-for-run state dir entries key-index index-key)
@@ -65,15 +69,16 @@
               true)
             (cleanup state))))))
 
-(fn start [state src-dir revision entries]
+(fn start [state src-dir revision entries ?old-label ?new-label]
   (cleanup state)
   (when (< 0 (length entries))
     (let [dir (make-dir)]
       (when dir
-        (when (not (start-run state src-dir revision entries dir))
+        (when (not (start-run state src-dir revision entries dir ?old-label
+                              ?new-label))
           (cleanup state))))))
 
-(fn read-lines [path]
+(fn read-output [path]
   (let [(ok result) (fennel-command.load-file path)]
     (when ok
       result)))
@@ -92,13 +97,15 @@
            1
            (+ (or state.scan-index 1) 1))))
 
-(fn import-output [state cache index]
+(fn import-output [state cache index ?split-cache]
   (let [path (plan.output-path state.dir index)
-        lines (read-lines path)]
-    (when lines
+        data (read-output path)]
+    (when data
       (let [key (. state.index-key index)]
         (when key
-          (tset cache key lines)))
+          (tset cache key data.lines)
+          (when (and ?split-cache (not (= nil data.split)))
+            (tset ?split-cache (.. key "\0split") data.split))))
       (sys.remove-file path)
       (mark-imported state index)
       true)))
@@ -107,16 +114,16 @@
   (when (and state.dir (<= (remaining state) 0))
     (cleanup state)))
 
-(fn import-entry [state cache revision entry]
+(fn import-entry [state cache revision entry ?split-cache]
   (when (and state.dir entry)
     (let [key (preview-key.for-entry revision entry)
           index (. state.key-index key)]
       (when index
-        (let [imported? (import-output state cache index)]
+        (let [imported? (import-output state cache index ?split-cache)]
           (finish-if-complete state)
           imported?)))))
 
-(fn update [state cache]
+(fn update [state cache ?split-cache]
   (when state.dir
     (var checks 0)
     (var imports 0)
@@ -125,7 +132,7 @@
                   (< 0 (remaining state)))
         (let [index (or state.scan-index 1)]
           (when (not (. state.imported index))
-            (when (import-output state cache index)
+            (when (import-output state cache index ?split-cache)
               (set imports (+ imports 1))))
           (advance-scan-index state)
           (set checks (+ checks 1))))))

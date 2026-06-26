@@ -18,13 +18,18 @@
 (fn warm [manifest-path dir start step]
   (let [manifest (read-manifest manifest-path)]
     (when manifest
-      (let [state {:revision manifest.revision :preview_cache {}}]
+      (let [state {:revision manifest.revision
+                   :revision_old_label manifest.old-label
+                   :revision_new_label manifest.new-label
+                   :preview_cache {}
+                   :split_cache {}}]
         (var canceled? false)
         (for [i start (length manifest.entries) step]
           (if canceled?
               nil
               (sys.file-exists? manifest-path)
-              (write-output dir i (preview.lines state (. manifest.entries i)))
+              (write-output dir i
+                            (preview.warm-entry state (. manifest.entries i)))
               (set canceled? true)))))))
 
 (let [manifest-path (. arg 1)

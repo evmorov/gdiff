@@ -70,6 +70,19 @@
                 (tset state.preview_numbers_cache key (or numbers false)))
               numbers)))))
 
+(fn warming? [state]
+  (and state.preview_warm state.preview_warm.dir))
+
+(fn compute-split-rows [state entry key]
+  (let [(output ok) (git.plain-diff-output state.revision entry
+                                           state.full_context?)
+        rows (if ok
+                 (split.parse-rows output state.revision_old_label
+                                   state.revision_new_label)
+                 [])]
+    (tset state.split_cache key rows)
+    rows))
+
 (fn split-rows [state entry]
   (if (or (not entry) entry.untracked? (assets.asset? entry))
       []
@@ -77,16 +90,27 @@
                                            state.full_context?)
                     "\0split")
             cached (. state.split_cache key)]
-        (if cached
-            cached
-            (let [(output ok) (git.plain-diff-output state.revision entry
-                                                     state.full_context?)
-                  rows (if ok
-                           (split.parse-rows output state.revision_old_label
-                                             state.revision_new_label)
-                           [])]
-              (tset state.split_cache key rows)
-              rows)))))
+        (if cached cached
+            (and (warming? state) (not state.full_context?)) []
+            (compute-split-rows state entry key)))))
+
+(fn warm-entry [state entry]
+  (if (not entry)
+      {:lines (format.no-selection state) :split []}
+      (assets.asset? entry)
+      {:lines (format.asset state entry) :split []}
+      entry.untracked?
+      {:lines (file-lines state entry) :split []}
+      (let [(output ok) (git.plain-diff-output state.revision entry
+                                               state.full_context?)]
+        (if ok
+            (let [(lines _numbers) (format.diff-lines state output)]
+              {: lines
+               :split (if (= entry.kind "M")
+                          (split.parse-rows output state.revision_old_label
+                                            state.revision_new_label)
+                          [])})
+            {:lines (format.warning state (sys.trim output)) :split []}))))
 
 (fn splittable? [state entry]
   (and entry (= entry.kind "M") (split.splittable? (split-rows state entry))))
@@ -96,9 +120,6 @@
 
 (fn split-active? [state]
   (and state.split_mode? state.split_rows (next state.split_rows) true))
-
-(fn warming? [state]
-  (and state.preview_warm state.preview_warm.dir))
 
 (fn loading-lines [state]
   (format.loading state))
@@ -115,7 +136,7 @@
 
 (fn prepare-entry [state entry]
   (preview-warm.import-entry state.preview_warm state.preview_cache
-                             state.revision entry))
+                             state.revision entry state.split_cache))
 
 (fn listing-row? [state row]
   (and (= state.view_mode :tree) row (= row.type :file) row.unchanged row.path))
@@ -192,7 +213,7 @@
 (fn reset-scroll [state]
   (set-fields state [:preview_scroll 0] [:preview_cursor 1]
               [:preview_x_scroll 0] [:preview_x_max_scroll 0]
-              [:preview_display_cache nil]))
+              [:preview_display_cache nil] [:split_display_cache nil]))
 
 (fn keep-cursor-visible [state]
   (let [visible (row-count state)
@@ -314,6 +335,7 @@
 
 {: lines
  : split-rows
+ : warm-entry
  : splittable?
  : split?
  : split-active?

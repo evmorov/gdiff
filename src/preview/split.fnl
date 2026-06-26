@@ -32,7 +32,9 @@
                : new
                :old-no (and p.old (+ old-no p.old -1))
                :new-no (and p.new (+ new-no p.new -1))}]
-      (when (and p.old p.new) (set row.emphasize? true))
+      (when (and p.old p.new)
+        (set row.emphasize? true)
+        (set row.spans (word-diff.spans old new)))
       row)))
 
 (fn has-content? [rows]

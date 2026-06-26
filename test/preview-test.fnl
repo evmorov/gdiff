@@ -69,6 +69,26 @@
     (faith.= "Loading preview..." (t.text lines))
     (faith.= 0 (t.count-pairs state.preview_cache))))
 
+(fn test-warm-entry-bundles-unified-lines-and-split-rows []
+  (setup-repo)
+  (let [(entries err) (git.diff-entries "HEAD")
+        entry (. entries 1)
+        data (preview.warm-entry (state) entry)]
+    (faith.= nil err)
+    (faith.match "after" (t.text data.lines))
+    (faith.is (< 0 (length data.split)) "an M file should warm split rows")))
+
+(fn test-split-rows-is-nonblocking-while-warming []
+  (let [entry {:status "M" :kind "M" :path "missing.rb" :reviewed false}
+        state {:revision "HEAD" :split_cache {} :preview_warm {:dir "warm"}}
+        old-plain-diff-output git.plain-diff-output]
+    (set git.plain-diff-output
+         (fn [...]
+           (error "split-rows should not load git while warming")))
+    (let [rows (preview.split-rows state entry)]
+      (set git.plain-diff-output old-plain-diff-output)
+      (faith.= [] rows))))
+
 (fn test-scroll-info-only-appears-when-preview-overflows []
   (let [entry {:status "M" :kind "M" :path "a.rb" :reviewed false}
         state (state)
@@ -388,6 +408,8 @@
 
 {: test-full-context-uses-separate-key-and-wider-diff
  : test-visible-lines-can-be-nonblocking-while-warming
+ : test-warm-entry-bundles-unified-lines-and-split-rows
+ : test-split-rows-is-nonblocking-while-warming
  : test-apply-display-lines-updates-preview-scroll-metadata
  : test-apply-horizontal-scroll-limit-resets-when-wrapping
  : test-apply-horizontal-scroll-limit-uses-split-width

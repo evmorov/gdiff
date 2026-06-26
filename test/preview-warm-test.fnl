@@ -6,8 +6,9 @@
 (local sys (require :platform.core))
 (local t (require :test-helper))
 
-(fn write-output [dir index lines]
-  (faith.is (sys.write-file (.. dir "/" index ".fnl") (fennel.view lines))))
+(fn write-output [dir index lines ?split]
+  (faith.is (sys.write-file (.. dir "/" index ".fnl")
+                            (fennel.view {: lines :split ?split}))))
 
 (fn entry [status path ?old-path]
   {: status :kind (status:sub 1 1) : path :old_path ?old-path})
@@ -48,6 +49,21 @@
     (faith.= ["second"] (. cache second-key))
     (faith.= nil state.dir)
     (faith.= false (sys.write-file "warm/still-there" "x"))))
+
+(fn test-update-imports-split-rows-into-split-cache []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (t.write-file "warm/manifest.fnl" "{}")
+  (write-output "warm" 1 ["unified"] [{:kind :change :old "a" :new "b"}])
+  (let [first (entry "M" "a.rb")
+        first-key (preview-key.for-entry "HEAD" first)
+        state (warm-state [first])
+        cache {}
+        split-cache {}]
+    (preview-warm.update state cache split-cache)
+    (faith.= ["unified"] (. cache first-key))
+    (faith.= [{:kind :change :old "a" :new "b"}]
+             (. split-cache (.. first-key "\0split")))))
 
 (fn test-update-imports-ready-previews-out-of-order []
   (t.reset-workdir)
@@ -183,5 +199,6 @@
  : test-start-with-no-missing-entries-cleans-existing-warmer
  : test-update-imports-all-previews-and-cleans-temp-dir
  : test-update-imports-ready-previews-in-small-batches
+ : test-update-imports-split-rows-into-split-cache
  : test-update-imports-ready-previews-out-of-order
  : test-worker-command-loads-runtime-and-macro-paths}

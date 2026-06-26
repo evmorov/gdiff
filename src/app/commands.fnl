@@ -36,7 +36,8 @@
     (preview-warm.start state.preview_warm state.src_dir state.revision
                         (preview-warm.missing-entries state.revision
                                                       (preview-warm.side-priority-entries state.entries)
-                                                      state.preview_cache))))
+                                                      state.preview_cache)
+                        state.revision_old_label state.revision_new_label)))
 
 (defcommand sync-start
   []

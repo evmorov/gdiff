@@ -1,5 +1,6 @@
 (local faith (require :faith))
 (local split (require :preview.split))
+(local word-diff (require :preview.word-diff))
 
 (local sample (table.concat ["diff --git a/f b/f"
                              "index 111..222 100644"
@@ -21,7 +22,8 @@
              :new "new line"
              :old-no 2
              :new-no 2
-             :emphasize? true}
+             :emphasize? true
+             :spans (word-diff.spans "old line" "new line")}
             {:kind :context :old "tail" :new "tail" :old-no 3 :new-no 3}]
            (split.parse-rows sample)))
 
@@ -56,7 +58,8 @@
              :new "keep bbb tail"
              :old-no 1
              :new-no 1
-             :emphasize? true}
+             :emphasize? true
+             :spans (word-diff.spans "keep aaa tail" "keep bbb tail")}
             {:kind :change :new "brand new line" :new-no 2}]
            (split.parse-rows "@@ -1,1 +1,2 @@\n-keep aaa tail\n+keep bbb tail\n+brand new line")))
 

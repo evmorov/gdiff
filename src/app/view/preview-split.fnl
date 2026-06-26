@@ -11,9 +11,6 @@
 (local wrap (require :tui.wrap))
 (local word-diff (require :preview.word-diff))
 
-(fn scrolling? [state]
-  (> (or state.preview_total 0) (or state.preview_rows 0)))
-
 (fn split-halves [content]
   (let [available (math.max 0 (- content 1))
         old-w (math.floor (/ available 2))]
@@ -143,7 +140,7 @@
 
 (fn display-row [theme-table row]
   (if (and (= row.kind :change) row.old row.new row.emphasize?)
-      (let [spans (word-diff.spans row.old row.new)]
+      (let [spans (or row.spans (word-diff.spans row.old row.new))]
         {:kind :change
          :old (word-diff.emphasize theme-table row.old spans.old
                                    :emphasis-deleted)
@@ -160,18 +157,13 @@
     (display-row theme-table row)))
 
 (fn prepare-truncated [state rows visible cols]
-  (let [display (emphasize-rows state.theme rows)]
-    (preview.apply-display-lines state display visible)
-    (set state.split_rows display))
-  (set state.split_source_map nil)
-  (let [content (viewport.content-width state.split_ratio cols
-                                        (scrolling? state))
-        widths (layout-widths state content rows)]
-    (set state.split_widths widths)
-    (set state.preview_x_max_scroll
-         (scroll-util.max-offset (max-raw-width rows) widths.old))
-    (set state.preview_x_scroll
-         (math.min (or state.preview_x_scroll 0) state.preview_x_max_scroll))))
+  (let [display (emphasize-rows state.theme rows)
+        scroll? (scroll-util.scrolls? (length display)
+                                      (math.max 1 (or visible 1)))
+        content (viewport.content-width state.split_ratio cols scroll?)
+        widths (layout-widths state content rows)
+        x-max (scroll-util.max-offset (max-raw-width rows) widths.old)]
+    {: display :source-map nil : widths :x-max-scroll x-max :wrap? false}))
 
 (fn prepare-wrapped [state rows visible cols]
   (let [emphasized (emphasize-rows state.theme rows)
@@ -185,20 +177,51 @@
         widths (layout-widths state content rows)
         (display source-map) (wrap-rows emphasized widths.old widths.new
                                         content)]
-    (preview.apply-display-lines state display visible)
-    (set state.split_rows display)
-    (set state.split_source_map source-map)
-    (set state.split_widths widths)
-    (set state.preview_x_scroll 0)
-    (set state.preview_x_max_scroll 0)))
+    {: display : source-map : widths :x-max-scroll 0 :wrap? true}))
+
+(fn compute-layout [state rows visible cols]
+  (if state.preview_wrap?
+      (prepare-wrapped state rows visible cols)
+      (prepare-truncated state rows visible cols)))
+
+(fn cached-layout? [state rows visible cols]
+  (let [cache state.split_display_cache]
+    (and cache (= cache.rows rows) (= cache.visible visible)
+         (= cache.cols cols) (= cache.split-ratio state.split_ratio)
+         (= cache.wrap? state.preview_wrap?)
+         (= cache.numbers? (and state.show_numbers? true)))))
+
+(fn apply-layout [state layout visible]
+  (set state.split_rows layout.display)
+  (set state.split_source_map layout.source-map)
+  (set state.split_widths layout.widths)
+  (preview.apply-display-lines state layout.display visible)
+  (if layout.wrap?
+      (do
+        (set state.preview_x_scroll 0)
+        (set state.preview_x_max_scroll 0))
+      (do
+        (set state.preview_x_max_scroll layout.x-max-scroll)
+        (set state.preview_x_scroll
+             (math.min (or state.preview_x_scroll 0) layout.x-max-scroll)))))
 
 (fn prepare [state visible cols ?selected]
   (let [rows (entry-rows state ?selected)]
     (set state.split_logical_rows rows)
-    (if state.preview_wrap?
-        (prepare-wrapped state rows visible cols)
-        (prepare-truncated state rows visible cols))
-    (sync-search state state.split_rows)))
+    (let [layout (if (cached-layout? state rows visible cols)
+                     state.split_display_cache.layout
+                     (let [computed (compute-layout state rows visible cols)]
+                       (set state.split_display_cache
+                            {: rows
+                             : visible
+                             : cols
+                             :split-ratio state.split_ratio
+                             :wrap? state.preview_wrap?
+                             :numbers? (and state.show_numbers? true)
+                             :layout computed})
+                       computed))]
+      (apply-layout state layout visible)
+      (sync-search state state.split_rows))))
 
 (fn blank-divider [state widths]
   (.. (side-gutter state widths.old-no-w nil) (pane.blank widths.old)

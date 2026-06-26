@@ -111,7 +111,8 @@
   (when (= raw-key :tick)
     ;; Drop the cached terminal size so a resize is picked up at idle cadence.
     (set state.term_rows nil)
-    (preview-warm.update state.preview_warm state.preview_cache))
+    (preview-warm.update state.preview_warm state.preview_cache
+                         state.split_cache))
   (let [(_ command) (update state config (input.read-msg state raw-key))]
     (run-command state config command))
   (not state.quit?))

@@ -46,11 +46,14 @@
     (commands.persist-reviewed)))
 
 (fn cache-selected-preview [state]
-  (preview.lines state (selection.selected-entry state))
+  (let [entry (selection.selected-entry state)]
+    (preview.lines state entry)
+    (when state.split_mode?
+      (preview.cache-split state entry)))
   state)
 
 (fn apply-refresh [state entries reviewed diff-stats]
-  (let [keep-cursor? (= state.focus :right)
+  (let [diff-focused? (= state.focus :right)
         prev-cursor state.preview_cursor
         prev-scroll state.preview_scroll]
     (set state.entries (reviews.apply entries reviewed))
@@ -64,8 +67,9 @@
     (preview.reset-scroll state)
     (selection.move state 0)
     (cache-selected-preview state)
-    (when keep-cursor?
-      (preview.restore-cursor state prev-cursor prev-scroll))
+    (if diff-focused?
+        (preview.restore-cursor state prev-cursor prev-scroll)
+        (preview.restore-scroll state prev-scroll))
     (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed))))
 
 (fn open-selected [state config]

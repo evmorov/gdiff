@@ -73,6 +73,10 @@
 (fn warming? [state]
   (and state.preview_warm state.preview_warm.dir))
 
+(fn split-key [state entry]
+  (.. (preview-key.for-entry state.revision entry state.full_context?)
+      "\0split"))
+
 (fn compute-split-rows [state entry key]
   (let [(output ok) (git.plain-diff-output state.revision entry
                                            state.full_context?)
@@ -86,9 +90,7 @@
 (fn split-rows [state entry]
   (if (or (not entry) entry.untracked? (assets.asset? entry))
       []
-      (let [key (.. (preview-key.for-entry state.revision entry
-                                           state.full_context?)
-                    "\0split")
+      (let [key (split-key state entry)
             cached (. state.split_cache key)]
         (if cached cached
             (and (warming? state) (not state.full_context?)) []
@@ -111,6 +113,13 @@
                                             state.revision_new_label)
                           [])})
             {:lines (format.warning state (sys.trim output)) :split []}))))
+
+(fn cache-split [state entry]
+  (when (and entry (= entry.kind "M") (not entry.untracked?)
+             (not (assets.asset? entry)))
+    (let [key (split-key state entry)]
+      (when (not (. state.split_cache key))
+        (compute-split-rows state entry key)))))
 
 (fn splittable? [state entry]
   (and entry (= entry.kind "M") (split.splittable? (split-rows state entry))))
@@ -244,6 +253,11 @@
        (math-util.clamp (or scroll 0) 0 (max-scroll state nil)))
   (keep-cursor-visible state))
 
+(fn restore-scroll [state scroll]
+  (set state.preview_scroll
+       (math-util.clamp (or scroll 0) 0 (max-scroll state nil)))
+  (focus-cursor state))
+
 (fn cursor-jump [state line]
   (set state.preview_cursor
        (math-util.clamp (or line 1) 1 (math.max 1 (or state.preview_total 0))))
@@ -335,6 +349,7 @@
 
 {: lines
  : split-rows
+ : cache-split
  : warm-entry
  : splittable?
  : split?
@@ -351,6 +366,7 @@
  : visible-display-gutters
  : focus-cursor
  : restore-cursor
+ : restore-scroll
  : move-cursor
  : nonblocking-lines
  : page-step

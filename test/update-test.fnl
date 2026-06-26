@@ -88,6 +88,15 @@
     (update.update state {} (refresh-loaded-msg [(entry "M" "a.rb")]))
     (faith.= 1 state.preview_cursor)))
 
+(fn test-refresh-keeps-preview-scroll-when-files-focused []
+  (let [state (state [(entry "M" "a.rb")])]
+    (seed-preview-cache state)
+    (set state.preview_scroll 3)
+    (faith.= :left state.focus)
+    (update.update state {} (refresh-loaded-msg [(entry "M" "a.rb")]))
+    (faith.= 3 state.preview_scroll)
+    (faith.= 4 state.preview_cursor)))
+
 (fn test-refresh-clears-stale-preview-cache []
   (let [state (state [(entry "M" "a.rb")])
         stale-key (preview-key.for-entry "HEAD" (entry "M" "gone.rb"))]
@@ -620,6 +629,7 @@
  : test-local-refresh-does-not-start-remote-sync
  : test-refresh-keeps-preview-cursor-when-diff-focused
  : test-refresh-resets-preview-cursor-when-files-focused
+ : test-refresh-keeps-preview-scroll-when-files-focused
  : test-refresh-clears-stale-preview-cache
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-shift-y-copies-the-full-path-in-the-left-pane

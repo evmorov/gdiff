@@ -43,6 +43,16 @@
                                             :status "?"
                                             :untracked? true})))
 
+(fn test-show-file-command-quotes-ref-and-path []
+  (faith.= "git show 'main:src/a b.rb' 2>/dev/null"
+           (commands.show-file-command "main" "src/a b.rb")))
+
+(fn test-base-temp-path-sanitizes-ref-and-keeps-path []
+  (faith.= "/tmp/gdiff-base/origin_main/src/a.rb"
+           (commands.base-temp-path "/tmp" "origin/main" "src/a.rb"))
+  (faith.= "/tmp/gdiff-base/HEAD/a.rb"
+           (commands.base-temp-path "/tmp" "HEAD" "a.rb")))
+
 (fn test-untracked-command-lists-others []
   (faith.= "git -c core.quotePath=false ls-files --others --exclude-standard 2>&1"
            (commands.untracked-command)))
@@ -52,6 +62,8 @@
            (commands.staged-paths-command)))
 
 {: test-basic-git-adapter-commands-are-centralized
+ : test-base-temp-path-sanitizes-ref-and-keeps-path
+ : test-show-file-command-quotes-ref-and-path
  : test-preview-command-quotes-revision-and-path
  : test-preview-command-requests-full-context
  : test-working-commands-diff-against-head

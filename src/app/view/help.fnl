@@ -20,6 +20,7 @@
                         ["Ctrl-C" "Quit"]]}
                {:title "Files"
                 :items [["enter / o" "Open file or folder"]
+                        ["O" "Open base (e.g. main) version"]
                         ["y" "Copy relative path"]
                         ["Y" "Copy full path"]
                         ["space" "Toggle reviewed"]

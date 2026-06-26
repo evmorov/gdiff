@@ -25,6 +25,20 @@
                                          :path "src/.keep"}
                                         nil)))
 
+(fn test-base-source-path-uses-old-path-for-renames []
+  (faith.= "src/old.rb"
+           (action-plan.base-source-path {:kind :file
+                                          :path "src/new.rb"
+                                          :entry {:path "src/new.rb"
+                                                  :old_path "src/old.rb"}}))
+  (faith.= "src/a.rb"
+           (action-plan.base-source-path {:kind :file
+                                          :path "src/a.rb"
+                                          :entry {:path "src/a.rb"}}))
+  (faith.= "src/.keep"
+           (action-plan.base-source-path {:kind :file :path "src/.keep"}))
+  (faith.= nil (action-plan.base-source-path nil)))
+
 (fn test-copy-path-adds-slash-only-for-folders []
   (faith.= "src/" (action-plan.copy-path {:kind :folder :path "src"}))
   (faith.= "src/a.rb" (action-plan.copy-path {:kind :file :path "src/a.rb"}))
@@ -50,7 +64,8 @@
   (faith.= 0.1 (action-plan.split-ratio 0.1 -0.05))
   (faith.= 0.9 (action-plan.split-ratio 0.9 0.05)))
 
-{: test-copy-full-path-prefixes-the-repo-root
+{: test-base-source-path-uses-old-path-for-renames
+ : test-copy-full-path-prefixes-the-repo-root
  : test-fenced-snippet-prefixes-the-path-and-fences-the-text
  : test-copy-path-adds-slash-only-for-folders
  : test-selected-target-prefers-tree-folder

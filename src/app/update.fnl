@@ -61,12 +61,18 @@
   (set state.notice (notice.open-target-finished msg.target msg.path msg.ok?))
   commands.none)
 
+(fn handle-open-base-finished [state _config msg]
+  (set state.notice (notice.open-base-finished msg.ok? msg.ref msg.path
+                                               msg.error))
+  commands.none)
+
 (fn handle-refresh-loaded [state _config msg]
   (actions.apply-refresh state msg.entries msg.reviewed msg.diff_stats))
 
 (local message-handlers
        {:copy-path-finished handle-copy-path-finished
         :ignore handle-ignore
+        :open-base-finished handle-open-base-finished
         :open-pr-finished handle-open-pr-finished
         :open-target-finished handle-open-target-finished
         :pending-key handle-pending-key

@@ -1,5 +1,6 @@
 (local faith (require :faith))
 (local git (require :git.core))
+(local sys (require :platform.core))
 (local t (require :test-helper))
 
 (fn entries-by-path [entries]
@@ -108,6 +109,27 @@
   (faith.= git.working-revision
            (git.comparison-revision git.working-revision "current")))
 
+(fn test-base-ref-resolves-left-side []
+  (faith.= "HEAD" (git.base-ref git.working-revision))
+  (faith.= "main" (git.base-ref "main...feature")))
+
+(fn test-materialize-base-writes-committed-version-to-temp []
+  (t.init-repo)
+  (t.write-file "modified.txt" "before\n")
+  (t.commit-all "initial")
+  (t.write-file "modified.txt" "after\n")
+  (let [(temp err) (git.materialize-base "HEAD" "modified.txt")]
+    (faith.= nil err)
+    (faith.= "before\n" (sys.read-file temp))))
+
+(fn test-materialize-base-reports-missing-paths []
+  (t.init-repo)
+  (t.write-file "tracked.txt" "kept\n")
+  (t.commit-all "initial")
+  (let [(temp err) (git.materialize-base "HEAD" "untracked.txt")]
+    (faith.= nil temp)
+    (faith.= "Not in HEAD" err)))
+
 (fn test-diff-stats-reports-total-additions-and-deletions []
   (setup-changed-repo)
   (let [(stats err) (git.diff-stats "HEAD")]
@@ -169,7 +191,10 @@
     (faith.match "%-%-json url %-%-jq %.url" command)
     (faith.match "2>/dev/null" command)))
 
-{: test-default-revision-falls-back-to-master
+{: test-base-ref-resolves-left-side
+ : test-materialize-base-reports-missing-paths
+ : test-materialize-base-writes-committed-version-to-temp
+ : test-default-revision-falls-back-to-master
  : test-default-revision-prefers-main
  : test-comparison-right-selects-pr-branch
  : test-comparison-revision-expands-single-revision

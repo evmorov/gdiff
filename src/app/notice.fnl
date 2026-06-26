@@ -30,6 +30,11 @@
 (fn open-target-finished [target path ok?]
   (with-path (open-target-action target ok?) path))
 
+(fn open-base-finished [ok? ref path ?error]
+  (if ok?
+      (with-path (.. "Opening " ref) path)
+      (with-path (or ?error (.. "Not in " ref)) path)))
+
 (fn reviewed-entry [entry]
   (with-path (if entry.reviewed "Marked reviewed" "Unmarked reviewed")
     entry.path))
@@ -55,6 +60,7 @@
   "Remote in sync")
 
 {: copy-finished
+ : open-base-finished
  : open-pr-finished
  : open-target-action
  : open-target-finished

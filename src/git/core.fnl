@@ -88,7 +88,29 @@
 (fn repo-root []
   (or (read-trimmed (commands.repo-root-command)) (os.getenv "PWD") "."))
 
-{: comparison-revision
+(fn base-ref [revision]
+  (let [(left _right) (comparison-sides revision)]
+    left))
+
+(fn temp-root []
+  (let [tmp (or (os.getenv "TMPDIR") "/tmp")]
+    (if (= (tmp:sub -1) "/") (tmp:sub 1 -2) tmp)))
+
+(fn parent-dir [path]
+  (or (path:match "^(.*)/[^/]*$") "."))
+
+(fn materialize-base [ref path]
+  (let [(content ok) (sys.read-command (commands.show-file-command ref path))]
+    (if ok
+        (let [temp (commands.base-temp-path (temp-root) ref path)]
+          (sys.ensure-dir (parent-dir temp))
+          (if (sys.write-file temp content)
+              (values temp nil)
+              (values nil "Could not write base snapshot")))
+        (values nil (.. "Not in " ref)))))
+
+{: base-ref
+ : comparison-revision
  : comparison-right
  : comparison-sides
  : current-branch
@@ -98,6 +120,7 @@
  : diff-stats-command
  : linked-pr-url
  : linked-pr-url-command
+ : materialize-base
  :working-revision commands.working-revision
  :working? commands.working?
  : plain-diff-output

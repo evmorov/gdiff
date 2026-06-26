@@ -1,3 +1,4 @@
+(local action-plan (require :app.action-plan))
 (local browser (require :platform.browser))
 (local clipboard (require :platform.clipboard))
 (local editor (require :platform.editor))
@@ -51,6 +52,17 @@
       (editor.run config entry (. (get-state) :stty-state)))
     (dispatch (messages.open-target-finished :file entry.path exists?))))
 
+(defcommand open-base-editor
+  [config target]
+  [dispatch get-state]
+  (let [state (get-state)
+        ref (git.base-ref state.revision)
+        path (action-plan.base-source-path target)
+        (temp err) (git.materialize-base ref path)]
+    (when temp
+      (editor.run config {:path temp} state.stty-state))
+    (dispatch (messages.open-base-finished ref path (not err) err))))
+
 (defcommand open-folder
   [path]
   [dispatch _get-state]
@@ -100,6 +112,7 @@
 {: batch
  : copy-path
  : none
+ : open-base-editor
  : open-editor
  : open-folder
  : open-linked-pr

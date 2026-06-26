@@ -82,6 +82,11 @@
                                (selection.selected-tree-row state)
                                (selection.selected-entry state)))
 
+(fn open-base-selected [state config]
+  (let [target (current-target state)]
+    (when (and target (= target.kind :file))
+      (commands.open-base-editor config target))))
+
 (fn copy-selected-path [state]
   (let [path (action-plan.copy-path (current-target state))]
     (when path
@@ -349,6 +354,7 @@
                  : toggle-focus
                  :focus-back toggle-focus-back
                  :open open-selected
+                 :open-base open-base-selected
                  : toggle-reviewed
                  : toggle-all-reviewed
                  :preview-down scroll-preview-page-down

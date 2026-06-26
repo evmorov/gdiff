@@ -8,7 +8,12 @@
   (faith.= "Folder not found: src"
            (notice.open-target-finished :folder "src" false))
   (faith.= "File not found: a.rb"
-           (notice.open-target-finished :file "a.rb" false)))
+           (notice.open-target-finished :file "a.rb" false))
+  (faith.= "Opening main: a.rb" (notice.open-base-finished true "main" "a.rb"))
+  (faith.= "Not in main: a.rb" (notice.open-base-finished false "main" "a.rb"))
+  (faith.= "Could not write base snapshot: a.rb"
+           (notice.open-base-finished false "main" "a.rb"
+                                      "Could not write base snapshot")))
 
 (fn test-yank-notices []
   (faith.= "Copied 1 line" (notice.yank-finished true 1))

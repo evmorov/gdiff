@@ -8,6 +8,12 @@
       selected-entry
       {:kind :file :path selected-entry.path :entry selected-entry}))
 
+(fn base-source-path [target]
+  (let [entry (and target target.entry)]
+    (if (and entry entry.old_path (< 0 (length entry.old_path)))
+        entry.old_path
+        (and target target.path))))
+
 (fn copy-path [target]
   (when target
     (if (= target.kind :folder)
@@ -30,4 +36,9 @@
 (fn split-ratio [current delta]
   (math-util.clamp (+ (or current 0.4) delta) 0.1 0.9))
 
-{: copy-full-path : copy-path : fenced-snippet : selected-target : split-ratio}
+{: base-source-path
+ : copy-full-path
+ : copy-path
+ : fenced-snippet
+ : selected-target
+ : split-ratio}

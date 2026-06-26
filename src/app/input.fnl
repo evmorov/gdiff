@@ -17,6 +17,7 @@
     "h" :preview-left
     "l" :preview-right
     "o" :open
+    "O" :open-base
     " " :toggle-reviewed
     "a" :toggle-all-reviewed
     "\4" :preview-down

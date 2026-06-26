@@ -27,6 +27,13 @@
 (fn repo-root-command []
   "git rev-parse --show-toplevel 2>/dev/null")
 
+(fn show-file-command [ref path]
+  (.. "git show " (sys.shell-quote (.. ref ":" path)) " 2>/dev/null"))
+
+(fn base-temp-path [root ref path]
+  (let [safe-ref (string.gsub ref "[/:]" "_")]
+    (.. root "/gdiff-base/" safe-ref "/" path)))
+
 (fn diff-command [revision]
   (.. "git diff --name-status --find-renames --find-copies "
       (diff-ref revision) " 2>&1"))
@@ -57,7 +64,8 @@
   (.. (preview-command revision entry "never" ?full-context?) " 2>&1"
       (if (and (working? revision) (untracked? entry)) " || true" "")))
 
-{: current-branch-command
+{: base-temp-path
+ : current-branch-command
  : diff-command
  : diff-stats-command
  : linked-pr-url-command
@@ -65,6 +73,7 @@
  : preview-command
  : repo-root-command
  : revision-exists-command
+ : show-file-command
  : staged-paths-command
  : untracked-command
  : working-revision

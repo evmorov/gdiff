@@ -37,6 +37,9 @@
 (fn open-target-finished [target path ok?]
   (build :open-target-finished {: target : path : ok?}))
 
+(fn open-base-finished [ref path ok? ?error]
+  (build :open-base-finished {: ref : path : ok? :error ?error}))
+
 (fn refresh-loaded [entries reviewed diff-stats]
   (build :refresh-loaded {: entries : reviewed :diff_stats diff-stats}))
 
@@ -44,6 +47,7 @@
  : build
  : ignore
  : copy-path-finished
+ : open-base-finished
  : open-pr-finished
  : open-target-finished
  : pending-key

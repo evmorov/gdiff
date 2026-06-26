@@ -29,6 +29,7 @@
                :preview_total 0
                :preview_selection_anchor nil
                :preview_wrap? true
+               :show_numbers? false
                :hide_reviewed? false
                :full_context? false
                :split_mode? true
@@ -42,6 +43,7 @@
                :folder_preview_cache {}
                :theme theme.default
                :preview_cache {}
+               :preview_numbers_cache {}
                :preview_warm (preview-warm.new-state)
                :review_store review-store
                :review_scope review-scope

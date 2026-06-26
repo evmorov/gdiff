@@ -23,11 +23,15 @@
     (drain)
     out))
 
-(fn change-rows [removed added]
+(fn change-rows [removed added old-no new-no]
   (icollect [_ p (ipairs (ordered-pairs (word-diff.align removed added)))]
     (let [old (and p.old (. removed p.old))
           new (and p.new (. added p.new))
-          row {:kind :change : old : new}]
+          row {:kind :change
+               : old
+               : new
+               :old-no (and p.old (+ old-no p.old -1))
+               :new-no (and p.new (+ new-no p.new -1))}]
       (when (and p.old p.new) (set row.emphasize? true))
       row)))
 
@@ -53,15 +57,28 @@
                       {:kind :filename :old old-title :new new-title})))))
 
 (fn parse-rows [text ?old-ref ?new-ref]
-  (let [acc {:rows []}
+  (let [acc {:rows [] :old-no 1 :new-no 1}
         handlers {:change (fn [removed added]
-                            (each [_ row (ipairs (change-rows removed added))]
-                              (table.insert acc.rows row)))
+                            (each [_ row (ipairs (change-rows removed added
+                                                              acc.old-no
+                                                              acc.new-no))]
+                              (table.insert acc.rows row))
+                            (set acc.old-no (+ acc.old-no (length removed)))
+                            (set acc.new-no (+ acc.new-no (length added))))
                   :hunk (fn [line]
-                          (table.insert acc.rows {:kind :hunk :old line}))
+                          (table.insert acc.rows {:kind :hunk :old line})
+                          (let [(old new) (diff-parse.hunk-start line)]
+                            (when old (set acc.old-no old))
+                            (when new (set acc.new-no new))))
                   :context (fn [text]
                              (table.insert acc.rows
-                                           {:kind :context :old text :new text}))
+                                           {:kind :context
+                                            :old text
+                                            :new text
+                                            :old-no acc.old-no
+                                            :new-no acc.new-no})
+                             (set acc.old-no (+ acc.old-no 1))
+                             (set acc.new-no (+ acc.new-no 1)))
                   :old-path (fn [path] (set acc.old-path path))
                   :new-path (fn [path] (set acc.new-path path))}]
     (diff-parse.parse text handlers)

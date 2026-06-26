@@ -7,8 +7,8 @@
 (fn raw-lines [state selected-entry selected-row]
   (preview.selection-lines state selected-entry selected-row))
 
-(fn lines-for-width [state lines visible cols]
-  (preview.display-lines-for-width state lines visible cols))
+(fn lines-for-width [state lines numbers visible cols]
+  (preview.display-lines-for-width state lines numbers visible cols))
 
 (fn set-scroll [state lines visible]
   (preview.apply-display-lines state lines visible))
@@ -57,17 +57,20 @@
 
 (fn prepare [state visible cols ?selected]
   (let [selected (or ?selected (selection.selected-context state))
-        raw (raw-lines state selected.entry selected.row)
-        display (lines-for-width state raw visible cols)]
+        (raw numbers) (raw-lines state selected.entry selected.row)
+        display (lines-for-width state raw numbers visible cols)]
     (sync-search state display)
     (set-scroll state display visible)
     (update-horizontal-scroll state raw cols)))
 
 (fn body [state visible]
   (let [display (preview.display-lines state)
-        visible-lines (visible-lines state display visible)]
+        gutters (preview.display-gutters state)
+        visible-lines (visible-lines state display visible)
+        visible-gutters (preview.visible-display-gutters state gutters visible)]
     (tui.lines (search-highlight state visible-lines)
                (preview.scroll-info state) state.preview_x_scroll
-               state.preview_x_max_scroll (cursor-highlight state visible-lines))))
+               state.preview_x_max_scroll (cursor-highlight state visible-lines)
+               nil visible-gutters)))
 
 {: body : prepare}

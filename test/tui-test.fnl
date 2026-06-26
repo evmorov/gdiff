@@ -170,6 +170,13 @@
     (faith.is (highlighted:find "48;2;" 1 true))
     (faith.= nil (plain:find "48;2;" 1 true))))
 
+(fn test-split-row-pins-right-pane-line-number-gutter []
+  (let [ctx (tui.context 10 20)
+        row (tui.row "left" false)
+        line (tui.components.split-row.line ctx row "diff" nil nil 2 5 8 11 0 0
+                                            nil [" 1 " " 2 "])]
+    (faith.= "left    │ 2 diff    " (tui.strip-ansi line))))
+
 (fn test-split-row-measure-reserves-scrollbar-column []
   (faith.= {:content-cols 9 :scroll? true}
            (tui.components.split-row.pane-measure 10
@@ -289,6 +296,7 @@
  : test-split-row-composes-panes-and-divider
  : test-split-row-highlights-selected-preview-line
  : test-split-row-measure-reserves-scrollbar-column
+ : test-split-row-pins-right-pane-line-number-gutter
  : test-scrollbar-only-visible-for-overflow
  : test-scrollbar-thumb-tracks-offset
  : test-search-match-does-not-guess-background

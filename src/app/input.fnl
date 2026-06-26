@@ -26,6 +26,7 @@
     "N" :search-previous
     "r" :refresh
     "w" :toggle-wrap
+    "1" :toggle-show-numbers
     "s" :toggle-split
     "f" :toggle-full-context
     "`" :toggle-tree

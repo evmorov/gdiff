@@ -5,6 +5,10 @@
         nil
         (or (trimmed:match "^[ab]/(.+)$") trimmed))))
 
+(fn hunk-start [line]
+  (let [(old new) (line:match "^@@ %-(%d+),?%d* %+(%d+)")]
+    (values (tonumber old) (tonumber new))))
+
 (fn classify [line in-hunk?]
   (let [first (line:sub 1 1)]
     (if (line:match "^diff ") :file
@@ -51,4 +55,4 @@
                    (call handlers :context (line:sub 2)))))
     (flush)))
 
-{: parse : diff-path}
+{: parse : diff-path : hunk-start}

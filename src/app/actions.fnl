@@ -57,6 +57,7 @@
     (selection.invalidate-rows state)
     (set state.diff_stats diff-stats)
     (set state.preview_cache {})
+    (set state.preview_numbers_cache {})
     (set state.split_cache {})
     (set state.folder_preview_cache {})
     (line-selection.stop state)
@@ -253,6 +254,12 @@
   (set-fields state [:preview_wrap? (not state.preview_wrap?)]
               [:preview_x_scroll 0] [:preview_x_max_scroll 0]))
 
+(fn toggle-show-numbers [state]
+  (exit-line-selection state)
+  (set-fields state [:show_numbers? (not state.show_numbers?)]
+              [:preview_display_cache nil] [:preview_x_scroll 0]
+              [:preview_x_max_scroll 0]))
+
 (fn toggle-full-context [state]
   (when (selection.selected-entry state)
     (exit-line-selection state)
@@ -357,6 +364,7 @@
                  :top #(jump $1 preview.cursor-top selection.top)
                  :bottom #(jump $1 preview.cursor-bottom selection.bottom)
                  : toggle-wrap
+                 : toggle-show-numbers
                  : toggle-split
                  : toggle-full-context
                  : toggle-tree

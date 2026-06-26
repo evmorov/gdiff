@@ -12,7 +12,7 @@
       (let [item (. items i)]
         (surface.clear-row (layout.row body i))
         (when (and item (> content-width 0))
-          (render-cell ctx item content-width x-scroll))
+          (render-cell ctx item content-width x-scroll i))
         (when scroll?
           (scrollbar.draw ctx node.scroll i (layout.row body i) width body.rows))
         (surface.newline)))))

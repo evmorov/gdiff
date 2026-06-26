@@ -30,6 +30,12 @@
                 (table.insert out line))
               out)))))
 
+(fn diff-data [state entry full-context?]
+  (let [(output ok) (git.plain-diff-output state.revision entry full-context?)]
+    (if ok
+        (format.diff-lines state output)
+        (values (format.warning state (sys.trim output)) nil))))
+
 (fn lines [state entry]
   (if (not entry)
       (format.no-selection state)
@@ -46,13 +52,23 @@
             (let [lines (file-lines state entry)]
               (tset state.preview_cache key lines)
               lines)
-            (let [(output ok) (git.plain-diff-output state.revision entry
-                                                     full-context?)
-                  lines (if ok
-                            (format.diff-lines state output)
-                            (format.warning state (sys.trim output)))]
+            (let [(lines numbers) (diff-data state entry full-context?)]
               (tset state.preview_cache key lines)
+              (when state.preview_numbers_cache
+                (tset state.preview_numbers_cache key (or numbers false)))
               lines)))))
+
+(fn line-numbers [state entry]
+  (if (or (not entry) entry.untracked? (assets.asset? entry))
+      nil
+      (let [key (preview-key.for-entry state.revision entry state.full_context?)
+            cached (. (or state.preview_numbers_cache {}) key)]
+        (if (not (= nil cached))
+            cached
+            (let [(_ numbers) (diff-data state entry state.full_context?)]
+              (when state.preview_numbers_cache
+                (tset state.preview_numbers_cache key (or numbers false)))
+              numbers)))))
 
 (fn split-rows [state entry]
   (if (or (not entry) entry.untracked? (assets.asset? entry))
@@ -106,10 +122,11 @@
 
 (fn selection-lines [state selected-entry selected-row]
   (if (and (= state.view_mode :tree) selected-row (= selected-row.type :folder))
-      (folder-preview.lines state selected-row)
+      (values (folder-preview.lines state selected-row) nil)
       (listing-row? state selected-row)
-      (file-lines state {:path selected-row.path})
-      (nonblocking-lines state selected-entry)))
+      (values (file-lines state {:path selected-row.path}) nil)
+      (values (nonblocking-lines state selected-entry)
+              (line-numbers state selected-entry))))
 
 (fn row-count [state]
   (or state.preview_rows 1))
@@ -142,29 +159,34 @@
                           (viewport.scroll-state lines (visible-count visible)
                                                  state.preview_scroll)))
 
-(fn display-lines-for-width [state lines visible cols]
-  (let [cache-key {: lines
-                   : visible
-                   : cols
-                   :split-ratio state.split_ratio
-                   :wrap? state.preview_wrap?}
-        cache state.preview_display_cache]
-    (if (and cache (= cache.lines cache-key.lines)
-             (= cache.visible cache-key.visible) (= cache.cols cache-key.cols)
-             (= cache.split-ratio cache-key.split-ratio)
-             (= cache.wrap? cache-key.wrap?))
+(fn muted-gutters [state gutters]
+  (when gutters
+    (icollect [_ g (ipairs gutters)]
+      (tui.color state.theme :muted g))))
+
+(fn display-lines-for-width [state lines numbers visible cols]
+  (let [cache state.preview_display_cache]
+    (if (and cache (= cache.lines lines) (= cache.visible visible)
+             (= cache.cols cols) (= cache.split-ratio state.split_ratio)
+             (= cache.wrap? state.preview_wrap?)
+             (= cache.numbers? (and state.show_numbers? true)))
         cache.display
-        (let [(display source-map) (viewport.lines-for-width state lines
-                                                             visible cols)]
+        (let [(display source-map gutters) (viewport.lines-for-width state
+                                                                     lines
+                                                                     numbers
+                                                                     visible
+                                                                     cols)]
           (set state.preview_display_cache
                {: lines
                 : visible
                 : cols
                 :split-ratio state.split_ratio
                 :wrap? state.preview_wrap?
+                :numbers? (and state.show_numbers? true)
                 : display
                 :source lines
-                :source-map source-map})
+                :source-map source-map
+                :gutters (muted-gutters state gutters)})
           display))))
 
 (fn reset-scroll [state]
@@ -214,6 +236,16 @@
 
 (fn display-source-map [state]
   (and state.preview_display_cache state.preview_display_cache.source-map))
+
+(fn display-gutters [state]
+  (and state.preview_display_cache state.preview_display_cache.gutters))
+
+(fn visible-display-gutters [state gutters visible]
+  (when gutters
+    (viewport.visible-lines gutters
+                            (viewport.scroll-state gutters
+                                                   (visible-count visible)
+                                                   state.preview_scroll))))
 
 (fn cursor-top [state]
   (let [before (or state.preview_cursor 1)]
@@ -290,8 +322,11 @@
  : cursor-bottom
  : cursor-jump
  : display-lines
+ : display-gutters
  : display-source
  : display-source-map
+ : line-numbers
+ : visible-display-gutters
  : focus-cursor
  : restore-cursor
  : move-cursor

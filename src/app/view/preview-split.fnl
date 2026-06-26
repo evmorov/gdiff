@@ -19,11 +19,33 @@
         old-w (math.floor (/ available 2))]
     (values old-w (- available old-w))))
 
-(fn half-widths [state cols]
-  (let [content (viewport.content-width state.split_ratio cols
-                                        (scrolling? state))
-        (old-w new-w) (split-halves content)]
-    (values content old-w new-w)))
+(fn number-width [rows key]
+  (accumulate [w 0 _ row (ipairs (or rows []))]
+    (math.max w (if (. row key) (length (tostring (. row key))) 0))))
+
+(fn number-widths [state rows]
+  (if state.show_numbers?
+      (values (number-width rows :old-no) (number-width rows :new-no))
+      (values 0 0)))
+
+(fn gutter-cols [width]
+  (if (> width 0) (+ width 1) 0))
+
+(fn number-text [?no width]
+  (let [text (if ?no (tostring ?no) "")]
+    (.. (string.rep " " (math.max 0 (- width (length text)))) text)))
+
+(fn side-gutter [state width ?no]
+  (if (> (or width 0) 0)
+      (tui.color state.theme :muted (.. (number-text ?no width) " "))
+      ""))
+
+(fn layout-widths [state content rows]
+  (let [(old-no-w new-no-w) (number-widths state rows)
+        old-gc (gutter-cols old-no-w)
+        new-gc (gutter-cols new-no-w)
+        (old-w new-w) (split-halves (math.max 0 (- content old-gc new-gc)))]
+    {: content :old old-w :new new-w : old-no-w : new-no-w : old-gc : new-gc}))
 
 (fn max-raw-width [rows]
   (accumulate [w 0 _ row (ipairs rows)]
@@ -68,16 +90,22 @@
         windowed (pane.window-text colored width 0)]
     (styled state windowed width selected?)))
 
-(fn compose-row [state row index old-w new-w _content x-scroll]
-  (let [selected? (highlight-row? state index)
+(fn compose-row [state row index widths x-scroll]
+  (let [old-w widths.old
+        new-w widths.new
+        selected? (highlight-row? state index)
         old-sel? (and selected? (= state.split_side :old))
-        new-sel? (and selected? (= state.split_side :new))]
+        new-sel? (and selected? (= state.split_side :new))
+        old-gutter (side-gutter state widths.old-no-w row.old-no)
+        new-gutter (side-gutter state widths.new-no-w row.new-no)]
     (if (or (= row.kind :filename) (= row.kind :rule))
         (let [?color (when (= row.kind :rule) :muted)]
-          (.. (header-half state (or row.old "") old-w old-sel? ?color)
-              (divider state) (header-half state (or row.new "") new-w new-sel?
-                                          ?color)))
-        (.. (half state row :old old-w x-scroll old-sel?) (divider state)
+          (.. old-gutter (header-half state (or row.old "") old-w old-sel?
+                                      ?color)
+              (divider state) new-gutter
+              (header-half state (or row.new "") new-w new-sel? ?color)))
+        (.. old-gutter (half state row :old old-w x-scroll old-sel?)
+            (divider state) new-gutter
             (half state row :new new-w x-scroll new-sel?)))))
 
 (fn entry-rows [state ?selected]
@@ -95,7 +123,11 @@
         news (and row.new (wrap.line row.new new-w))
         n (math.max 1 (length (or olds [])) (length (or news [])))]
     (fcollect [i 1 n]
-      {:kind row.kind :old (and olds (. olds i)) :new (and news (. news i))})))
+      {:kind row.kind
+       :old (and olds (. olds i))
+       :new (and news (. news i))
+       :old-no (when (= i 1) row.old-no)
+       :new-no (when (= i 1) row.new-no)})))
 
 (fn wrap-rows [rows old-w new-w _content]
   (let [display []
@@ -105,9 +137,6 @@
         (table.insert display vrow)
         (table.insert source-map index)))
     (values display source-map)))
-
-(fn store-widths [state content old-w new-w]
-  (set state.split_widths {: content :old old-w :new new-w}))
 
 (fn underline [text]
   (string.rep symbols.line.horizontal (tui.visible-length (or text ""))))
@@ -119,7 +148,9 @@
          :old (word-diff.emphasize theme-table row.old spans.old
                                    :emphasis-deleted)
          :new (word-diff.emphasize theme-table row.new spans.new
-                                   :emphasis-added)})
+                                   :emphasis-added)
+         :old-no row.old-no
+         :new-no row.new-no})
       (= row.kind :rule)
       {:kind :rule :old (underline row.old) :new (underline row.new)}
       row))
@@ -133,27 +164,31 @@
     (preview.apply-display-lines state display visible)
     (set state.split_rows display))
   (set state.split_source_map nil)
-  (let [(content old-w new-w) (half-widths state cols)]
-    (store-widths state content old-w new-w)
+  (let [content (viewport.content-width state.split_ratio cols
+                                        (scrolling? state))
+        widths (layout-widths state content rows)]
+    (set state.split_widths widths)
     (set state.preview_x_max_scroll
-         (scroll-util.max-offset (max-raw-width rows) old-w))
+         (scroll-util.max-offset (max-raw-width rows) widths.old))
     (set state.preview_x_scroll
          (math.min (or state.preview_x_scroll 0) state.preview_x_max_scroll))))
 
 (fn prepare-wrapped [state rows visible cols]
   (let [emphasized (emphasize-rows state.theme rows)
         wide (viewport.content-width state.split_ratio cols false)
-        (old-wide new-wide) (split-halves wide)
-        (display-wide _) (wrap-rows emphasized old-wide new-wide wide)
+        wide-widths (layout-widths state wide rows)
+        (display-wide _) (wrap-rows emphasized wide-widths.old wide-widths.new
+                                    wide)
         scroll? (scroll-util.scrolls? (length display-wide)
                                       (math.max 1 (or visible 1)))
         content (viewport.content-width state.split_ratio cols scroll?)
-        (old-w new-w) (split-halves content)
-        (display source-map) (wrap-rows emphasized old-w new-w content)]
+        widths (layout-widths state content rows)
+        (display source-map) (wrap-rows emphasized widths.old widths.new
+                                        content)]
     (preview.apply-display-lines state display visible)
     (set state.split_rows display)
     (set state.split_source_map source-map)
-    (store-widths state content old-w new-w)
+    (set state.split_widths widths)
     (set state.preview_x_scroll 0)
     (set state.preview_x_max_scroll 0)))
 
@@ -165,23 +200,23 @@
         (prepare-truncated state rows visible cols))
     (sync-search state state.split_rows)))
 
-(fn blank-divider [state old-w new-w]
-  (.. (pane.blank old-w) (divider state) (pane.blank new-w)))
+(fn blank-divider [state widths]
+  (.. (side-gutter state widths.old-no-w nil) (pane.blank widths.old)
+      (divider state) (side-gutter state widths.new-no-w nil)
+      (pane.blank widths.new)))
 
 (fn body [state visible _cols]
   (let [rows (or state.split_rows [])
         widths (or state.split_widths {})
-        content (or widths.content 0)
         old-w (or widths.old 0)
-        new-w (or widths.new 0)
+        old-gc (or widths.old-gc 0)
         x-scroll (or state.preview_x_scroll 0)
         offset (or state.preview_scroll 0)
         visible-rows (preview.visible-display-lines state rows visible)
         lines (icollect [i row (ipairs visible-rows)]
-                (compose-row state row (+ offset i) old-w new-w content
-                             x-scroll))]
+                (compose-row state row (+ offset i) widths x-scroll))]
     (for [_ (+ (length lines) 1) (math.max 1 (or visible 1))]
-      (table.insert lines (blank-divider state old-w new-w)))
-    (tui.lines lines (preview.scroll-info state) 0 0 nil [(+ old-w 1)])))
+      (table.insert lines (blank-divider state widths)))
+    (tui.lines lines (preview.scroll-info state) 0 0 nil [(+ old-gc old-w 1)])))
 
 {: body : prepare : wrap-rows : split-halves}

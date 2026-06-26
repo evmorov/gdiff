@@ -15,9 +15,14 @@
   (faith.= [{:kind :filename :old "f" :new "f"}
             {:kind :rule :old "f" :new "f"}
             {:kind :hunk :old "@@ -1,3 +1,3 @@"}
-            {:kind :context :old "ctx" :new "ctx"}
-            {:kind :change :old "old line" :new "new line" :emphasize? true}
-            {:kind :context :old "tail" :new "tail"}]
+            {:kind :context :old "ctx" :new "ctx" :old-no 1 :new-no 1}
+            {:kind :change
+             :old "old line"
+             :new "new line"
+             :old-no 2
+             :new-no 2
+             :emphasize? true}
+            {:kind :context :old "tail" :new "tail" :old-no 3 :new-no 3}]
            (split.parse-rows sample)))
 
 (fn test-parse-rows-labels-each-column-with-its-ref []
@@ -27,21 +32,21 @@
 
 (fn test-parse-rows-handles-pure-additions []
   (faith.= [{:kind :hunk :old "@@ -0,0 +1,2 @@"}
-            {:kind :change :new "a"}
-            {:kind :change :new "b"}]
+            {:kind :change :new "a" :new-no 1}
+            {:kind :change :new "b" :new-no 2}]
            (split.parse-rows "@@ -0,0 +1,2 @@\n+a\n+b")))
 
 (fn test-parse-rows-handles-pure-deletions []
   (faith.= [{:kind :hunk :old "@@ -1,2 +0,0 @@"}
-            {:kind :change :old "a"}
-            {:kind :change :old "b"}]
+            {:kind :change :old "a" :old-no 1}
+            {:kind :change :old "b" :old-no 2}]
            (split.parse-rows "@@ -1,2 +0,0 @@\n-a\n-b")))
 
 (fn test-parse-rows-pairs-uneven-runs []
   (faith.= [{:kind :hunk :old "@@ -1,2 +1,1 @@"}
-            {:kind :change :old "x"}
-            {:kind :change :old "y"}
-            {:kind :change :new "z"}]
+            {:kind :change :old "x" :old-no 1}
+            {:kind :change :old "y" :old-no 2}
+            {:kind :change :new "z" :new-no 1}]
            (split.parse-rows "@@ -1,2 +1,1 @@\n-x\n-y\n+z")))
 
 (fn test-parse-rows-aligns-similar-lines-onto-one-row []
@@ -49,8 +54,10 @@
             {:kind :change
              :old "keep aaa tail"
              :new "keep bbb tail"
+             :old-no 1
+             :new-no 1
              :emphasize? true}
-            {:kind :change :new "brand new line"}]
+            {:kind :change :new "brand new line" :new-no 2}]
            (split.parse-rows "@@ -1,1 +1,2 @@\n-keep aaa tail\n+keep bbb tail\n+brand new line")))
 
 (fn test-splittable-detects-real-diffs []

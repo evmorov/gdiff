@@ -366,8 +366,8 @@
         lines ["abcdefghijklmnopqrstuvwxyz"]]
     (set state.preview_wrap? true)
     (set state.split_ratio 0.5)
-    (let [first (preview.display-lines-for-width state lines 2 10)
-          second (preview.display-lines-for-width state lines 2 10)]
+    (let [first (preview.display-lines-for-width state lines nil 2 10)
+          second (preview.display-lines-for-width state lines nil 2 10)]
       (faith.= first second)
       (faith.= first state.preview_display_cache.display))))
 
@@ -376,8 +376,8 @@
         lines ["abcdefghijklmnopqrstuvwxyz"]]
     (set state.preview_wrap? true)
     (set state.split_ratio 0.5)
-    (let [first (preview.display-lines-for-width state lines 2 10)
-          second (preview.display-lines-for-width state lines 2 20)]
+    (let [first (preview.display-lines-for-width state lines nil 2 10)
+          second (preview.display-lines-for-width state lines nil 2 20)]
       (faith.not= first second)
       (faith.= 20 state.preview_display_cache.cols))))
 

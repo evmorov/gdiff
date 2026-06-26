@@ -438,23 +438,25 @@
     (faith.= nil (header:find "refresh/sync" 1 true))
     (faith.= nil (header:find "w wrap" 1 true))))
 
-(fn test-view-shows-wrap-split-and-hide-status-in-footer-right []
+(fn test-view-shows-toggle-status-in-footer-right []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.preview_wrap? true)
+    (set state.show_numbers? false)
     (set state.split_mode? true)
     (set state.hide_reviewed? false)
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "wrap on │ split on │ hide off" footer-right))))
+      (faith.= "wrap on │ num off │ split on │ hide off" footer-right))))
 
-(fn test-view-reflects-disabled-wrap-split-and-enabled-hide-in-footer-right []
+(fn test-view-reflects-toggled-status-in-footer-right []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.preview_wrap? false)
+    (set state.show_numbers? true)
     (set state.split_mode? false)
     (set state.hide_reviewed? true)
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "wrap off │ split off │ hide on" footer-right))))
+      (faith.= "wrap off │ num on │ split off │ hide on" footer-right))))
 
 (fn test-uppercase-h-hides-reviewed-entries-from-list []
   (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb") (entry "M" "c.rb")])]
@@ -794,8 +796,8 @@
  : test-view-shows-reviewed-file-percent-in-header-right
  : test-view-shows-diff-stats-in-header-right
  : test-view-shows-trimmed-header
- : test-view-shows-wrap-split-and-hide-status-in-footer-right
- : test-view-reflects-disabled-wrap-split-and-enabled-hide-in-footer-right
+ : test-view-shows-toggle-status-in-footer-right
+ : test-view-reflects-toggled-status-in-footer-right
  : test-uppercase-h-hides-reviewed-entries-from-list
  : test-hide-reviewed-skips-hidden-entries-in-flat-navigation
  : test-hide-reviewed-keeps-cursor-on-unreviewed-selection

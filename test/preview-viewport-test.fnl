@@ -18,7 +18,7 @@
 (fn test-lines-for-width-wraps-without-updating-preview-fields []
   (let [state (state)]
     (set state.preview_wrap? true)
-    (let [lines (viewport.lines-for-width state ["abcdefghij"] 2 10)]
+    (let [lines (viewport.lines-for-width state ["abcdefghij"] nil 2 10)]
       (faith.= ["abc↪" "def↪" "ghij"] lines)
       (faith.= nil state.preview_total)
       (faith.= 0 state.preview_scroll))))
@@ -26,8 +26,8 @@
 (fn test-lines-for-width-returns-a-matching-source-map []
   (let [state (state)]
     (set state.preview_wrap? true)
-    (let [(lines source-map) (viewport.lines-for-width state ["abcdefghij"] 2
-                                                       10)]
+    (let [(lines source-map) (viewport.lines-for-width state ["abcdefghij"] nil
+                                                       2 10)]
       (faith.= ["abc↪" "def↪" "ghij"] lines)
       (faith.= [1 1 1] source-map))))
 

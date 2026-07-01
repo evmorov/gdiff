@@ -88,6 +88,12 @@
     acc.rows))
 
 (fn splittable? [rows]
-  (has-content? rows))
+  (var has-old false)
+  (var has-new false)
+  (each [_ row (ipairs (or rows [])) &until (and has-old has-new)]
+    (when (= row.kind :change)
+      (when row.old (set has-old true))
+      (when row.new (set has-new true))))
+  (and has-old has-new))
 
 {: parse-rows : splittable?}

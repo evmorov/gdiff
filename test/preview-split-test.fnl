@@ -71,6 +71,10 @@
   (faith.is (not (split.splittable? (split.parse-rows ""))))
   (faith.is (not (split.splittable? []))))
 
+(fn test-not-splittable-for-one-sided-changes []
+  (faith.is (not (split.splittable? (split.parse-rows "@@ -0,0 +1,2 @@\n+a\n+b"))))
+  (faith.is (not (split.splittable? (split.parse-rows "@@ -1,2 +0,0 @@\n-a\n-b")))))
+
 {: test-parse-rows-replaces-headers-with-a-filename-title
  : test-parse-rows-labels-each-column-with-its-ref
  : test-parse-rows-handles-pure-additions
@@ -78,4 +82,5 @@
  : test-parse-rows-pairs-uneven-runs
  : test-parse-rows-aligns-similar-lines-onto-one-row
  : test-splittable-detects-real-diffs
- : test-not-splittable-for-binary-or-empty}
+ : test-not-splittable-for-binary-or-empty
+ : test-not-splittable-for-one-sided-changes}

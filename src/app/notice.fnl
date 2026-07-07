@@ -22,6 +22,11 @@
       (.. "Opened PR: " ?url)
       (or ?error "No linked PR")))
 
+(fn open-commit-finished [ok? ?url ?error]
+  (if ok?
+      (.. "Opened commit: " ?url)
+      (or ?error "No commit for this line")))
+
 (fn open-target-action [target ok?]
   (if ok? "Opening"
       (= target :folder) "Folder not found"
@@ -61,6 +66,7 @@
 
 {: copy-finished
  : open-base-finished
+ : open-commit-finished
  : open-pr-finished
  : open-target-action
  : open-target-finished

@@ -112,6 +112,25 @@
                                                                     ?ranges))]
           (if ok (blame.parse output) {})))))
 
+(fn blame-commit [revision entry side line]
+  "Resolve the commit that last touched a single diff line via git blame."
+  (let [(?ref path) (blame-target revision entry side)]
+    (if (not path)
+        (values nil "No file to blame")
+        (let [(output ok) (sys.read-command (commands.blame-command ?ref path
+                                                                    [[line
+                                                                      line]]))
+              sha (and ok (blame.commit output))]
+          (if (not sha) (values nil "Could not blame this line")
+              (blame.uncommitted? sha) (values nil "Line is not committed yet")
+              (values sha nil))))))
+
+(fn commit-url [sha]
+  (let [url (read-trimmed (commands.commit-url-command sha))]
+    (if url
+        (values url nil)
+        (values nil "Could not resolve commit URL"))))
+
 (fn repo-root []
   (or (read-trimmed (commands.repo-root-command)) (os.getenv "PWD") "."))
 
@@ -137,7 +156,9 @@
         (values nil (.. "Not in " ref)))))
 
 {: base-ref
+ : blame-commit
  : blame-lines
+ : commit-url
  : comparison-revision
  : comparison-right
  : comparison-sides

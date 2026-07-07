@@ -33,6 +33,15 @@
               (set current nil)))))
     lines))
 
+(fn commit [output]
+  "The commit SHA of the first line in `git blame --line-porcelain` output."
+  (accumulate [sha nil line (string.gmatch (or output "") "[^\r\n]+")]
+    (or sha (line:match "^(%x+) %d+ %d+ ?%d*$"))))
+
+(fn uncommitted? [sha]
+  "True for the all-zero SHA git blame reports for not-yet-committed lines."
+  (and sha (not= nil (sha:match "^0+$"))))
+
 (fn sorted-line-numbers [lines]
   (let [seen {}
         out []]
@@ -50,13 +59,13 @@
     (var to nil)
     (each [_ n (ipairs (sorted-line-numbers lines))]
       (if (not from) (do
-                       (set from n) (set to n))
-          (= n (+ to 1)) (set to n)
-          (do
-            (table.insert out [from to])
-            (set from n)
-            (set to n))))
+                       (set from n)
+                       (set to n)) (= n (+ to 1))
+          (set to n) (do
+                      (table.insert out [from to])
+                      (set from n)
+                      (set to n))))
     (when from (table.insert out [from to]))
     out))
 
-{: parse : ranges}
+{: commit : parse : ranges : uncommitted?}

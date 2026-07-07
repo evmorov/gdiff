@@ -141,6 +141,44 @@
                                               source-map)
                 (line-selection.line-count display anchor cursor source-map)))))
 
+(fn single-source-index [display anchor cursor source-map]
+  "The source line index under the cursor, or nil when the selection spans
+  more than one source line."
+  (when (= 1 (line-selection.line-count display anchor cursor source-map))
+    (if source-map (. source-map cursor) cursor)))
+
+(fn split-line-target [state]
+  (let [display (or state.split_rows [])
+        logical (or state.split_logical_rows display)
+        cursor (or state.preview_cursor 1)
+        index (single-source-index display state.preview_selection_anchor
+                                   cursor state.split_source_map)
+        row (and index (. logical index))
+        side state.split_side
+        no (and row (if (= side :old) row.old-no row.new-no))]
+    (when no {: side : no :entry (selection.selected-entry state)})))
+
+(fn preview-line-target [state]
+  (let [entry (selection.selected-entry state)
+        display (preview.display-lines state)
+        cursor (or state.preview_cursor 1)
+        index (single-source-index display state.preview_selection_anchor
+                                   cursor (preview.display-source-map state))
+        refs (and index (preview.line-refs state entry))
+        ref (and refs (. refs index))]
+    (when ref {:side ref.side :no ref.no : entry})))
+
+(fn line-blame-target [state]
+  (if (split-active? state)
+      (split-line-target state)
+      (preview-line-target state)))
+
+(fn open-commit-selected [state]
+  (when (= state.focus :right)
+    (let [target (line-blame-target state)]
+      (when target
+        (commands.open-line-commit target)))))
+
 (fn yank-preview [state]
   (let [(text count) (preview-selection state)]
     (exit-line-selection state)
@@ -394,6 +432,7 @@
                  :copy-path copy-or-yank
                  :copy-full-path copy-full-or-yank-with-path
                  :open-pr commands.open-linked-pr
+                 :open-commit open-commit-selected
                  :split-left #(move-split $1 -0.05)
                  :split-right #(move-split $1 0.05)})
 

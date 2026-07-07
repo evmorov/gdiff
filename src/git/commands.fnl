@@ -55,6 +55,9 @@
   (.. "gh pr view " (sys.shell-quote branch)
       " --json url --jq .url 2>/dev/null"))
 
+(fn commit-url-command [sha]
+  (.. "gh browse --no-browser " (sys.shell-quote sha) " 2>/dev/null"))
+
 (fn diff-target [revision entry]
   (if (and (working? revision) (untracked? entry))
       (.. "--no-index -- /dev/null " (sys.shell-quote entry.path))
@@ -75,6 +78,7 @@
 
 {: base-temp-path
  : blame-command
+ : commit-url-command
  : current-branch-command
  : diff-command
  : diff-stats-command

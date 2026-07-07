@@ -39,6 +39,13 @@
   (faith.= "No linked PR" (notice.open-pr-finished false nil nil))
   (faith.= "No linked PR for feature"
            (notice.open-pr-finished false nil "No linked PR for feature"))
+  (faith.= "Opened commit: https://example.com/commit/abc"
+           (notice.open-commit-finished true "https://example.com/commit/abc"
+                                        nil))
+  (faith.= "No commit for this line"
+           (notice.open-commit-finished false nil nil))
+  (faith.= "Line is not committed yet"
+           (notice.open-commit-finished false nil "Line is not committed yet"))
   (faith.= "Could not save reviewed marks" (notice.review-persist-failed))
   (faith.= "Syncing remote..." (notice.syncing-remote))
   (faith.= "Remote in sync" (notice.remote-in-sync)))

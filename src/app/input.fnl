@@ -39,6 +39,7 @@
     "Y" :copy-full-path
     "v" :toggle-line-selection
     "p" :open-pr
+    "x" :open-commit
     "[" :split-left
     "]" :split-right
     "G" :bottom

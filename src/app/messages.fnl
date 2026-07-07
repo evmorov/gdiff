@@ -34,6 +34,9 @@
 (fn open-pr-finished [?url ?error ok?]
   (build :open-pr-finished {:url ?url :error ?error : ok?}))
 
+(fn open-commit-finished [?url ?error ok?]
+  (build :open-commit-finished {:url ?url :error ?error : ok?}))
+
 (fn open-target-finished [target path ok?]
   (build :open-target-finished {: target : path : ok?}))
 
@@ -48,6 +51,7 @@
  : ignore
  : copy-path-finished
  : open-base-finished
+ : open-commit-finished
  : open-pr-finished
  : open-target-finished
  : pending-key

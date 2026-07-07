@@ -1,5 +1,7 @@
 (local faith (require :faith))
+(local browser (require :platform.browser))
 (local clipboard (require :platform.clipboard))
+(local git (require :git.core))
 (local preview-key (require :preview.key))
 (local reviews (require :storage.reviews))
 (local update (require :app.update))
@@ -18,7 +20,8 @@
     (faith.= {:type :toggle-all-reviewed} (update.read-msg state "a"))
     (faith.= {:type :toggle-wrap} (update.read-msg state "w"))
     (faith.= {:type :toggle-blame} (update.read-msg state "b"))
-    (faith.= {:type :open-pr} (update.read-msg state "p"))))
+    (faith.= {:type :open-pr} (update.read-msg state "p"))
+    (faith.= {:type :open-commit} (update.read-msg state "x"))))
 
 (fn test-read-msg-keeps-pending-g-in-state []
   (let [state (state [(entry "M" "a.rb")])]
@@ -34,7 +37,7 @@
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {} (update.read-msg state "g"))
     (faith.= "g" state.pending-key)
-    (update.update state {} (update.read-msg state "x"))
+    (update.update state {} (update.read-msg state "z"))
     (faith.= nil state.pending-key)
     (faith.= {:type :pending-key :pending-key "g"} (update.read-msg state "g"))))
 
@@ -611,6 +614,139 @@
                     :error "No linked PR for feature"})
     (faith.= "No linked PR for feature" state.notice)))
 
+(fn commit-line-state []
+  (let [state (diff-state)]
+    (set state.view_mode :flat)
+    (set state.preview_line_refs_cache
+         {(preview-key.for-entry "HEAD" (. state.entries 1) false) [{:side :new
+                                                                     :no 10}
+                                                                    {:side :new
+                                                                     :no 11}
+                                                                    {:side :old
+                                                                     :no 5}
+                                                                    false]})
+    state))
+
+(fn test-x-opens-the-commit-that-added-the-cursor-line []
+  (let [state (commit-line-state)
+        old-blame git.blame-commit
+        old-url git.commit-url
+        old-open browser.open
+        blame-args []
+        opened []]
+    (set git.blame-commit (fn [revision entry side no]
+                            (table.insert blame-args
+                                          {: revision
+                                           :path entry.path
+                                           : side
+                                           : no})
+                            (values "sha123" nil)))
+    (set git.commit-url
+         (fn [sha]
+           (values (.. "https://github.com/o/r/commit/" sha) nil)))
+    (set browser.open (fn [url] (table.insert opened url)))
+    (update.update state {} (update.read-msg state "\t"))
+    (let [(_ command) (update.update state {} (update.read-msg state "x"))]
+      (update.run-command state {} command))
+    (set git.blame-commit old-blame)
+    (set git.commit-url old-url)
+    (set browser.open old-open)
+    (faith.= [{:revision "HEAD" :path "a.rb" :side :new :no 10}] blame-args)
+    (faith.= ["https://github.com/o/r/commit/sha123"] opened)
+    (faith.= "Opened commit: https://github.com/o/r/commit/sha123" state.notice)))
+
+(fn test-x-blames-the-old-ref-for-a-deleted-line []
+  (let [state (commit-line-state)
+        old-blame git.blame-commit
+        old-url git.commit-url
+        old-open browser.open
+        blame-args []]
+    (set git.blame-commit (fn [_revision _entry side no]
+                            (table.insert blame-args {: side : no})
+                            (values "sha456" nil)))
+    (set git.commit-url (fn [sha] (values (.. "url/" sha) nil)))
+    (set browser.open (fn [_url] nil))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "j"))
+    (update.update state {} (update.read-msg state "j"))
+    (let [(_ command) (update.update state {} (update.read-msg state "x"))]
+      (update.run-command state {} command))
+    (set git.blame-commit old-blame)
+    (set git.commit-url old-url)
+    (set browser.open old-open)
+    (faith.= [{:side :old :no 5}] blame-args)))
+
+(fn test-x-does-nothing-for-a-multi-line-selection []
+  (let [state (commit-line-state)
+        old-blame git.blame-commit
+        calls []]
+    (set git.blame-commit (fn [] (table.insert calls true) (values nil "x")))
+    (update.update state {} (update.read-msg state "\t"))
+    (update.update state {} (update.read-msg state "v"))
+    (update.update state {} (update.read-msg state "j"))
+    (let [(_ command) (update.update state {} (update.read-msg state "x"))]
+      (update.run-command state {} command))
+    (set git.blame-commit old-blame)
+    (faith.= 0 (length calls))))
+
+(fn test-x-is-ignored-when-files-are-focused []
+  (let [state (commit-line-state)
+        old-blame git.blame-commit
+        calls []]
+    (set git.blame-commit (fn [] (table.insert calls true) (values nil "x")))
+    (let [(_ command) (update.update state {} (update.read-msg state "x"))]
+      (update.run-command state {} command))
+    (set git.blame-commit old-blame)
+    (faith.= 0 (length calls))))
+
+(fn test-x-in-split-blames-the-focused-column []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        old-blame git.blame-commit
+        old-url git.commit-url
+        old-open browser.open
+        blame-args []]
+    (set state.split_mode? true)
+    (set state.split_logical_rows
+         [{:kind :change :old "old1" :new "new1" :old-no 5 :new-no 8}
+          {:kind :change :old "old2" :new "new2" :old-no 6 :new-no 9}])
+    (set state.split_rows
+         [{:kind :change :old "old1" :new "new1"}
+          {:kind :change :old "old2" :new "new2"}])
+    (tset state.split_cache (.. (preview-key.for-entry "HEAD" selected)
+                                "\0split")
+          (split-rows))
+    (set state.preview_total 2)
+    (set state.preview_rows 2)
+    (set git.blame-commit (fn [_revision _entry side no]
+                            (table.insert blame-args {: side : no})
+                            (values "sha" nil)))
+    (set git.commit-url (fn [sha] (values (.. "url/" sha) nil)))
+    (set browser.open (fn [_url] nil))
+    (update.update state {} (update.read-msg state "\t"))
+    (let [(_ command) (update.update state {} (update.read-msg state "x"))]
+      (update.run-command state {} command))
+    (update.update state {} (update.read-msg state "\t"))
+    (let [(_ command) (update.update state {} (update.read-msg state "x"))]
+      (update.run-command state {} command))
+    (set git.blame-commit old-blame)
+    (set git.commit-url old-url)
+    (set browser.open old-open)
+    (faith.= [{:side :old :no 5} {:side :new :no 8}] blame-args)))
+
+(fn test-open-commit-finished-updates-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (update.update state {}
+                   {:type :open-commit-finished
+                    :ok? true
+                    :url "https://example.com/commit/abc"})
+    (faith.= "Opened commit: https://example.com/commit/abc" state.notice)
+    (update.update state {}
+                   {:type :open-commit-finished
+                    :ok? false
+                    :error "Line is not committed yet"})
+    (faith.= "Line is not committed yet" state.notice)))
+
 (fn test-open-target-finished-updates-notice []
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {} {:type :open-target-finished
@@ -665,6 +801,12 @@
  : test-split-search-is-scoped-to-the-focused-side
  : test-yank-finished-updates-notice
  : test-open-pr-finished-updates-notice
+ : test-x-opens-the-commit-that-added-the-cursor-line
+ : test-x-blames-the-old-ref-for-a-deleted-line
+ : test-x-does-nothing-for-a-multi-line-selection
+ : test-x-is-ignored-when-files-are-focused
+ : test-x-in-split-blames-the-focused-column
+ : test-open-commit-finished-updates-notice
  : test-open-target-finished-updates-notice
  : test-preview-page-scroll-sets-skip-draw-when-clamped
  : test-read-msg-keeps-pending-g-in-state

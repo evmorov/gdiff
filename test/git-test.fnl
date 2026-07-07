@@ -172,6 +172,62 @@
     (faith.= "git blame --line-porcelain -L 3,5 -L 10,10 -- 'app.rb' 2>/dev/null"
              (. commands 1))))
 
+(fn test-blame-commit-parser-extracts-the-sha []
+  (let [output (table.concat ["abc123def456 4 4 1"
+                              "author Ada"
+                              "author-time 1619654400"
+                              "\tline"] "\n")]
+    (faith.= "abc123def456" (blame.commit output))
+    (faith.= nil (blame.commit ""))))
+
+(fn test-blame-detects-not-yet-committed-lines []
+  (faith.is (blame.uncommitted? "0000000000000000000000000000000000000000"))
+  (faith.is (not (blame.uncommitted? "abc123")))
+  (faith.is (not (blame.uncommitted? nil))))
+
+(fn test-blame-commit-resolves-the-commit-for-a-single-line []
+  (let [commands []
+        old-read-command sys.read-command
+        output (table.concat ["def789 3 3 1"
+                              "author Ada"
+                              "author-time 1619654400"
+                              "\tline"] "\n")]
+    (set sys.read-command (fn [cmd]
+                            (table.insert commands cmd)
+                            (values output true)))
+    (let [(sha err) (git.blame-commit git.working-revision {:path "app.rb"}
+                                      :new 3)]
+      (set sys.read-command old-read-command)
+      (faith.= "def789" sha)
+      (faith.= nil err)
+      (faith.= "git blame --line-porcelain -L 3,3 -- 'app.rb' 2>/dev/null"
+               (. commands 1)))))
+
+(fn test-blame-commit-reports-not-yet-committed-lines []
+  (let [old-read-command sys.read-command
+        output (table.concat ["0000000000000000000000000000000000000000 3 3 1"
+                              "author Not Committed Yet"
+                              "\tline"] "\n")]
+    (set sys.read-command (fn [_cmd] (values output true)))
+    (let [(sha err) (git.blame-commit git.working-revision {:path "app.rb"}
+                                      :new 3)]
+      (set sys.read-command old-read-command)
+      (faith.= nil sha)
+      (faith.= "Line is not committed yet" err))))
+
+(fn test-commit-url-builds-url-from-gh-browse []
+  (let [commands []
+        old-read-command sys.read-command]
+    (set sys.read-command
+         (fn [cmd]
+           (table.insert commands cmd)
+           (values "https://github.com/o/r/commit/abc\n" true)))
+    (let [(url err) (git.commit-url "abc")]
+      (set sys.read-command old-read-command)
+      (faith.= "https://github.com/o/r/commit/abc" url)
+      (faith.= nil err)
+      (faith.= "gh browse --no-browser 'abc' 2>/dev/null" (. commands 1)))))
+
 (fn test-materialize-base-writes-committed-version-to-temp []
   (t.init-repo)
   (t.write-file "modified.txt" "before\n")
@@ -256,6 +312,11 @@
  : test-blame-ranges-merges-sorted-contiguous-lines
  : test-blame-lines-for-working-revision-use-head-and-worktree
  : test-blame-lines-restricts-git-blame-to-given-ranges
+ : test-blame-commit-parser-extracts-the-sha
+ : test-blame-detects-not-yet-committed-lines
+ : test-blame-commit-resolves-the-commit-for-a-single-line
+ : test-blame-commit-reports-not-yet-committed-lines
+ : test-commit-url-builds-url-from-gh-browse
  : test-materialize-base-reports-missing-paths
  : test-materialize-base-writes-committed-version-to-temp
  : test-default-revision-falls-back-to-master

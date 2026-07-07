@@ -57,6 +57,10 @@
   (set state.notice (notice.open-pr-finished msg.ok? msg.url msg.error))
   commands.none)
 
+(fn handle-open-commit-finished [state _config msg]
+  (set state.notice (notice.open-commit-finished msg.ok? msg.url msg.error))
+  commands.none)
+
 (fn handle-open-target-finished [state _config msg]
   (set state.notice (notice.open-target-finished msg.target msg.path msg.ok?))
   commands.none)
@@ -73,6 +77,7 @@
        {:copy-path-finished handle-copy-path-finished
         :ignore handle-ignore
         :open-base-finished handle-open-base-finished
+        :open-commit-finished handle-open-commit-finished
         :open-pr-finished handle-open-pr-finished
         :open-target-finished handle-open-target-finished
         :pending-key handle-pending-key

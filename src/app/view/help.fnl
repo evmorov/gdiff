@@ -39,6 +39,7 @@
                         ["s" "Toggle side-by-side split"]
                         ["c" "Toggle full context"]
                         ["v" "Select lines in diff (toggle)"]
+                        ["x" "Open commit for the line on GitHub"]
                         ["y" "Yank line or selection"]
                         ["Y" "Yank with path, fenced"]]}])
 

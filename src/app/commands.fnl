@@ -98,6 +98,19 @@
           (dispatch (messages.open-pr-finished url nil true)))
         (dispatch (messages.open-pr-finished nil err false)))))
 
+(defcommand open-line-commit
+  [target]
+  [dispatch get-state]
+  (let [state (get-state)
+        (sha err) (git.blame-commit state.revision target.entry target.side
+                                    target.no)
+        (url url-err) (if sha (git.commit-url sha) (values nil err))]
+    (if url
+        (do
+          (browser.open url)
+          (dispatch (messages.open-commit-finished url nil true)))
+        (dispatch (messages.open-commit-finished nil (or url-err err) false)))))
+
 (defcommand refresh
   []
   [dispatch get-state]
@@ -116,6 +129,7 @@
  : open-base-editor
  : open-editor
  : open-folder
+ : open-line-commit
  : open-linked-pr
  : persist-reviewed
  : refresh

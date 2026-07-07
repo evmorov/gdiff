@@ -37,7 +37,7 @@
                         ["1" "Toggle line numbers"]
                         ["b" "Toggle blame"]
                         ["s" "Toggle side-by-side split"]
-                        ["f" "Toggle full context"]
+                        ["c" "Toggle full context"]
                         ["v" "Select lines in diff (toggle)"]
                         ["y" "Yank line or selection"]
                         ["Y" "Yank with path, fenced"]]}])

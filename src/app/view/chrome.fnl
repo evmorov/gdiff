@@ -34,16 +34,18 @@
 (fn toggle-label [label on?]
   (.. label " " (if on? "on" "off")))
 
+(fn highlighted-toggle [state label on?]
+  (let [text (toggle-label label on?)]
+    (if on? (tui.color state.theme :status-added text) text)))
+
 (fn status-widgets [state]
-  (let [hide (toggle-label :hide state.hide_reviewed?)]
-    (table.concat [(toggle-label :wrap state.preview_wrap?)
-                   (toggle-label :num state.show_numbers?)
-                   (toggle-label :blame state.show_blame?)
-                   (toggle-label :split state.split_mode?)
-                   (toggle-label :context state.full_context?)
-                   (if state.hide_reviewed?
-                       (tui.color state.theme :status-added hide)
-                       hide)] (separator state))))
+  (table.concat [(highlighted-toggle state :wrap state.preview_wrap?)
+                 (highlighted-toggle state :num state.show_numbers?)
+                 (highlighted-toggle state :blame state.show_blame?)
+                 (highlighted-toggle state :split state.split_mode?)
+                 (highlighted-toggle state :context state.full_context?)
+                 (highlighted-toggle state :hide state.hide_reviewed?)]
+                (separator state)))
 
 (fn footer [state]
   (let [prompt (search.status state)

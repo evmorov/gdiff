@@ -608,7 +608,7 @@
     (app.view state 10 80)
     (faith.= 1 (length state.preview_search.matches))
     (faith.= 2 (. state.preview_search.matches 1 :line))
-    (update.update state {} (update.read-msg state "f"))
+    (update.update state {} (update.read-msg state "c"))
     (app.view state 10 80)
     (faith.= 2 (length state.preview_search.matches))
     (faith.= 1 (. state.preview_search.matches 1 :line))

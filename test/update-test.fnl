@@ -216,11 +216,11 @@
 (fn test-f-toggles-full-context-globally-across-navigation []
   (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
     (faith.= false state.full_context?)
-    (update.update state {} (update.read-msg state "f"))
+    (update.update state {} (update.read-msg state "c"))
     (faith.= true state.full_context?)
-    (update.update state {} (update.read-msg state "f"))
+    (update.update state {} (update.read-msg state "c"))
     (faith.= false state.full_context?)
-    (update.update state {} (update.read-msg state "f"))
+    (update.update state {} (update.read-msg state "c"))
     (faith.= true state.full_context?)
     (update.update state {} (update.read-msg state "j"))
     (faith.= true state.full_context?)))

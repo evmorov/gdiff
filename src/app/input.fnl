@@ -30,7 +30,7 @@
     "1" :toggle-show-numbers
     "b" :toggle-blame
     "s" :toggle-split
-    "f" :toggle-full-context
+    "c" :toggle-full-context
     "`" :toggle-tree
     "e" :toggle-expand
     "E" :expand-all

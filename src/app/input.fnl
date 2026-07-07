@@ -28,6 +28,7 @@
     "r" :refresh
     "w" :toggle-wrap
     "1" :toggle-show-numbers
+    "b" :toggle-blame
     "s" :toggle-split
     "f" :toggle-full-context
     "`" :toggle-tree

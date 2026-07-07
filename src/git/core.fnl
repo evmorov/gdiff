@@ -1,4 +1,5 @@
 (local commands (require :git.commands))
+(local blame (require :git.blame))
 (local parse (require :git.parse))
 (local sys (require :platform.core))
 
@@ -85,6 +86,31 @@
   (sys.read-command (commands.plain-preview-command revision entry
                                                     ?full-context?)))
 
+(fn split-revision [revision]
+  (revision:match "^(.-)%.%.%.(.*)$"))
+
+(fn comparison-ref-targets [revision]
+  (if (commands.working? revision)
+      (values "HEAD" nil)
+      (let [(left right) (split-revision revision)]
+        (if left
+            (values (if (> (length left) 0) left (current-branch))
+                    (if (> (length right) 0) right "HEAD"))
+            (values revision nil)))))
+
+(fn blame-target [revision entry side]
+  (let [(old-ref new-ref) (comparison-ref-targets revision)]
+    (if (= side :old)
+        (values old-ref (or entry.old_path entry.path))
+        (values new-ref entry.path))))
+
+(fn blame-lines [revision entry side]
+  (let [(?ref path) (blame-target revision entry side)]
+    (if (not path)
+        {}
+        (let [(output ok) (sys.read-command (commands.blame-command ?ref path))]
+          (if ok (blame.parse output) {})))))
+
 (fn repo-root []
   (or (read-trimmed (commands.repo-root-command)) (os.getenv "PWD") "."))
 
@@ -110,6 +136,7 @@
         (values nil (.. "Not in " ref)))))
 
 {: base-ref
+ : blame-lines
  : comparison-revision
  : comparison-right
  : comparison-sides

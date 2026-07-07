@@ -26,17 +26,27 @@
 (fn scroll? [lines visible]
   (scroll-util.scrolls? (length lines) visible))
 
+(fn gutter-text [entry key]
+  (if (= (type entry) :table)
+      (or (. entry key) "")
+      (if entry (tostring entry) "")))
+
 (fn gutter-strings [numbers]
   (let [width (accumulate [w 0 _ n (ipairs (or numbers []))]
-                (math.max w (if n (length (tostring n)) 0)))]
+                (math.max w (tui.visible-length (gutter-text n :full))))]
     (if (= width 0)
         (values nil 0)
         (let [total (+ width 1)
-              strings (icollect [_ n (ipairs numbers)]
-                        (if n
-                            (.. (string.rep " " (- width (length (tostring n))))
-                                (tostring n) " ")
-                            (string.rep " " total)))]
+              strings []]
+          (each [_ n (ipairs numbers)]
+            (if n
+                (let [text (gutter-text n :full)]
+                  (table.insert strings
+                                (.. (string.rep " "
+                                                (- width
+                                                   (tui.visible-length text)))
+                                    text " ")))
+                (table.insert strings (string.rep " " total))))
           (values strings total)))))
 
 (fn display-gutters [gutters width source-map]
@@ -50,9 +60,9 @@
               (tset seen src true)
               (or (. gutters src) blank)))))))
 
-(fn lines-for-width [state lines numbers visible cols]
-  (let [(gutters gutter-width) (if (and state.show_numbers? numbers)
-                                   (gutter-strings numbers)
+(fn lines-for-width [state lines gutter-labels visible cols]
+  (let [(gutters gutter-width) (if gutter-labels
+                                   (gutter-strings gutter-labels)
                                    (values nil 0))
         text-width (fn [scroll?]
                      (math.max 1

@@ -406,6 +406,79 @@
   (faith.= 1 (preview.visible-count 0))
   (faith.= 3 (preview.visible-count 3)))
 
+(fn gutter-contains? [gutters needle]
+  (accumulate [found false _ gutter (ipairs (or gutters [])) &until found]
+    (or found (not (= nil (string.find (tui.strip-ansi gutter) needle 1 true))))))
+
+(fn test-unified-preview-gutter-combines-line-number-and-blame []
+  (let [entry {:status "M" :kind "M" :path "app.rb" :reviewed false}
+        state (state)
+        old-plain-diff-output git.plain-diff-output
+        old-blame-lines git.blame-lines]
+    (set state.show_numbers? true)
+    (set state.show_blame? true)
+    (set state.preview_wrap? true)
+    (set state.split_ratio 0.5)
+    (set git.plain-diff-output (fn [_revision _entry _full?]
+                                 (values "@@ -1,2 +1,2 @@\n before\n-old\n+new"
+                                         true)))
+    (set git.blame-lines
+         (fn [_revision _entry side]
+           (if (= side :old)
+               {2 "29/04/2021 Evgenii"}
+               {1 "28/04/2021 Ada" 2 "30/04/2021 Grace"})))
+    (let [(lines gutters) (preview.selection-lines state entry nil)]
+      (preview.display-lines-for-width state lines gutters 20 100)
+      (set git.plain-diff-output old-plain-diff-output)
+      (set git.blame-lines old-blame-lines)
+      (let [visible (preview.display-gutters state)]
+        (faith.is (gutter-contains? visible "1 28/04/2021 Ada"))
+        (faith.is (gutter-contains? visible "2 29/04/2021 Evgenii"))))))
+
+(fn test-unified-blame-gutter-is-left-aligned []
+  (let [state (state)
+        entry {:path "app.rb"}
+        old-blame-lines git.blame-lines]
+    (set state.show_blame? true)
+    (set git.blame-lines
+         (fn [_revision _entry _side]
+           {1 "26/06/2026 Evgenii" 2 "07/07/2026 Not"}))
+    (let [gutters (preview.line-gutters state entry nil
+                                        [{:side :new :no 1} {:side :new :no 2}])]
+      (set git.blame-lines old-blame-lines)
+      (faith.= "26/06/2026 Evgenii" (. (. gutters 1) :full))
+      (faith.match "^07/07/2026 Not" (. (. gutters 2) :full)))))
+
+(fn test-unified-blame-gutter-is-blank-on-wrapped-continuation-lines []
+  (let [state (state)
+        entry {:path "app.rb"}
+        old-blame-lines git.blame-lines]
+    (set state.show_blame? true)
+    (set state.preview_wrap? true)
+    (set state.split_ratio 0.5)
+    (set git.blame-lines (fn [_revision _entry _side]
+                           {1 "07/07/2026 Not"}))
+    (let [gutters (preview.line-gutters state entry nil [{:side :new :no 1}])
+          lines ["abcdefghijklmnopqrstuvwxyz"]]
+      (preview.display-lines-for-width state lines gutters 20 44)
+      (set git.blame-lines old-blame-lines)
+      (let [visible (preview.display-gutters state)]
+        (faith.is (< 1 (length visible)))
+        (faith.match "^07/07/2026 Not" (tui.strip-ansi (. visible 1)))
+        (faith.match "^%s*$" (tui.strip-ansi (. visible 2)))))))
+
+(fn test-unified-blame-gutter-shows-deleted-line-blame []
+  (let [state (state)
+        entry {:path "app.rb"}
+        old-blame-lines git.blame-lines]
+    (set state.show_blame? true)
+    (set git.blame-lines
+         (fn [_revision _entry side]
+           (if (= side :old) {3 "03/03/2020 Old"} {})))
+    (let [gutters (preview.line-gutters state entry nil [{:side :old :no 3}])]
+      (set git.blame-lines old-blame-lines)
+      (faith.= "03/03/2020 Old" (. (. gutters 1) :full)))))
+
 {: test-full-context-uses-separate-key-and-wider-diff
  : test-visible-lines-can-be-nonblocking-while-warming
  : test-warm-entry-bundles-unified-lines-and-split-rows
@@ -440,4 +513,8 @@
  : test-preview-file-detects-binary-content
  : test-preview-file-split-keeps-empty-lines-and-drops-trailing-newline
  : test-visible-count-never-drops-below-one
+ : test-unified-preview-gutter-combines-line-number-and-blame
+ : test-unified-blame-gutter-is-left-aligned
+ : test-unified-blame-gutter-is-blank-on-wrapped-continuation-lines
+ : test-unified-blame-gutter-shows-deleted-line-blame
  : test-visible-lines-renders-and-caches-real-git-preview}

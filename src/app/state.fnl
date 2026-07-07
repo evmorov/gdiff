@@ -30,6 +30,7 @@
                :preview_selection_anchor nil
                :preview_wrap? true
                :show_numbers? false
+               :show_blame? false
                :hide_reviewed? false
                :full_context? false
                :split_mode? true
@@ -44,6 +45,8 @@
                :theme theme.default
                :preview_cache {}
                :preview_numbers_cache {}
+               :preview_line_refs_cache {}
+               :preview_blame_cache {}
                :preview_warm (preview-warm.new-state)
                :review_store review-store
                :review_scope review-scope

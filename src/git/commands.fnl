@@ -30,6 +30,11 @@
 (fn show-file-command [ref path]
   (.. "git show " (sys.shell-quote (.. ref ":" path)) " 2>/dev/null"))
 
+(fn blame-command [?ref path]
+  (.. "git blame --line-porcelain "
+      (if ?ref (.. (sys.shell-quote ?ref) " ") "") "-- " (sys.shell-quote path)
+      " 2>/dev/null"))
+
 (fn base-temp-path [root ref path]
   (let [safe-ref (string.gsub ref "[/:]" "_")]
     (.. root "/gdiff-base/" safe-ref "/" path)))
@@ -65,6 +70,7 @@
       (if (and (working? revision) (untracked? entry)) " || true" "")))
 
 {: base-temp-path
+ : blame-command
  : current-branch-command
  : diff-command
  : diff-stats-command

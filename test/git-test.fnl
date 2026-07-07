@@ -1,4 +1,5 @@
 (local faith (require :faith))
+(local blame (require :git.blame))
 (local git (require :git.core))
 (local sys (require :platform.core))
 (local t (require :test-helper))
@@ -113,6 +114,46 @@
   (faith.= "HEAD" (git.base-ref git.working-revision))
   (faith.= "main" (git.base-ref "main...feature")))
 
+(fn test-blame-parser-builds-compact-date-author-labels []
+  (let [output (table.concat ["abc 1 1 1"
+                              "author Evgenii Morozov"
+                              "author-time 1619654400"
+                              "\tfirst"
+                              "def 2 2"
+                              "author Ada"
+                              "author-time 1622246400"
+                              "\tsecond"] "\n")
+        lines (blame.parse output)]
+    (faith.= "29/04/2021 Evgenii" (. lines 1))
+    (faith.= "29/05/2021 Ada" (. lines 2))))
+
+(fn test-blame-parser-crops-long-first-names-to-eight-symbols []
+  (let [output (table.concat ["abc 1 1 1"
+                              "author Alexandra Constantinescu"
+                              "author-time 1619654400"
+                              "\tline"] "\n")
+        lines (blame.parse output)]
+    (faith.= "29/04/2021 Alexandr" (. lines 1))))
+
+(fn test-blame-lines-for-working-revision-use-head-and-worktree []
+  (let [commands []
+        old-read-command sys.read-command
+        output (table.concat ["abc 1 1 1"
+                              "author Evgenii"
+                              "author-time 1619654400"
+                              "\tline"] "\n")
+        entry {:path "app.rb"}]
+    (set sys.read-command (fn [cmd]
+                            (table.insert commands cmd)
+                            (values output true)))
+    (git.blame-lines git.working-revision entry :old)
+    (git.blame-lines git.working-revision entry :new)
+    (set sys.read-command old-read-command)
+    (faith.= "git blame --line-porcelain 'HEAD' -- 'app.rb' 2>/dev/null"
+             (. commands 1))
+    (faith.= "git blame --line-porcelain -- 'app.rb' 2>/dev/null"
+             (. commands 2))))
+
 (fn test-materialize-base-writes-committed-version-to-temp []
   (t.init-repo)
   (t.write-file "modified.txt" "before\n")
@@ -192,6 +233,9 @@
     (faith.match "2>/dev/null" command)))
 
 {: test-base-ref-resolves-left-side
+ : test-blame-parser-builds-compact-date-author-labels
+ : test-blame-parser-crops-long-first-names-to-eight-symbols
+ : test-blame-lines-for-working-revision-use-head-and-worktree
  : test-materialize-base-reports-missing-paths
  : test-materialize-base-writes-committed-version-to-temp
  : test-default-revision-falls-back-to-master

@@ -47,6 +47,12 @@
   (faith.= "git show 'main:src/a b.rb' 2>/dev/null"
            (commands.show-file-command "main" "src/a b.rb")))
 
+(fn test-blame-command-quotes-ref-and-path []
+  (faith.= "git blame --line-porcelain 'main branch' -- 'src/a b.rb' 2>/dev/null"
+           (commands.blame-command "main branch" "src/a b.rb"))
+  (faith.= "git blame --line-porcelain -- 'src/a b.rb' 2>/dev/null"
+           (commands.blame-command nil "src/a b.rb")))
+
 (fn test-base-temp-path-sanitizes-ref-and-keeps-path []
   (faith.= "/tmp/gdiff-base/origin_main/src/a.rb"
            (commands.base-temp-path "/tmp" "origin/main" "src/a.rb"))
@@ -62,6 +68,7 @@
            (commands.staged-paths-command)))
 
 {: test-basic-git-adapter-commands-are-centralized
+ : test-blame-command-quotes-ref-and-path
  : test-base-temp-path-sanitizes-ref-and-keeps-path
  : test-show-file-command-quotes-ref-and-path
  : test-preview-command-quotes-revision-and-path

@@ -17,6 +17,7 @@
   (let [state (state [(entry "M" "a.rb")])]
     (faith.= {:type :toggle-all-reviewed} (update.read-msg state "a"))
     (faith.= {:type :toggle-wrap} (update.read-msg state "w"))
+    (faith.= {:type :toggle-blame} (update.read-msg state "b"))
     (faith.= {:type :open-pr} (update.read-msg state "p"))))
 
 (fn test-read-msg-keeps-pending-g-in-state []
@@ -196,6 +197,21 @@
     (faith.= 0 state.preview_x_max_scroll)
     (update.update state {} (update.read-msg state "w"))
     (faith.= false state.preview_wrap?)))
+
+(fn test-b-toggles-blame-and-resets-preview-layout []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.preview_display_cache {:stale true})
+    (set state.split_display_cache {:stale true})
+    (set state.preview_x_scroll 8)
+    (set state.preview_x_max_scroll 12)
+    (update.update state {} (update.read-msg state "b"))
+    (faith.= true state.show_blame?)
+    (faith.= nil state.preview_display_cache)
+    (faith.= nil state.split_display_cache)
+    (faith.= 0 state.preview_x_scroll)
+    (faith.= 0 state.preview_x_max_scroll)
+    (update.update state {} (update.read-msg state "b"))
+    (faith.= false state.show_blame?)))
 
 (fn test-f-toggles-full-context-and-navigation-resets-it []
   (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
@@ -659,5 +675,6 @@
  : test-uppercase-r-does-not-attach-to-startup-sync
  : test-uppercase-r-does-not-start-sync
  : test-unknown-key-clears-pending-g
+ : test-b-toggles-blame-and-resets-preview-layout
  : test-w-toggles-preview-wrap-and-resets-horizontal-scroll
  : test-update-returns-command-for-review-persistence}

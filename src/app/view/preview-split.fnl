@@ -25,6 +25,18 @@
       (values (number-width rows :old-no) (number-width rows :new-no))
       (values 0 0)))
 
+(fn blame-width [rows key]
+  (accumulate [w 0 _ row (ipairs (or rows []))]
+    (math.max w (if (. row key) (tui.visible-length (. row key)) 0))))
+
+(fn blame-widths [state rows]
+  (if state.show_blame?
+      (values (blame-width rows :old-blame) (blame-width rows :new-blame))
+      (values 0 0)))
+
+(fn gutter-width [number-w blame-w]
+  (+ number-w blame-w (if (and (> number-w 0) (> blame-w 0)) 1 0)))
+
 (fn gutter-cols [width]
   (if (> width 0) (+ width 1) 0))
 
@@ -32,17 +44,38 @@
   (let [text (if ?no (tostring ?no) "")]
     (.. (string.rep " " (math.max 0 (- width (length text)))) text)))
 
-(fn side-gutter [state width ?no]
-  (if (> (or width 0) 0)
-      (tui.color state.theme :muted (.. (number-text ?no width) " "))
-      ""))
+(fn padded-right [text width]
+  (let [text (or text "")]
+    (.. text (string.rep " " (math.max 0 (- width (tui.visible-length text)))))))
+
+(fn side-gutter [state number-w blame-w ?no ?blame]
+  (let [number-w (or number-w 0)
+        blame-w (or blame-w 0)
+        width (gutter-width number-w blame-w)]
+    (if (> width 0)
+        (tui.color state.theme :faint
+                   (.. (if (> number-w 0) (number-text ?no number-w) "")
+                       (if (and (> number-w 0) (> blame-w 0)) " " "")
+                       (if (> blame-w 0) (padded-right ?blame blame-w) "") " "))
+        "")))
 
 (fn layout-widths [state content rows]
   (let [(old-no-w new-no-w) (number-widths state rows)
-        old-gc (gutter-cols old-no-w)
-        new-gc (gutter-cols new-no-w)
+        (old-blame-w new-blame-w) (blame-widths state rows)
+        old-gutter-w (gutter-width old-no-w old-blame-w)
+        new-gutter-w (gutter-width new-no-w new-blame-w)
+        old-gc (gutter-cols old-gutter-w)
+        new-gc (gutter-cols new-gutter-w)
         (old-w new-w) (split-halves (math.max 0 (- content old-gc new-gc)))]
-    {: content :old old-w :new new-w : old-no-w : new-no-w : old-gc : new-gc}))
+    {: content
+     :old old-w
+     :new new-w
+     : old-no-w
+     : new-no-w
+     : old-blame-w
+     : new-blame-w
+     : old-gc
+     : new-gc}))
 
 (fn max-raw-width [rows]
   (accumulate [w 0 _ row (ipairs rows)]
@@ -93,8 +126,10 @@
         selected? (highlight-row? state index)
         old-sel? (and selected? (= state.split_side :old))
         new-sel? (and selected? (= state.split_side :new))
-        old-gutter (side-gutter state widths.old-no-w row.old-no)
-        new-gutter (side-gutter state widths.new-no-w row.new-no)]
+        old-gutter (side-gutter state widths.old-no-w widths.old-blame-w
+                                row.old-no row.old-blame)
+        new-gutter (side-gutter state widths.new-no-w widths.new-blame-w
+                                row.new-no row.new-blame)]
     (if (or (= row.kind :filename) (= row.kind :rule))
         (let [?color (when (= row.kind :rule) :muted)]
           (.. old-gutter (header-half state (or row.old "") old-w old-sel?
@@ -124,7 +159,9 @@
        :old (and olds (. olds i))
        :new (and news (. news i))
        :old-no (when (= i 1) row.old-no)
-       :new-no (when (= i 1) row.new-no)})))
+       :new-no (when (= i 1) row.new-no)
+       :old-blame (when (= i 1) row.old-blame)
+       :new-blame (when (= i 1) row.new-blame)})))
 
 (fn wrap-rows [rows old-w new-w _content]
   (let [display []
@@ -147,7 +184,9 @@
          :new (word-diff.emphasize theme-table row.new spans.new
                                    :emphasis-added)
          :old-no row.old-no
-         :new-no row.new-no})
+         :new-no row.new-no
+         :old-blame row.old-blame
+         :new-blame row.new-blame})
       (= row.kind :rule)
       {:kind :rule :old (underline row.old) :new (underline row.new)}
       row))
@@ -155,6 +194,21 @@
 (fn emphasize-rows [theme-table rows]
   (icollect [_ row (ipairs (or rows []))]
     (display-row theme-table row)))
+
+(fn attach-blame [state entry rows]
+  (if (or (not state.show_blame?) (not entry))
+      rows
+      (let [old-blame (preview.blame-lines state entry :old)
+            new-blame (preview.blame-lines state entry :new)]
+        (icollect [_ row (ipairs (or rows []))]
+          (let [out {}]
+            (each [k v (pairs row)]
+              (tset out k v))
+            (when row.old-no
+              (set out.old-blame (. old-blame row.old-no)))
+            (when row.new-no
+              (set out.new-blame (. new-blame row.new-no)))
+            out)))))
 
 (fn prepare-truncated [state rows visible cols]
   (let [display (emphasize-rows state.theme rows)
@@ -189,7 +243,8 @@
     (and cache (= cache.rows rows) (= cache.visible visible)
          (= cache.cols cols) (= cache.split-ratio state.split_ratio)
          (= cache.wrap? state.preview_wrap?)
-         (= cache.numbers? (and state.show_numbers? true)))))
+         (= cache.numbers? (and state.show_numbers? true))
+         (= cache.blame? (and state.show_blame? true)))))
 
 (fn apply-layout [state layout visible]
   (set state.split_rows layout.display)
@@ -206,7 +261,8 @@
              (math.min (or state.preview_x_scroll 0) layout.x-max-scroll)))))
 
 (fn prepare [state visible cols ?selected]
-  (let [rows (entry-rows state ?selected)]
+  (let [selected (or ?selected (selection.selected-context state))
+        rows (attach-blame state selected.entry (entry-rows state selected))]
     (set state.split_logical_rows rows)
     (let [layout (if (cached-layout? state rows visible cols)
                      state.split_display_cache.layout
@@ -218,14 +274,16 @@
                              :split-ratio state.split_ratio
                              :wrap? state.preview_wrap?
                              :numbers? (and state.show_numbers? true)
+                             :blame? (and state.show_blame? true)
                              :layout computed})
                        computed))]
       (apply-layout state layout visible)
       (sync-search state state.split_rows))))
 
 (fn blank-divider [state widths]
-  (.. (side-gutter state widths.old-no-w nil) (pane.blank widths.old)
-      (divider state) (side-gutter state widths.new-no-w nil)
+  (.. (side-gutter state widths.old-no-w widths.old-blame-w nil nil)
+      (pane.blank widths.old) (divider state)
+      (side-gutter state widths.new-no-w widths.new-blame-w nil nil)
       (pane.blank widths.new)))
 
 (fn body [state visible _cols]

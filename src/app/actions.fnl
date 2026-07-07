@@ -61,6 +61,8 @@
     (set state.diff_stats diff-stats)
     (set state.preview_cache {})
     (set state.preview_numbers_cache {})
+    (set state.preview_line_refs_cache {})
+    (set state.preview_blame_cache {})
     (set state.split_cache {})
     (set state.folder_preview_cache {})
     (line-selection.stop state)
@@ -269,6 +271,12 @@
               [:preview_display_cache nil] [:preview_x_scroll 0]
               [:preview_x_max_scroll 0]))
 
+(fn toggle-blame [state]
+  (exit-line-selection state)
+  (set-fields state [:show_blame? (not state.show_blame?)]
+              [:preview_display_cache nil] [:split_display_cache nil]
+              [:preview_x_scroll 0] [:preview_x_max_scroll 0]))
+
 (fn toggle-full-context [state]
   (when (selection.selected-entry state)
     (exit-line-selection state)
@@ -375,6 +383,7 @@
                  :bottom #(jump $1 preview.cursor-bottom selection.bottom)
                  : toggle-wrap
                  : toggle-show-numbers
+                 : toggle-blame
                  : toggle-split
                  : toggle-full-context
                  : toggle-tree

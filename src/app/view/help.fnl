@@ -35,6 +35,7 @@
                         ["C-d / C-u" "Page preview down / up"]
                         ["w" "Toggle wrap"]
                         ["1" "Toggle line numbers"]
+                        ["b" "Toggle blame"]
                         ["s" "Toggle side-by-side split"]
                         ["f" "Toggle full file context"]
                         ["v" "Select lines in diff (toggle)"]

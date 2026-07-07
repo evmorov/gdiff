@@ -36,6 +36,9 @@
         (format.diff-lines state output)
         (values (format.warning state (sys.trim output)) nil))))
 
+(fn cache-key [state entry]
+  (preview-key.for-entry state.revision entry state.full_context?))
+
 (fn lines [state entry]
   (if (not entry)
       (format.no-selection state)
@@ -52,23 +55,99 @@
             (let [lines (file-lines state entry)]
               (tset state.preview_cache key lines)
               lines)
-            (let [(lines numbers) (diff-data state entry full-context?)]
+            (let [(lines numbers refs) (diff-data state entry full-context?)]
               (tset state.preview_cache key lines)
               (when state.preview_numbers_cache
                 (tset state.preview_numbers_cache key (or numbers false)))
+              (when state.preview_line_refs_cache
+                (tset state.preview_line_refs_cache key (or refs false)))
               lines)))))
 
 (fn line-numbers [state entry]
   (if (or (not entry) entry.untracked? (assets.asset? entry))
       nil
-      (let [key (preview-key.for-entry state.revision entry state.full_context?)
+      (let [key (cache-key state entry)
             cached (. (or state.preview_numbers_cache {}) key)]
         (if (not (= nil cached))
             cached
-            (let [(_ numbers) (diff-data state entry state.full_context?)]
+            (let [(_ numbers refs) (diff-data state entry state.full_context?)]
               (when state.preview_numbers_cache
                 (tset state.preview_numbers_cache key (or numbers false)))
+              (when state.preview_line_refs_cache
+                (tset state.preview_line_refs_cache key (or refs false)))
               numbers)))))
+
+(fn line-refs [state entry]
+  (if (or (not entry) entry.untracked? (assets.asset? entry))
+      nil
+      (let [key (cache-key state entry)
+            cached (. (or state.preview_line_refs_cache {}) key)]
+        (if (not (= nil cached))
+            cached
+            (let [(_ numbers refs) (diff-data state entry state.full_context?)]
+              (when state.preview_numbers_cache
+                (tset state.preview_numbers_cache key (or numbers false)))
+              (when state.preview_line_refs_cache
+                (tset state.preview_line_refs_cache key (or refs false)))
+              refs)))))
+
+(fn blame-key [state entry side]
+  (.. state.revision "\0" (or entry.path "") "\0" (or entry.old_path "") "\0"
+      (tostring side)))
+
+(fn blame-lines [state entry side]
+  (let [key (blame-key state entry side)
+        cached (. (or state.preview_blame_cache {}) key)]
+    (if cached
+        cached
+        (let [lines (git.blame-lines state.revision entry side)]
+          (when state.preview_blame_cache
+            (tset state.preview_blame_cache key lines))
+          lines))))
+
+(fn number-width [numbers]
+  (accumulate [width 0 _ number (ipairs (or numbers []))]
+    (math.max width (if number (length (tostring number)) 0))))
+
+(fn blame-width [refs old-blame new-blame]
+  (accumulate [width 0 _ ref (ipairs (or refs []))]
+    (let [line (and ref ref.no)
+          label (and line (. (if (= ref.side :old) old-blame new-blame) line))]
+      (math.max width (if label (tui.visible-length label) 0)))))
+
+(fn padded [text width]
+  (let [text (or text "")]
+    (.. (string.rep " " (math.max 0 (- width (tui.visible-length text)))) text)))
+
+(fn padded-right [text width]
+  (let [text (or text "")]
+    (.. text (string.rep " " (math.max 0 (- width (tui.visible-length text)))))))
+
+(fn line-gutters [state entry numbers refs]
+  (when (or (and state.show_numbers? numbers) (and state.show_blame? refs))
+    (let [number-w (if state.show_numbers? (number-width numbers) 0)
+          old-blame (if state.show_blame? (blame-lines state entry :old) {})
+          new-blame (if state.show_blame? (blame-lines state entry :new) {})
+          blame-w (if state.show_blame? (blame-width refs old-blame new-blame)
+                      0)
+          source (or refs numbers)]
+      (icollect [i _item (ipairs source)]
+        (let [ref (and refs (. refs i))
+              number (and state.show_numbers? numbers (. numbers i))
+              blame (and state.show_blame? ref ref.no
+                         (. (if (= ref.side :old) old-blame new-blame) ref.no))]
+          (if (or number blame)
+              (let [number-text (if (> number-w 0)
+                                    (padded (and number (tostring number))
+                                            number-w)
+                                    "")
+                    sep (if (and (> number-w 0) (> blame-w 0)) " " "")
+                    blame-text (if (> blame-w 0) (padded-right blame blame-w)
+                                   "")]
+                (if state.show_blame?
+                    {:full (.. number-text sep blame-text)}
+                    (.. number-text sep blame-text)))
+              false))))))
 
 (fn warming? [state]
   (and state.preview_warm state.preview_warm.dir))
@@ -155,8 +234,10 @@
       (values (folder-preview.lines state selected-row) nil)
       (listing-row? state selected-row)
       (values (file-lines state {:path selected-row.path}) nil)
-      (values (nonblocking-lines state selected-entry)
-              (line-numbers state selected-entry))))
+      (let [lines (nonblocking-lines state selected-entry)
+            numbers (line-numbers state selected-entry)
+            refs (line-refs state selected-entry)]
+        (values lines (line-gutters state selected-entry numbers refs)))))
 
 (fn row-count [state]
   (or state.preview_rows 1))
@@ -189,17 +270,18 @@
                           (viewport.scroll-state lines (visible-count visible)
                                                  state.preview_scroll)))
 
-(fn muted-gutters [state gutters]
+(fn styled-gutters [state gutters]
   (when gutters
     (icollect [_ g (ipairs gutters)]
-      (tui.color state.theme :muted g))))
+      (tui.color state.theme :faint g))))
 
 (fn display-lines-for-width [state lines numbers visible cols]
   (let [cache state.preview_display_cache]
     (if (and cache (= cache.lines lines) (= cache.visible visible)
              (= cache.cols cols) (= cache.split-ratio state.split_ratio)
              (= cache.wrap? state.preview_wrap?)
-             (= cache.numbers? (and state.show_numbers? true)))
+             (= cache.numbers? (and state.show_numbers? true))
+             (= cache.blame? (and state.show_blame? true)))
         cache.display
         (let [(display source-map gutters) (viewport.lines-for-width state
                                                                      lines
@@ -213,10 +295,11 @@
                 :split-ratio state.split_ratio
                 :wrap? state.preview_wrap?
                 :numbers? (and state.show_numbers? true)
+                :blame? (and state.show_blame? true)
                 : display
                 :source lines
                 :source-map source-map
-                :gutters (muted-gutters state gutters)})
+                :gutters (styled-gutters state gutters)})
           display))))
 
 (fn reset-scroll [state]
@@ -349,6 +432,7 @@
 
 {: lines
  : split-rows
+ : blame-lines
  : cache-split
  : warm-entry
  : splittable?
@@ -362,7 +446,9 @@
  : display-gutters
  : display-source
  : display-source-map
+ : line-gutters
  : line-numbers
+ : line-refs
  : visible-display-gutters
  : focus-cursor
  : restore-cursor

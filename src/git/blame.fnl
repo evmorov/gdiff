@@ -33,4 +33,30 @@
               (set current nil)))))
     lines))
 
-{: parse}
+(fn sorted-line-numbers [lines]
+  (let [seen {}
+        out []]
+    (each [_ n (ipairs (or lines []))]
+      (when (and n (not (. seen n)))
+        (tset seen n true)
+        (table.insert out n)))
+    (table.sort out)
+    out))
+
+(fn ranges [lines]
+  "Merge line numbers into sorted, contiguous [from to] ranges for git blame -L."
+  (let [out []]
+    (var from nil)
+    (var to nil)
+    (each [_ n (ipairs (sorted-line-numbers lines))]
+      (if (not from) (do
+                       (set from n) (set to n))
+          (= n (+ to 1)) (set to n)
+          (do
+            (table.insert out [from to])
+            (set from n)
+            (set to n))))
+    (when from (table.insert out [from to]))
+    out))
+
+{: parse : ranges}

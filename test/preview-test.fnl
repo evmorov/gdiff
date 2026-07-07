@@ -479,6 +479,23 @@
       (set git.blame-lines old-blame-lines)
       (faith.= "03/03/2020 Old" (. (. gutters 1) :full)))))
 
+(fn test-unified-blame-requests-only-diff-line-ranges []
+  (let [state (state)
+        entry {:path "app.rb"}
+        old-blame-lines git.blame-lines
+        captured {}]
+    (set state.show_blame? true)
+    (set git.blame-lines (fn [_revision _entry side ranges]
+                           (tset captured side ranges)
+                           {}))
+    (preview.line-gutters state entry nil
+                          [{:side :new :no 1}
+                           {:side :old :no 2}
+                           {:side :new :no 2}])
+    (set git.blame-lines old-blame-lines)
+    (faith.= [[2 2]] (. captured :old))
+    (faith.= [[1 2]] (. captured :new))))
+
 {: test-full-context-uses-separate-key-and-wider-diff
  : test-visible-lines-can-be-nonblocking-while-warming
  : test-warm-entry-bundles-unified-lines-and-split-rows
@@ -517,4 +534,5 @@
  : test-unified-blame-gutter-is-left-aligned
  : test-unified-blame-gutter-is-blank-on-wrapped-continuation-lines
  : test-unified-blame-gutter-shows-deleted-line-blame
+ : test-unified-blame-requests-only-diff-line-ranges
  : test-visible-lines-renders-and-caches-real-git-preview}

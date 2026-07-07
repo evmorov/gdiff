@@ -53,6 +53,12 @@
   (faith.= "git blame --line-porcelain -- 'src/a b.rb' 2>/dev/null"
            (commands.blame-command nil "src/a b.rb")))
 
+(fn test-blame-command-limits-to-line-ranges []
+  (faith.= "git blame --line-porcelain -L 3,5 -L 9,9 'main' -- 'a.rb' 2>/dev/null"
+           (commands.blame-command "main" "a.rb" [[3 5] [9 9]]))
+  (faith.= "git blame --line-porcelain -- 'a.rb' 2>/dev/null"
+           (commands.blame-command nil "a.rb" [])))
+
 (fn test-base-temp-path-sanitizes-ref-and-keeps-path []
   (faith.= "/tmp/gdiff-base/origin_main/src/a.rb"
            (commands.base-temp-path "/tmp" "origin/main" "src/a.rb"))
@@ -69,6 +75,7 @@
 
 {: test-basic-git-adapter-commands-are-centralized
  : test-blame-command-quotes-ref-and-path
+ : test-blame-command-limits-to-line-ranges
  : test-base-temp-path-sanitizes-ref-and-keeps-path
  : test-show-file-command-quotes-ref-and-path
  : test-preview-command-quotes-revision-and-path

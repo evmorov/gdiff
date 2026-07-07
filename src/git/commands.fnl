@@ -30,8 +30,12 @@
 (fn show-file-command [ref path]
   (.. "git show " (sys.shell-quote (.. ref ":" path)) " 2>/dev/null"))
 
-(fn blame-command [?ref path]
-  (.. "git blame --line-porcelain "
+(fn range-flags [?ranges]
+  (accumulate [flags "" _ r (ipairs (or ?ranges []))]
+    (.. flags "-L " (tostring (. r 1)) "," (tostring (. r 2)) " ")))
+
+(fn blame-command [?ref path ?ranges]
+  (.. "git blame --line-porcelain " (range-flags ?ranges)
       (if ?ref (.. (sys.shell-quote ?ref) " ") "") "-- " (sys.shell-quote path)
       " 2>/dev/null"))
 

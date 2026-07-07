@@ -1,4 +1,5 @@
 (local git (require :git.core))
+(local blame (require :git.blame))
 (local assets (require :preview.assets))
 (local file-preview (require :preview.file))
 (local format (require :preview.format))
@@ -91,19 +92,36 @@
                 (tset state.preview_line_refs_cache key (or refs false)))
               refs)))))
 
-(fn blame-key [state entry side]
-  (.. state.revision "\0" (or entry.path "") "\0" (or entry.old_path "") "\0"
-      (tostring side)))
+;; Beyond this many disjoint ranges, blame the whole file instead of building a
+;; giant `git blame -L ...` command line.
+(local max-blame-ranges 256)
 
-(fn blame-lines [state entry side]
-  (let [key (blame-key state entry side)
-        cached (. (or state.preview_blame_cache {}) key)]
-    (if cached
-        cached
-        (let [lines (git.blame-lines state.revision entry side)]
-          (when state.preview_blame_cache
-            (tset state.preview_blame_cache key lines))
-          lines))))
+(fn ranges-signature [ranges]
+  (table.concat (icollect [_ r (ipairs ranges)] (.. (. r 1) "," (. r 2))) ";"))
+
+(fn blame-key [state entry side signature]
+  (.. state.revision "\0" (or entry.path "") "\0" (or entry.old_path "") "\0"
+      (tostring side) "\0" (or signature "")))
+
+(fn blame-lines [state entry side ?line-numbers]
+  (if (and ?line-numbers (= 0 (length ?line-numbers)))
+      {}
+      (let [ranges (when ?line-numbers (blame.ranges ?line-numbers))
+            ranges (if (and ranges (> (length ranges) max-blame-ranges)) nil
+                       ranges)
+            signature (if ranges (ranges-signature ranges) "")
+            key (blame-key state entry side signature)
+            cached (. (or state.preview_blame_cache {}) key)]
+        (if cached
+            cached
+            (let [lines (git.blame-lines state.revision entry side ranges)]
+              (when state.preview_blame_cache
+                (tset state.preview_blame_cache key lines))
+              lines)))))
+
+(fn side-line-numbers [refs side]
+  (icollect [_ ref (ipairs (or refs []))]
+    (when (and ref (= ref.side side)) ref.no)))
 
 (fn number-width [numbers]
   (accumulate [width 0 _ number (ipairs (or numbers []))]
@@ -126,8 +144,14 @@
 (fn line-gutters [state entry numbers refs]
   (when (or (and state.show_numbers? numbers) (and state.show_blame? refs))
     (let [number-w (if state.show_numbers? (number-width numbers) 0)
-          old-blame (if state.show_blame? (blame-lines state entry :old) {})
-          new-blame (if state.show_blame? (blame-lines state entry :new) {})
+          old-blame (if state.show_blame?
+                        (blame-lines state entry :old
+                                     (side-line-numbers refs :old))
+                        {})
+          new-blame (if state.show_blame?
+                        (blame-lines state entry :new
+                                     (side-line-numbers refs :new))
+                        {})
           blame-w (if state.show_blame? (blame-width refs old-blame new-blame)
                       0)
           source (or refs numbers)]

@@ -135,6 +135,12 @@
         lines (blame.parse output)]
     (faith.= "29/04/2021 Alexandr" (. lines 1))))
 
+(fn test-blame-ranges-merges-sorted-contiguous-lines []
+  (faith.= [[1 3] [5 6] [10 10]] (blame.ranges [2 1 3 6 5 10]))
+  (faith.= [[4 4]] (blame.ranges [4 4 4]))
+  (faith.= [] (blame.ranges []))
+  (faith.= [] (blame.ranges nil)))
+
 (fn test-blame-lines-for-working-revision-use-head-and-worktree []
   (let [commands []
         old-read-command sys.read-command
@@ -153,6 +159,18 @@
              (. commands 1))
     (faith.= "git blame --line-porcelain -- 'app.rb' 2>/dev/null"
              (. commands 2))))
+
+(fn test-blame-lines-restricts-git-blame-to-given-ranges []
+  (let [commands []
+        old-read-command sys.read-command
+        entry {:path "app.rb"}]
+    (set sys.read-command (fn [cmd]
+                            (table.insert commands cmd)
+                            (values "" true)))
+    (git.blame-lines git.working-revision entry :new [[3 5] [10 10]])
+    (set sys.read-command old-read-command)
+    (faith.= "git blame --line-porcelain -L 3,5 -L 10,10 -- 'app.rb' 2>/dev/null"
+             (. commands 1))))
 
 (fn test-materialize-base-writes-committed-version-to-temp []
   (t.init-repo)
@@ -235,7 +253,9 @@
 {: test-base-ref-resolves-left-side
  : test-blame-parser-builds-compact-date-author-labels
  : test-blame-parser-crops-long-first-names-to-eight-symbols
+ : test-blame-ranges-merges-sorted-contiguous-lines
  : test-blame-lines-for-working-revision-use-head-and-worktree
+ : test-blame-lines-restricts-git-blame-to-given-ranges
  : test-materialize-base-reports-missing-paths
  : test-materialize-base-writes-committed-version-to-temp
  : test-default-revision-falls-back-to-master

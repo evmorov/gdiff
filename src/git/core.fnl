@@ -104,11 +104,12 @@
         (values old-ref (or entry.old_path entry.path))
         (values new-ref entry.path))))
 
-(fn blame-lines [revision entry side]
+(fn blame-lines [revision entry side ?ranges]
   (let [(?ref path) (blame-target revision entry side)]
     (if (not path)
         {}
-        (let [(output ok) (sys.read-command (commands.blame-command ?ref path))]
+        (let [(output ok) (sys.read-command (commands.blame-command ?ref path
+                                                                    ?ranges))]
           (if ok (blame.parse output) {})))))
 
 (fn repo-root []

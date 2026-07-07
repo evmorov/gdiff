@@ -195,11 +195,17 @@
   (icollect [_ row (ipairs (or rows []))]
     (display-row theme-table row)))
 
+(fn row-line-numbers [rows key]
+  (icollect [_ row (ipairs (or rows []))]
+    (. row key)))
+
 (fn attach-blame [state entry rows]
   (if (or (not state.show_blame?) (not entry))
       rows
-      (let [old-blame (preview.blame-lines state entry :old)
-            new-blame (preview.blame-lines state entry :new)]
+      (let [old-blame (preview.blame-lines state entry :old
+                                           (row-line-numbers rows :old-no))
+            new-blame (preview.blame-lines state entry :new
+                                           (row-line-numbers rows :new-no))]
         (icollect [_ row (ipairs (or rows []))]
           (let [out {}]
             (each [k v (pairs row)]

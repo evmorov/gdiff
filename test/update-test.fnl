@@ -213,7 +213,7 @@
     (update.update state {} (update.read-msg state "b"))
     (faith.= false state.show_blame?)))
 
-(fn test-f-toggles-full-context-and-navigation-resets-it []
+(fn test-f-toggles-full-context-globally-across-navigation []
   (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
     (faith.= false state.full_context?)
     (update.update state {} (update.read-msg state "f"))
@@ -223,7 +223,7 @@
     (update.update state {} (update.read-msg state "f"))
     (faith.= true state.full_context?)
     (update.update state {} (update.read-msg state "j"))
-    (faith.= false state.full_context?)))
+    (faith.= true state.full_context?)))
 
 (fn test-tab-toggles-focus-between-panes []
   (let [state (state [(entry "M" "a.rb")])]
@@ -629,7 +629,7 @@
                              :ok? false})
     (faith.= "File not found: missing.rb" state.notice)))
 
-{: test-f-toggles-full-context-and-navigation-resets-it
+{: test-f-toggles-full-context-globally-across-navigation
  : test-tab-toggles-focus-between-panes
  : test-jk-move-preview-cursor-when-diff-is-focused
  : test-preview-cursor-scrolls-the-diff-into-view

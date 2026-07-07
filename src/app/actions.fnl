@@ -278,10 +278,9 @@
               [:preview_x_scroll 0] [:preview_x_max_scroll 0]))
 
 (fn toggle-full-context [state]
-  (when (selection.selected-entry state)
-    (exit-line-selection state)
-    (set state.full_context? (not state.full_context?))
-    (preview.reset-scroll state)))
+  (exit-line-selection state)
+  (set state.full_context? (not state.full_context?))
+  (preview.reset-scroll state))
 
 (fn toggle-tree [state]
   (selection.toggle-mode state)

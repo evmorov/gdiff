@@ -40,6 +40,7 @@
                    (toggle-label :num state.show_numbers?)
                    (toggle-label :blame state.show_blame?)
                    (toggle-label :split state.split_mode?)
+                   (toggle-label :context state.full_context?)
                    (if state.hide_reviewed?
                        (tui.color state.theme :status-added hide)
                        hide)] (separator state))))

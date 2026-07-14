@@ -184,4 +184,16 @@
         (.. out (raw:sub pos)))
       raw))
 
-{: spans : emphasize : align : line-distance}
+(fn whitespace-only? [?line]
+  (and ?line (not (?line:find "%S")) true))
+
+(fn emphasize-whitespace [theme-table raw style-key]
+  (let [text (if (= raw "") " " raw)]
+    (emphasize theme-table text [{:from 1 :to (+ (length text) 1)}] style-key)))
+
+{: spans
+ : emphasize
+ : align
+ : line-distance
+ : whitespace-only?
+ : emphasize-whitespace}

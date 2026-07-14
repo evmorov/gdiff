@@ -16,6 +16,8 @@
                     :search-match-end "\27[22;24m"
                     :emphasis-deleted "\27[48;5;224m"
                     :emphasis-added "\27[48;5;194m"
+                    :whitespace-deleted "\27[41m"
+                    :whitespace-added "\27[42m"
                     :emphasis-end "\27[49m"})
 
 (fn styles [?background-rgb]

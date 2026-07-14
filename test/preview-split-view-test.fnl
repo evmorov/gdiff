@@ -132,7 +132,31 @@
           text (tui.strip-ansi (. node.lines 1))]
       (faith.match "3 03/03/2020 Old" text))))
 
+(fn test-split-preview-marks-blank-line-changes-in-whitespace-hunks []
+  (let [entry {:status "M" :kind "M" :path "a.rb"}
+        rows [{:kind :change :old "" :old-no 5 :whitespace-hunk? true}
+              {:kind :change :new "" :new-no 7 :whitespace-hunk? true}
+              {:kind :change :old "" :old-no 9}]
+        key (.. (preview-key.for-entry "HEAD" entry false) "\0split")
+        state {:revision "HEAD"
+               :split_cache {key rows}
+               :preview_wrap? true
+               :show_numbers? false
+               :split_ratio 0.5
+               :preview_scroll 0
+               :preview_x_scroll 0
+               :full_context? false}]
+    (view.prepare state 5 40 {:entry entry})
+    (let [node (view.body state 5 40)]
+      (faith.is (string.find (. node.lines 1) "\27[41m" 1 true)
+                "deleted blank line should carry the red background")
+      (faith.is (string.find (. node.lines 2) "\27[42m" 1 true)
+                "added blank line should carry the green background")
+      (faith.= nil (string.find (. node.lines 3) "\27[41m" 1 true)
+               "blank line outside a whitespace hunk should stay plain"))))
+
 {: test-wrap-rows-keeps-short-rows-as-a-single-visual-row
+ : test-split-preview-marks-blank-line-changes-in-whitespace-hunks
  : test-wrap-rows-splits-long-side-and-pads-shorter
  : test-wrap-rows-wraps-full-width-rows-across-content
  : test-split-preview-gutter-shows-blame-next-to-numbers

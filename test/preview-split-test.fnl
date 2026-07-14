@@ -63,6 +63,16 @@
             {:kind :change :new "brand new line" :new-no 2}]
            (split.parse-rows "@@ -1,1 +1,2 @@\n-keep aaa tail\n+keep bbb tail\n+brand new line")))
 
+(fn test-parse-rows-tags-whitespace-only-hunks []
+  (let [rows (split.parse-rows (.. "@@ -1,2 +1,1 @@\n ctx\n-\n"
+                                   "@@ -10,2 +9,2 @@\n-a\n+b\n-"))
+        change-rows (icollect [_ row (ipairs rows)]
+                      (when (= row.kind :change) row))]
+    (faith.= {:kind :change :old "" :old-no 2 :whitespace-hunk? true}
+             (. change-rows 1))
+    (faith.= nil (. change-rows 2 :whitespace-hunk?))
+    (faith.= nil (. change-rows 3 :whitespace-hunk?))))
+
 (fn test-splittable-detects-real-diffs []
   (faith.is (split.splittable? (split.parse-rows sample))))
 
@@ -81,6 +91,7 @@
  : test-parse-rows-handles-pure-deletions
  : test-parse-rows-pairs-uneven-runs
  : test-parse-rows-aligns-similar-lines-onto-one-row
+ : test-parse-rows-tags-whitespace-only-hunks
  : test-splittable-detects-real-diffs
  : test-not-splittable-for-binary-or-empty
  : test-not-splittable-for-one-sided-changes}

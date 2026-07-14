@@ -175,20 +175,37 @@
 (fn underline [text]
   (string.rep symbols.line.horizontal (tui.visible-length (or text ""))))
 
-(fn display-row [theme-table row]
-  (if (and (= row.kind :change) row.old row.new row.emphasize?)
-      (let [spans (or row.spans (word-diff.spans row.old row.new))]
+(fn change-side [theme-table row side style-key whitespace-key ?spans]
+  (let [raw (. row side)]
+    (when raw
+      (if (and row.whitespace-hunk? (word-diff.whitespace-only? raw))
+          (word-diff.emphasize-whitespace theme-table raw whitespace-key)
+          ?spans
+          (word-diff.emphasize theme-table raw (. ?spans side) style-key)
+          raw))))
+
+(fn display-change [theme-table row]
+  (let [spans (when (and row.old row.new row.emphasize?)
+                (or row.spans (word-diff.spans row.old row.new)))
+        old (change-side theme-table row :old :emphasis-deleted
+                         :whitespace-deleted spans)
+        new (change-side theme-table row :new :emphasis-added :whitespace-added
+                         spans)]
+    (if (and (= old row.old) (= new row.new))
+        row
         {:kind :change
-         :old (word-diff.emphasize theme-table row.old spans.old
-                                   :emphasis-deleted)
-         :new (word-diff.emphasize theme-table row.new spans.new
-                                   :emphasis-added)
+         : old
+         : new
          :old-no row.old-no
          :new-no row.new-no
          :old-blame row.old-blame
-         :new-blame row.new-blame})
-      (= row.kind :rule)
-      {:kind :rule :old (underline row.old) :new (underline row.new)}
+         :new-blame row.new-blame})))
+
+(fn display-row [theme-table row]
+  (if (= row.kind :change) (display-change theme-table row)
+      (= row.kind :rule) {:kind :rule
+                          :old (underline row.old)
+                          :new (underline row.new)}
       row))
 
 (fn emphasize-rows [theme-table rows]

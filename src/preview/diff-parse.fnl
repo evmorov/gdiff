@@ -55,4 +55,27 @@
                    (call handlers :context (line:sub 2)))))
     (flush)))
 
-{: parse : diff-path : hunk-start}
+(fn stripped [lines]
+  (accumulate [out "" _ line (ipairs lines)]
+    (let [(bare _) (line:gsub "%s" "")]
+      (.. out bare))))
+
+(fn whitespace-only-hunks [text]
+  (let [flags []
+        acc {:removed "" :added "" :open? false}
+        close (fn []
+                (when acc.open?
+                  (table.insert flags (= acc.removed acc.added))
+                  (set acc.removed "")
+                  (set acc.added "")))]
+    (parse text
+           {:hunk (fn [_line]
+                    (close)
+                    (set acc.open? true))
+            :change (fn [removed added]
+                      (set acc.removed (.. acc.removed (stripped removed)))
+                      (set acc.added (.. acc.added (stripped added))))})
+    (close)
+    flags))
+
+{: parse : diff-path : hunk-start : whitespace-only-hunks}

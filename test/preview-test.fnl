@@ -254,6 +254,50 @@
     (faith.= ["xxx" "yyy"]
              (emphasized-parts (line-with lines "aaa xxx ccc yyy")))))
 
+(fn blank-change-line [lines]
+  (accumulate [found nil _ l (ipairs lines) &until found]
+    (when (= " " (tui.strip-ansi l)) l)))
+
+(fn whitespace-marked? [?line]
+  (and ?line
+       (or (and (string.find ?line "\27[41m" 1 true) :deleted)
+           (and (string.find ?line "\27[42m" 1 true) :added))))
+
+(fn test-preview-format-marks-removed-blank-line []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1,3 +1,2 @@\n ctx\n-\n keep")
+        blank (blank-change-line lines)]
+    (faith.is blank "expected the removed blank line to stay visible")
+    (faith.= :deleted (whitespace-marked? blank))))
+
+(fn test-preview-format-marks-added-blank-line []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1,2 +1,3 @@\n ctx\n+\n keep")
+        blank (blank-change-line lines)]
+    (faith.is blank "expected the added blank line to stay visible")
+    (faith.= :added (whitespace-marked? blank))))
+
+(fn test-preview-format-marks-whitespace-only-change []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1,2 +1,2 @@\n ctx\n-  \n+ ")]
+    (faith.= :deleted (whitespace-marked? (line-with lines "  ")))))
+
+(fn test-preview-format-keeps-blank-lines-plain-next-to-real-changes []
+  (let [lines (preview-format.diff-lines (state)
+                                         "@@ -1,4 +1,3 @@\n ctx\n-old\n+new\n keep\n-")]
+    (faith.= nil (blank-change-line lines)
+             "blank line in a hunk with real changes should stay plain")))
+
+(fn test-preview-format-marks-whitespace-hunks-independently []
+  (let [lines (preview-format.diff-lines (state)
+                                         (.. "@@ -1,2 +1,1 @@\n ctx\n-\n"
+                                             "@@ -10,3 +9,2 @@\n keep\n-a\n+b\n-"))
+        marked (icollect [_ l (ipairs lines)]
+                 (when (= " " (tui.strip-ansi l)) l))]
+    (faith.= 1 (length marked)
+             "only the whitespace-only hunk's blank line should be visible")
+    (faith.= :deleted (whitespace-marked? (. marked 1)))))
+
 (fn test-asset-preview-is-cheap-and-cached-without-git-diff []
   (let [entry {:status "M" :kind "M" :path "icons/logo.svg" :reviewed false}
         state (state)
@@ -522,6 +566,11 @@
  : test-preview-format-emphasizes-only-the-extra-leading-space
  : test-preview-format-has-no-leading-gutter
  : test-preview-format-keeps-shared-words-as-anchors
+ : test-preview-format-marks-removed-blank-line
+ : test-preview-format-marks-added-blank-line
+ : test-preview-format-marks-whitespace-only-change
+ : test-preview-format-keeps-blank-lines-plain-next-to-real-changes
+ : test-preview-format-marks-whitespace-hunks-independently
  : test-refresh-loaded-clears-folder-preview-cache
  : test-refresh-loaded-clears-stale-cache-and-caches-selected-preview
  : test-selection-lines-renders-folder-rows-through-preview-core

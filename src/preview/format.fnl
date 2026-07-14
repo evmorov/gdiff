@@ -30,7 +30,17 @@
 (fn empty-preview [state]
   [(tui.color state.theme :muted "No preview for this file.")])
 
-(fn change-lines [state removed added]
+(local whitespace-styles
+       {:emphasis-deleted :whitespace-deleted
+        :emphasis-added :whitespace-added})
+
+(fn emphasized-change [state raw ?span style-key mark-whitespace?]
+  (if (and mark-whitespace? (word-diff.whitespace-only? raw))
+      (word-diff.emphasize-whitespace state.theme raw
+                                      (. whitespace-styles style-key))
+      (word-diff.emphasize state.theme raw ?span style-key)))
+
+(fn change-lines [state removed added ?whitespace-hunk?]
   (let [out []
         pairs (word-diff.align removed added)]
     (each [_ p (ipairs pairs)]
@@ -38,25 +48,29 @@
         (let [old (. removed p.old)
               ?span (when p.new
                       (. (word-diff.spans old (. added p.new)) :old))
-              emph (word-diff.emphasize state.theme old ?span :emphasis-deleted)]
+              emph (emphasized-change state old ?span :emphasis-deleted
+                                      ?whitespace-hunk?)]
           (table.insert out (tui.color state.theme :status-deleted emph)))))
     (each [_ p (ipairs pairs)]
       (when p.new
         (let [new (. added p.new)
               ?span (when p.old
                       (. (word-diff.spans (. removed p.old) new) :new))
-              emph (word-diff.emphasize state.theme new ?span :emphasis-added)]
+              emph (emphasized-change state new ?span :emphasis-added
+                                      ?whitespace-hunk?)]
           (table.insert out (tui.color state.theme :status-added emph)))))
     out))
 
 (fn diff-lines [state output]
-  (let [acc {:out [] :numbers [] :refs [] :old-no 1 :new-no 1}
+  (let [ws-hunks (diff-parse.whitespace-only-hunks output)
+        acc {:out [] :numbers [] :refs [] :old-no 1 :new-no 1 :hunk-no 0}
         push (fn [line ?number ?ref]
                (table.insert acc.out line)
                (table.insert acc.numbers (or ?number false))
                (table.insert acc.refs (or ?ref false)))
         handlers {:change (fn [removed added]
-                            (let [lines (change-lines state removed added)
+                            (let [lines (change-lines state removed added
+                                                      (. ws-hunks acc.hunk-no))
                                   removed-count (length removed)]
                               (each [i line (ipairs lines)]
                                 (if (<= i removed-count)
@@ -70,6 +84,7 @@
                               (set acc.old-no (+ acc.old-no removed-count))
                               (set acc.new-no (+ acc.new-no (length added)))))
                   :hunk (fn [line]
+                          (set acc.hunk-no (+ acc.hunk-no 1))
                           (push (tui.color state.theme :muted line))
                           (let [(old new) (diff-parse.hunk-start line)]
                             (when old (set acc.old-no old))

@@ -59,15 +59,19 @@
                       {:kind :filename :old old-title :new new-title})))))
 
 (fn parse-rows [text ?old-ref ?new-ref]
-  (let [acc {:rows [] :old-no 1 :new-no 1}
+  (let [ws-hunks (diff-parse.whitespace-only-hunks text)
+        acc {:rows [] :old-no 1 :new-no 1 :hunk-no 0}
         handlers {:change (fn [removed added]
                             (each [_ row (ipairs (change-rows removed added
                                                               acc.old-no
                                                               acc.new-no))]
+                              (when (. ws-hunks acc.hunk-no)
+                                (set row.whitespace-hunk? true))
                               (table.insert acc.rows row))
                             (set acc.old-no (+ acc.old-no (length removed)))
                             (set acc.new-no (+ acc.new-no (length added))))
                   :hunk (fn [line]
+                          (set acc.hunk-no (+ acc.hunk-no 1))
                           (table.insert acc.rows {:kind :hunk :old line})
                           (let [(old new) (diff-parse.hunk-start line)]
                             (when old (set acc.old-no old))

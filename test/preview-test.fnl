@@ -271,7 +271,7 @@
   (accumulate [found nil _ entry (ipairs entries) &until found]
     (when entry.untracked? entry)))
 
-(fn test-untracked-file-preview-shows-plain-content-and-caches []
+(fn test-untracked-file-preview-shows-added-content-and-caches []
   (t.init-repo)
   (t.write-file "app.rb" "before\n")
   (t.commit-all "initial")
@@ -289,6 +289,10 @@
     (faith.= "notes.txt" (. lines 1))
     (faith.match "alpha" text)
     (faith.match "beta" text)
+    (faith.= (tui.color state.theme :status-added "alpha")
+             (line-with lines "alpha"))
+    (faith.= (tui.color state.theme :status-added "beta")
+             (line-with lines "beta"))
     (faith.= lines (. state.preview_cache key))))
 
 (fn test-selection-lines-previews-expanded-listing-file []
@@ -524,7 +528,7 @@
  : test-scroll-uses-rendered-preview-total-without-loading-diff
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
- : test-untracked-file-preview-shows-plain-content-and-caches
+ : test-untracked-file-preview-shows-added-content-and-caches
  : test-selection-lines-previews-expanded-listing-file
  : test-selection-lines-skips-binary-listing-file
  : test-preview-file-detects-binary-content

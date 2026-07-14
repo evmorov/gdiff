@@ -15,6 +15,13 @@
 
 (import-macros {: set-fields} :state.macros)
 
+(fn body-lines [state content ?role]
+  (let [lines (file-preview.split-lines content)]
+    (if ?role
+        (icollect [_ line (ipairs lines)]
+          (if (= line "") line (tui.color state.theme ?role line)))
+        lines)))
+
 (fn file-lines [state entry]
   (if (assets.asset? entry)
       (format.asset state entry)
@@ -23,7 +30,8 @@
             (format.warning state (.. "Cannot read " entry.path))
             (file-preview.binary? content)
             (format.binary state entry.path)
-            (let [body (file-preview.split-lines content)
+            (let [role (when entry.untracked? :status-added)
+                  body (body-lines state content role)
                   body (if (> (length body) 0) body
                            (format.empty-preview state))
                   out (format.header state entry.path)]

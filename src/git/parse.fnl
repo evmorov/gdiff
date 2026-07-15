@@ -77,18 +77,34 @@
   (each [_ path (ipairs (numstat-paths path))]
     (tset files path {: additions : deletions})))
 
+(fn markdown-path? [path]
+  (let [lower (and path (path:lower))]
+    (and lower (or (lower:match "%.md$") (lower:match "%.markdown$")) true)))
+
+(fn code-path? [path]
+  (not (markdown-path? (or (rename-target-path path) path))))
+
 (fn parse-numstat [text]
-  (accumulate [stats {:additions 0 :deletions 0 :files {}} line (string.gmatch (or text
-                                                                                   "")
-                                                                               "[^\r\n]+")]
+  (accumulate [stats {:additions 0
+                      :deletions 0
+                      :code_additions 0
+                      :code_deletions 0
+                      :files {}} line (string.gmatch (or text
+                                                                              "")
+                                                                          "[^\r\n]+")]
     (let [parts (split-tabs line)
           additions (tonumber (. parts 1))
           deletions (tonumber (. parts 2))
-          path (. parts 3)]
+          path (. parts 3)
+          code? (code-path? path)]
       (when additions
-        (set stats.additions (+ stats.additions additions)))
+        (set stats.additions (+ stats.additions additions))
+        (when code?
+          (set stats.code_additions (+ stats.code_additions additions))))
       (when deletions
-        (set stats.deletions (+ stats.deletions deletions)))
+        (set stats.deletions (+ stats.deletions deletions))
+        (when code?
+          (set stats.code_deletions (+ stats.code_deletions deletions))))
       (when (and path additions deletions)
         (add-file-stats stats.files path additions deletions))
       stats)))

@@ -254,6 +254,17 @@
     (faith.= {:additions 1 :deletions 0} (. stats.files "added.txt"))
     (faith.= {:additions 1 :deletions 1} (. stats.files "modified.txt"))))
 
+(fn test-diff-stats-code-totals-exclude-markdown []
+  (setup-changed-repo)
+  (t.write-file "notes.md" "line\n")
+  (t.sh "git add notes.md")
+  (let [(stats err) (git.diff-stats "HEAD")]
+    (faith.= nil err)
+    (faith.= 3 stats.additions)
+    (faith.= 2 stats.deletions)
+    (faith.= 2 stats.code_additions)
+    (faith.= 2 stats.code_deletions)))
+
 (fn test-diff-stats-indexes-renamed-files-by-new-path []
   (t.init-repo)
   (t.mkdir "spec/tardis")
@@ -330,5 +341,6 @@
  : test-diff-entries-with-working-shows-modified-unstaged-file
  : test-diff-entries-with-working-keeps-staged-status
  : test-diff-stats-indexes-renamed-files-by-new-path
+ : test-diff-stats-code-totals-exclude-markdown
  : test-diff-stats-reports-total-additions-and-deletions
  : test-linked-pr-url-command-quotes-branch}

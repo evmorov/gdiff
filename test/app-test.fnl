@@ -402,7 +402,18 @@
     (set state.diff_stats {:additions 42 :deletions 7})
     (let [view (app.view state 10 100)
           header-right (tui.strip-ansi view.header.right)]
-      (faith.= "0/2 files │ 0% reviewed │ +42 -7" header-right))))
+      (faith.= "0/2 files │ 0% reviewed │ all +42 -7" header-right))))
+
+(fn test-view-shows-code-diff-stats-excluding-markdown []
+  (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
+    (set state.diff_stats {:additions 42
+                           :deletions 7
+                           :code_additions 40
+                           :code_deletions 5})
+    (let [view (app.view state 10 100)
+          header-right (tui.strip-ansi view.header.right)]
+      (faith.= "0/2 files │ 0% reviewed │ all +42 -7 │ code +40 -5"
+               header-right))))
 
 (fn test-view-shows-reviewed-file-percent-in-header-right []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
@@ -415,7 +426,7 @@
                   "b.rb" {:additions 7 :deletions 3}}})
     (let [view (app.view state 10 100)
           header-right (tui.strip-ansi view.header.right)]
-      (faith.= "1/2 files │ 50% reviewed │ +10 -5" header-right))))
+      (faith.= "1/2 files │ 50% reviewed │ all +10 -5" header-right))))
 
 (fn test-view-shows-all-reviewed-when-all-files-reviewed []
   (let [state (state [(entry "M" "a.rb") (entry "M" "renamed.rb")])]
@@ -427,7 +438,7 @@
           :files {"a.rb" {:additions 10 :deletions 5}}})
     (let [view (app.view state 10 100)
           header-right (tui.strip-ansi view.header.right)]
-      (faith.= "2/2 files │ 100% reviewed │ +100 -20" header-right))))
+      (faith.= "2/2 files │ 100% reviewed │ all +100 -20" header-right))))
 
 (fn test-view-shows-trimmed-header []
   (let [state (state [(entry "M" "a.rb")])
@@ -803,6 +814,7 @@
  : test-view-shows-all-reviewed-when-all-files-reviewed
  : test-view-shows-reviewed-file-percent-in-header-right
  : test-view-shows-diff-stats-in-header-right
+ : test-view-shows-code-diff-stats-excluding-markdown
  : test-view-shows-trimmed-header
  : test-view-shows-toggle-status-in-footer-right
  : test-view-reflects-toggled-status-in-footer-right

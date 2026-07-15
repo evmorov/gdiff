@@ -23,10 +23,11 @@
         items [(.. reviewed "/" count " files")
                (.. reviewed-percent "% reviewed")]]
     (when stats
-      (table.insert items (delta state stats.additions stats.deletions))
+      (table.insert items
+                    (.. "all " (delta state stats.additions stats.deletions)))
       (when stats.code_additions
         (table.insert items
-                      (.. (tui.color state.theme :muted "code ")
+                      (.. "code "
                           (delta state stats.code_additions
                                  stats.code_deletions)))))
     (table.concat items (separator state))))

@@ -21,12 +21,12 @@
       _ :escape)))
 
 (fn decode [state c ?sequence ?b]
-  (if (not c) :tick
-      (= c ansi.esc) (if (search-input? state) :escape
-                         (escape-key ?sequence ?b))
-      (= c "\r") :enter
-      (= c "\n") :enter
-      (= c "\3") :quit
-      c))
+  (if (not c) :tick (= c ansi.esc)
+      (if (search-input? state)
+          (case (escape-key ?sequence ?b)
+            :paste-start :paste-start
+            _ :escape)
+          (escape-key ?sequence ?b)) (= c "\r") :enter (= c "\n") :enter
+      (= c "\3") :quit c))
 
 {: decode : escape-key : search-active? : search-input?}

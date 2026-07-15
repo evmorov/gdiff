@@ -21,6 +21,10 @@
   (let [state {:search {:active? true}}]
     (faith.= :escape (keys.decode state ansi.esc "[" "A"))))
 
+(fn test-decode-detects-paste-start-during-search []
+  (let [state {:search {:active? true}}]
+    (faith.= :paste-start (keys.decode state ansi.esc "[200~"))))
+
 (fn test-decode-returns-printable-key []
   (faith.= "j" (keys.decode {} "j")))
 
@@ -34,4 +38,5 @@
  : test-decode-maps-escape-sequences
  : test-decode-returns-printable-key
  : test-decode-treats-escape-as-escape-during-search
+ : test-decode-detects-paste-start-during-search
  : test-search-active-covers-both-panes}

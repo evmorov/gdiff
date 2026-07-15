@@ -6,6 +6,10 @@
   (let [text (or text "")]
     (not (= nil (text:find query 1 true)))))
 
+(fn strip-trailing-slash [s]
+  (let [s (or s "")]
+    (or (s:match "^(.-)/*$") s)))
+
 (fn continuation-byte? [byte]
   (and byte (>= byte 128) (< byte 192)))
 
@@ -25,4 +29,4 @@
               (set i (+ i 1))))
           (s:sub 1 (- i 1))))))
 
-{: contains? : crop : trim}
+{: contains? : crop : strip-trailing-slash : trim}

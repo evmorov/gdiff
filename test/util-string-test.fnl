@@ -24,6 +24,13 @@
   (faith.= "" (str.crop nil 8))
   (faith.= "" (str.crop "abc" 0)))
 
+(fn test-strip-trailing-slash []
+  (faith.= "src/app" (str.strip-trailing-slash "src/app/"))
+  (faith.= "src/app" (str.strip-trailing-slash "src/app"))
+  (faith.= "src/app" (str.strip-trailing-slash "src/app///"))
+  (faith.= "" (str.strip-trailing-slash "/"))
+  (faith.= "" (str.strip-trailing-slash "")))
+
 (fn test-crop-does-not-split-multibyte-characters []
   (faith.= "Zoë" (str.crop "Zoë" 8))
   (faith.= "abcdefgé" (str.crop "abcdefgédef" 8))
@@ -31,5 +38,6 @@
 
 {: test-trim-strips-surrounding-whitespace
  : test-contains-matches-plain-substring
+ : test-strip-trailing-slash
  : test-crop-limits-to-character-count
  : test-crop-does-not-split-multibyte-characters}

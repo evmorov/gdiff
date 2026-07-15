@@ -13,9 +13,20 @@
       row.name
       (or row.name (entry-view.path-text row.entry))))
 
+(fn tree-path [row]
+  (if (= row.type :folder)
+      row.path
+      (and row.entry (entry-view.path-text row.entry))))
+
+(fn path-query? [query]
+  (not (= nil (string.find query "/" 1 true))))
+
 (fn tree-match [query row-index row]
-  (if (contains? (tree-label row) query)
-      {:tree-row row-index :entry row.entry-index}))
+  (let [needle (str.strip-trailing-slash query)]
+    (if (or (contains? (tree-label row) query)
+            (and (path-query? query) (< 0 (length needle))
+                 (contains? (tree-path row) needle)))
+        {:tree-row row-index :entry row.entry-index})))
 
 (fn collect-matches [state query]
   (let [matches []]
@@ -31,4 +42,9 @@
                 (table.insert matches found))))))
     matches))
 
-{: collect-matches : contains? : path-match : tree-label : tree-match}
+{: collect-matches
+ : contains?
+ : path-match
+ : tree-label
+ : tree-match
+ : tree-path}

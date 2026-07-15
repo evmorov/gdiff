@@ -1,6 +1,7 @@
 (local nav (require :app.search-nav))
 (local search-plan (require :app.search-plan))
 (local search-status (require :app.search-status))
+(local str (require :util.string))
 (local tui (require :tui.core))
 
 (fn get [ctx state]
@@ -109,9 +110,17 @@
     (jump-to ctx state (nav.last-before (ctx.cursor-position state)
                                         search.matches))))
 
+(fn label-query [text query]
+  (let [query (str.strip-trailing-slash query)]
+    (if (and (string.find query "/" 1 true)
+             (= nil (string.find text query 1 true)))
+        (or (string.match query "([^/]+)$") query)
+        query)))
+
 (fn highlight [ctx state text]
   (if (has-query? ctx state)
-      (tui.highlight-matches state.theme text (query ctx state))
+      (tui.highlight-matches state.theme text
+                             (label-query text (query ctx state)))
       text))
 
 (fn status [ctx state]
@@ -127,6 +136,7 @@
  : has-query?
  : highlight
  : jump-to
+ : label-query
  : next
  : previous
  : query

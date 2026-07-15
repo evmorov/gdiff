@@ -30,22 +30,8 @@
   (let [stats (parse.parse-numstat "2\t1\tsrc/app.fnl\n-\t-\timage.png\n")]
     (faith.= 2 stats.additions)
     (faith.= 1 stats.deletions)
-    (faith.= 2 stats.code_additions)
-    (faith.= 1 stats.code_deletions)
     (faith.= {:additions 2 :deletions 1} (. stats.files "src/app.fnl"))
     (faith.= nil (. stats.files "image.png"))))
-
-(fn test-numstat-code-totals-exclude-markdown []
-  (let [stats (parse.parse-numstat "2\t1\tsrc/app.fnl\n5\t3\tREADME.md\n1\t0\tdocs/guide.markdown\n")]
-    (faith.= 8 stats.additions)
-    (faith.= 4 stats.deletions)
-    (faith.= 2 stats.code_additions)
-    (faith.= 1 stats.code_deletions)))
-
-(fn test-numstat-code-totals-follow-rename-target []
-  (let [stats (parse.parse-numstat "4\t2\t{README.md => src/app.fnl}\n")]
-    (faith.= 4 stats.code_additions)
-    (faith.= 2 stats.code_deletions)))
 
 (fn test-numstat-indexes-braced-rename-target []
   (let [stats (parse.parse-numstat "1\t0\tspec/tardis/{api_spec.rb => api/v2_spec.rb}\n")]
@@ -90,8 +76,6 @@
 {: test-name-status-parses-renames-as-renames
  : test-name-status-parses-simple-entry
  : test-name-status-treats-copies-as-rename-entries
- : test-numstat-code-totals-exclude-markdown
- : test-numstat-code-totals-follow-rename-target
  : test-numstat-collects-totals-and-file-stats
  : test-numstat-indexes-braced-rename-target
  : test-working-marks-entries-absent-from-staged-set-as-unstaged

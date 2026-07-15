@@ -4,6 +4,7 @@
             :action-plan-test
             :args-test
             :git-test
+            :git-code-stats-test
             :git-commands-test
             :git-parse-test
             :help-test

@@ -254,15 +254,16 @@
     (faith.= {:additions 1 :deletions 0} (. stats.files "added.txt"))
     (faith.= {:additions 1 :deletions 1} (. stats.files "modified.txt"))))
 
-(fn test-diff-stats-code-totals-exclude-markdown []
+(fn test-diff-stats-code-totals-exclude-markdown-and-comments []
   (setup-changed-repo)
   (t.write-file "notes.md" "line\n")
-  (t.sh "git add notes.md")
+  (t.write-file "script.rb" "# comment\nputs 1\n")
+  (t.sh "git add notes.md script.rb")
   (let [(stats err) (git.diff-stats "HEAD")]
     (faith.= nil err)
-    (faith.= 3 stats.additions)
+    (faith.= 5 stats.additions)
     (faith.= 2 stats.deletions)
-    (faith.= 2 stats.code_additions)
+    (faith.= 3 stats.code_additions)
     (faith.= 2 stats.code_deletions)))
 
 (fn test-diff-stats-indexes-renamed-files-by-new-path []
@@ -341,6 +342,6 @@
  : test-diff-entries-with-working-shows-modified-unstaged-file
  : test-diff-entries-with-working-keeps-staged-status
  : test-diff-stats-indexes-renamed-files-by-new-path
- : test-diff-stats-code-totals-exclude-markdown
+ : test-diff-stats-code-totals-exclude-markdown-and-comments
  : test-diff-stats-reports-total-additions-and-deletions
  : test-linked-pr-url-command-quotes-branch}

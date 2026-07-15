@@ -51,6 +51,10 @@
   (.. "git diff --numstat --find-renames --find-copies " (diff-ref revision)
       " 2>&1"))
 
+(fn diff-patch-command [revision]
+  (.. "git diff --no-ext-diff -U0 --find-renames --find-copies "
+      (diff-ref revision) " 2>&1"))
+
 (fn linked-pr-url-command [branch]
   (.. "gh pr view " (sys.shell-quote branch)
       " --json url --jq .url 2>/dev/null"))
@@ -81,6 +85,7 @@
  : commit-url-command
  : current-branch-command
  : diff-command
+ : diff-patch-command
  : diff-stats-command
  : linked-pr-url-command
  : plain-preview-command

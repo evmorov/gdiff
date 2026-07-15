@@ -1,5 +1,6 @@
 (local commands (require :git.commands))
 (local blame (require :git.blame))
+(local code-stats (require :git.code-stats))
 (local parse (require :git.parse))
 (local sys (require :platform.core))
 
@@ -78,9 +79,19 @@
                     (values (working-entries output) nil)
                     (values (parse.parse-name-status output) nil)))))
 
+(fn code-diff-stats [revision]
+  (let [(output ok) (sys.read-command (commands.diff-patch-command revision))]
+    (when ok (code-stats.parse output))))
+
 (fn diff-stats [revision]
   (run-result (commands.diff-stats-command revision)
-              #(values (parse.parse-numstat $) nil)))
+              (fn [output]
+                (let [stats (parse.parse-numstat output)
+                      ?code (code-diff-stats revision)]
+                  (when ?code
+                    (set stats.code_additions ?code.additions)
+                    (set stats.code_deletions ?code.deletions))
+                  (values stats nil)))))
 
 (fn plain-diff-output [revision entry ?full-context?]
   (sys.read-command (commands.plain-preview-command revision entry

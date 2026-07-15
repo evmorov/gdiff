@@ -22,6 +22,14 @@
           (if (= line "") line (tui.color state.theme ?role line)))
         lines)))
 
+(fn file-body-numbers [header-count body-count]
+  (let [numbers []]
+    (for [_ 1 header-count]
+      (table.insert numbers false))
+    (for [i 1 body-count]
+      (table.insert numbers i))
+    numbers))
+
 (fn file-lines [state entry]
   (if (assets.asset? entry)
       (format.asset state entry)
@@ -32,12 +40,14 @@
             (format.binary state entry.path)
             (let [role (when entry.untracked? :status-added)
                   body (body-lines state content role)
-                  body (if (> (length body) 0) body
-                           (format.empty-preview state))
-                  out (format.header state entry.path)]
+                  body-count (length body)
+                  body (if (> body-count 0) body (format.empty-preview state))
+                  out (format.header state entry.path)
+                  numbers (when (> body-count 0)
+                            (file-body-numbers (length out) body-count))]
               (each [_ line (ipairs body)]
                 (table.insert out line))
-              out)))))
+              (values out numbers))))))
 
 (fn diff-data [state entry full-context?]
   (let [(output ok) (git.plain-diff-output state.revision entry full-context?)]
@@ -61,8 +71,10 @@
               (tset state.preview_cache key lines)
               lines)
             entry.untracked?
-            (let [lines (file-lines state entry)]
+            (let [(lines numbers) (file-lines state entry)]
               (tset state.preview_cache key lines)
+              (when state.preview_numbers_cache
+                (tset state.preview_numbers_cache key (or numbers false)))
               lines)
             (let [(lines numbers refs) (diff-data state entry full-context?)]
               (tset state.preview_cache key lines)
@@ -73,18 +85,22 @@
               lines)))))
 
 (fn line-numbers [state entry]
-  (if (or (not entry) entry.untracked? (assets.asset? entry))
-      nil
+  (if (or (not entry) (assets.asset? entry)) nil
       (let [key (cache-key state entry)
             cached (. (or state.preview_numbers_cache {}) key)]
-        (if (not (= nil cached))
-            cached
-            (let [(_ numbers refs) (diff-data state entry state.full_context?)]
+        (if (not (= nil cached)) cached entry.untracked?
+            (let [(_ numbers) (file-lines state entry)]
               (when state.preview_numbers_cache
                 (tset state.preview_numbers_cache key (or numbers false)))
-              (when state.preview_line_refs_cache
-                (tset state.preview_line_refs_cache key (or refs false)))
-              numbers)))))
+              numbers) (let [(_ numbers refs) (diff-data state entry
+                                                                    state.full_context?)]
+                                    (when state.preview_numbers_cache
+                                      (tset state.preview_numbers_cache key
+                                            (or numbers false)))
+                                    (when state.preview_line_refs_cache
+                                      (tset state.preview_line_refs_cache key
+                                            (or refs false)))
+                                    numbers)))))
 
 (fn line-refs [state entry]
   (if (or (not entry) entry.untracked? (assets.asset? entry))

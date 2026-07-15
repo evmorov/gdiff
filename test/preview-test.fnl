@@ -339,6 +339,26 @@
              (line-with lines "beta"))
     (faith.= lines (. state.preview_cache key))))
 
+(fn test-untracked-file-preview-shows-line-numbers []
+  (t.init-repo)
+  (t.write-file "app.rb" "before\n")
+  (t.commit-all "initial")
+  (t.write-file "__init__.py" "import os\n\nVALUE = 1\n")
+  (let [(entries err) (git.diff-entries git.working-revision)
+        entry (untracked-entry entries)
+        state (doto (state)
+                (tset :revision git.working-revision)
+                (tset :show_numbers? true))
+        (lines gutters) (preview.selection-lines state entry nil)]
+    (faith.= nil err)
+    (faith.= true entry.untracked?)
+    (faith.= (length lines) (length gutters))
+    (faith.= false (. gutters 1))
+    (faith.= false (. gutters 2))
+    (faith.= "1" (tui.strip-ansi (. gutters 3)))
+    (faith.= "2" (tui.strip-ansi (. gutters 4)))
+    (faith.= "3" (tui.strip-ansi (. gutters 5)))))
+
 (fn test-selection-lines-previews-expanded-listing-file []
   (t.init-repo)
   (t.write-file "util.rb" "puts :hi\n")
@@ -578,6 +598,7 @@
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
  : test-untracked-file-preview-shows-added-content-and-caches
+ : test-untracked-file-preview-shows-line-numbers
  : test-selection-lines-previews-expanded-listing-file
  : test-selection-lines-skips-binary-listing-file
  : test-preview-file-detects-binary-content

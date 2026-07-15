@@ -12,6 +12,10 @@
 (fn separator [state]
   (.. " " (tui.color state.theme :muted symbols.line.separator) " "))
 
+(fn delta [state added deleted]
+  (.. (tui.color state.theme :status-added (.. "+" added)) " "
+      (tui.color state.theme :status-deleted (.. "-" deleted))))
+
 (fn summary [state count]
   (let [reviewed (review.count state.entries)
         stats state.diff_stats
@@ -19,12 +23,12 @@
         items [(.. reviewed "/" count " files")
                (.. reviewed-percent "% reviewed")]]
     (when stats
-      (table.insert items
-                    (.. (tui.color state.theme :status-added
-                                   (.. "+" stats.additions))
-                        " "
-                        (tui.color state.theme :status-deleted
-                                   (.. "-" stats.deletions)))))
+      (table.insert items (delta state stats.additions stats.deletions))
+      (when stats.code_additions
+        (table.insert items
+                      (.. (tui.color state.theme :muted "code ")
+                          (delta state stats.code_additions
+                                 stats.code_deletions)))))
     (table.concat items (separator state))))
 
 (fn header [state count]
@@ -39,7 +43,8 @@
     (if on? (tui.color state.theme :status-added text) text)))
 
 (fn status-widgets [state]
-  (table.concat [(highlighted-toggle state :wrap state.preview_wrap?)
+  (table.concat [(highlighted-toggle state :tree (= state.view_mode :tree))
+                 (highlighted-toggle state :wrap state.preview_wrap?)
                  (highlighted-toggle state :num state.show_numbers?)
                  (highlighted-toggle state :blame state.show_blame?)
                  (highlighted-toggle state :split state.split_mode?)

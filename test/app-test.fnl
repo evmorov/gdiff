@@ -440,6 +440,7 @@
 
 (fn test-view-shows-toggle-status-in-footer-right []
   (let [state (state [(entry "M" "a.rb")])]
+    (set state.view_mode :tree)
     (set state.preview_wrap? true)
     (set state.show_numbers? false)
     (set state.show_blame? false)
@@ -448,11 +449,12 @@
     (set state.hide_reviewed? false)
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "wrap on │ num off │ blame off │ split on │ context off │ hide off"
+      (faith.= "tree on │ wrap on │ num off │ blame off │ split on │ context off │ hide off"
                footer-right))))
 
 (fn test-view-reflects-toggled-status-in-footer-right []
   (let [state (state [(entry "M" "a.rb")])]
+    (set state.view_mode :flat)
     (set state.preview_wrap? false)
     (set state.show_numbers? true)
     (set state.show_blame? true)
@@ -461,7 +463,7 @@
     (set state.hide_reviewed? true)
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "wrap off │ num on │ blame on │ split off │ context on │ hide on"
+      (faith.= "tree off │ wrap off │ num on │ blame on │ split off │ context on │ hide on"
                footer-right))))
 
 (fn test-uppercase-h-hides-reviewed-entries-from-list []

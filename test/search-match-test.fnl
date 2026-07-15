@@ -33,17 +33,12 @@
                          (entry "M" "test/app-test.fnl")]
                :selected 1
                :tree_selected_row 1}]
-    ;; A path-like query resolves to the file even though the tree label is
-    ;; only the basename.
     (faith.= [{:entry 1 :tree-row 2}]
              (matcher.collect-matches state "src/app/view.fnl"))
-    ;; A folder path highlights the folder and the files under it.
     (faith.= [{:entry nil :tree-row 1} {:entry 1 :tree-row 2}]
              (matcher.collect-matches state "src/app"))))
 
 (fn test-tree-matches-folder-path-with-trailing-slash []
-  ;; Pasted folder paths often carry a trailing slash; it should still match the
-  ;; folder row (whose path has no trailing slash) and the files beneath it.
   (let [state {:view_mode :tree
                :entries [(entry "M" "src/app/view.fnl")
                          (entry "M" "src/lib/util.fnl")]
@@ -58,8 +53,6 @@
                          (entry "M" "test/app-test.fnl")]
                :selected 1
                :tree_selected_row 1}]
-    ;; A slash-free query keeps matching labels only: it hits the compacted
-    ;; folder label and the file basename, but not view.fnl under src/app.
     (faith.= [{:entry nil :tree-row 1} {:entry 2 :tree-row 4}]
              (matcher.collect-matches state "app"))))
 

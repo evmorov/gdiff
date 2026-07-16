@@ -90,7 +90,9 @@
                       ?code (code-diff-stats revision)]
                   (when ?code
                     (set stats.code_additions ?code.additions)
-                    (set stats.code_deletions ?code.deletions))
+                    (set stats.code_deletions ?code.deletions)
+                    (set stats.no_tests_additions ?code.no_tests_additions)
+                    (set stats.no_tests_deletions ?code.no_tests_deletions))
                   (values stats nil)))))
 
 (fn plain-diff-output [revision entry ?full-context?]

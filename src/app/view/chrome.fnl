@@ -29,7 +29,12 @@
         (table.insert items
                       (.. "code "
                           (delta state stats.code_additions
-                                 stats.code_deletions)))))
+                                 stats.code_deletions))))
+      (when stats.no_tests_additions
+        (table.insert items
+                      (.. "no tests "
+                          (delta state stats.no_tests_additions
+                                 stats.no_tests_deletions)))))
     (table.concat items (separator state))))
 
 (fn header [state count]

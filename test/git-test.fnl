@@ -266,6 +266,17 @@
     (faith.= 3 stats.code_additions)
     (faith.= 2 stats.code_deletions)))
 
+(fn test-diff-stats-no-tests-totals-exclude-test-folders []
+  (setup-changed-repo)
+  (t.write-file "spec/tardis/new_spec.rb" "puts 1\n")
+  (t.sh "git add spec/tardis/new_spec.rb")
+  (let [(stats err) (git.diff-stats "HEAD")]
+    (faith.= nil err)
+    (faith.= 3 stats.code_additions)
+    (faith.= 2 stats.code_deletions)
+    (faith.= 2 stats.no_tests_additions)
+    (faith.= 2 stats.no_tests_deletions)))
+
 (fn test-diff-stats-indexes-renamed-files-by-new-path []
   (t.init-repo)
   (t.mkdir "spec/tardis")
@@ -343,5 +354,6 @@
  : test-diff-entries-with-working-keeps-staged-status
  : test-diff-stats-indexes-renamed-files-by-new-path
  : test-diff-stats-code-totals-exclude-markdown-and-comments
+ : test-diff-stats-no-tests-totals-exclude-test-folders
  : test-diff-stats-reports-total-additions-and-deletions
  : test-linked-pr-url-command-quotes-branch}

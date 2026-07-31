@@ -14,6 +14,12 @@
         entry.old_path
         (and target target.path))))
 
+(fn open-plan [target pr?]
+  (when target
+    (if (= target.kind :folder) {:action :folder :path target.path} pr?
+        {:action :head-snapshot :path target.path}
+        {:action :editor :entry (or target.entry {:path target.path})})))
+
 (fn copy-path [target]
   (when target
     (if (= target.kind :folder)
@@ -40,5 +46,6 @@
  : copy-full-path
  : copy-path
  : fenced-snippet
+ : open-plan
  : selected-target
  : split-ratio}

@@ -71,6 +71,10 @@
 (fn fetch-branch-command [branch]
   (.. "git fetch origin " (sys.shell-quote branch) " 2>&1"))
 
+(fn merge-base-command [left right]
+  (.. "git merge-base " (sys.shell-quote left) " " (sys.shell-quote right)
+      " 2>/dev/null"))
+
 (fn resolve-commit-command [revision]
   (.. "git rev-parse --verify --quiet "
       (sys.shell-quote (.. revision "^{commit}")) " 2>/dev/null"))
@@ -106,6 +110,7 @@
  : fetch-branch-command
  : fetch-pr-head-command
  : linked-pr-url-command
+ : merge-base-command
  : plain-preview-command
  : pr-info-command
  : preview-command

@@ -78,11 +78,12 @@
 (fn open-selected [state config]
   (let [target (action-plan.selected-target state.view_mode
                                             (selection.selected-tree-row state)
-                                            (selection.selected-entry state))]
-    (when target
-      (if (= target.kind :folder)
-          (commands.open-folder target.path)
-          (commands.open-editor config (or target.entry {:path target.path}))))))
+                                            (selection.selected-entry state))
+        plan (action-plan.open-plan target state.pr_url)]
+    (case (and plan plan.action)
+      :folder (commands.open-folder plan.path)
+      :head-snapshot (commands.open-head-editor config plan.path)
+      :editor (commands.open-editor config plan.entry))))
 
 (fn current-target [state]
   (action-plan.selected-target state.view_mode

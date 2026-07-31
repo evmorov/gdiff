@@ -110,9 +110,23 @@
   (faith.= git.working-revision
            (git.comparison-revision git.working-revision "current")))
 
-(fn test-base-ref-resolves-left-side []
-  (faith.= "HEAD" (git.base-ref git.working-revision))
-  (faith.= "main" (git.base-ref "main...feature")))
+(fn test-diff-base-ref-uses-merge-base-for-three-dot-ranges []
+  (t.init-repo)
+  (t.write-file "a.txt" "base\n")
+  (t.commit-all "base")
+  (t.sh "git branch -M main")
+  (t.sh "git checkout -b feature")
+  (t.write-file "a.txt" "feature\n")
+  (t.commit-all "feature change")
+  (t.sh "git checkout main")
+  (t.write-file "b.txt" "advance\n")
+  (t.commit-all "advance main")
+  (let [(fork-point _) (sys.read-command "git merge-base main feature")]
+    (faith.= (sys.trim fork-point) (git.diff-base-ref "main...feature"))))
+
+(fn test-diff-base-ref-keeps-plain-revisions []
+  (faith.= "HEAD" (git.diff-base-ref git.working-revision))
+  (faith.= "main" (git.diff-base-ref "main")))
 
 (fn test-blame-parser-builds-compact-date-author-labels []
   (let [output (table.concat ["abc 1 1 1"
@@ -352,12 +366,32 @@
   (let [(output _ok) (sys.read-command "git -C origin-repo rev-parse feature")]
     (sys.trim output)))
 
-(fn test-pr-revision-fetches-missing-refs-from-origin []
+(fn test-pr-revision-fetches-pull-head-for-deleted-branch []
+  (let [head-oid (setup-pr-origin)
+        info {:base-branch "trunk" :head-branch "feature" :head-oid head-oid}]
+    (t.sh "git -C origin-repo checkout trunk")
+    (t.sh "git -C origin-repo branch -D feature")
+    (let [(revision err) (git.pr-revision-from-info {:number "7"} info)]
+      (faith.= nil err)
+      (faith.= (.. "origin/trunk..." head-oid) revision))))
+
+(fn test-pr-revision-uses-origin-head-branch-when-it-matches []
   (let [head-oid (setup-pr-origin)
         info {:base-branch "trunk" :head-branch "feature" :head-oid head-oid}
         (revision err) (git.pr-revision-from-info {:number "7"} info)]
     (faith.= nil err)
-    (faith.= (.. "origin/trunk..." head-oid) revision)))
+    (faith.= "origin/trunk...origin/feature" revision)))
+
+(fn test-pr-revision-ignores-local-branches []
+  (let [head-oid (setup-pr-origin)
+        info {:base-branch "trunk" :head-branch "feature" :head-oid head-oid}
+        (_revision err) (git.pr-revision-from-info {:number "7"} info)]
+    (faith.= nil err)
+    (t.sh "git branch trunk origin/trunk")
+    (t.sh (.. "git branch feature " head-oid))
+    (let [(revision err) (git.pr-revision-from-info {:number "7"} info)]
+      (faith.= nil err)
+      (faith.= "origin/trunk...origin/feature" revision))))
 
 (fn test-pr-revision-refreshes-stale-origin-base []
   (let [head-oid (setup-pr-origin)
@@ -372,21 +406,10 @@
           (new-tip _) (sys.read-command "git -C origin-repo rev-parse trunk")
           (local-tip _) (sys.read-command "git rev-parse origin/trunk")]
       (faith.= nil err)
-      (faith.= (.. "origin/trunk..." head-oid) revision)
+      (faith.= "origin/trunk...origin/feature" revision)
       (faith.= (sys.trim new-tip) (sys.trim local-tip)))))
 
-(fn test-pr-revision-prefers-matching-local-branch []
-  (let [head-oid (setup-pr-origin)
-        info {:base-branch "trunk" :head-branch "feature" :head-oid head-oid}
-        (_revision err) (git.pr-revision-from-info {:number "7"} info)]
-    (faith.= nil err)
-    (t.sh (.. "git branch feature " head-oid))
-    (let [(revision err) (git.pr-revision-from-info {:number "7"} info)]
-      (faith.= nil err)
-      (faith.= "origin/trunk...feature" revision))))
-
-{: test-base-ref-resolves-left-side
- : test-blame-parser-builds-compact-date-author-labels
+{: test-blame-parser-builds-compact-date-author-labels
  : test-blame-parser-crops-long-first-names-to-eight-symbols
  : test-blame-ranges-merges-sorted-contiguous-lines
  : test-blame-lines-for-working-revision-use-head-and-worktree
@@ -400,6 +423,8 @@
  : test-materialize-base-writes-committed-version-to-temp
  : test-default-revision-falls-back-to-master
  : test-default-revision-prefers-main
+ : test-diff-base-ref-keeps-plain-revisions
+ : test-diff-base-ref-uses-merge-base-for-three-dot-ranges
  : test-comparison-right-selects-pr-branch
  : test-comparison-revision-expands-single-revision
  : test-comparison-revision-keeps-explicit-range
@@ -414,6 +439,7 @@
  : test-diff-stats-reports-total-additions-and-deletions
  : test-linked-pr-url-command-quotes-branch
  : test-parse-pr-info-reads-gh-output-lines
- : test-pr-revision-fetches-missing-refs-from-origin
- : test-pr-revision-prefers-matching-local-branch
- : test-pr-revision-refreshes-stale-origin-base}
+ : test-pr-revision-fetches-pull-head-for-deleted-branch
+ : test-pr-revision-ignores-local-branches
+ : test-pr-revision-refreshes-stale-origin-base
+ : test-pr-revision-uses-origin-head-branch-when-it-matches}

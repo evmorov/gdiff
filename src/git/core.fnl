@@ -66,6 +66,18 @@
 (fn resolve-commit [revision]
   (read-trimmed (commands.resolve-commit-command revision)))
 
+(fn merge-base [left right]
+  (read-trimmed (commands.merge-base-command left right)))
+
+(fn diff-base-ref [revision]
+  "The ref whose file contents the old side of the diff shows: the merge base
+for three-dot ranges, the revision itself otherwise."
+  (if (commands.working? revision) "HEAD"
+      (let [(left right) (comparison-sides revision)]
+        (if (revision:match "%.%.%.")
+            (or (merge-base left right) left)
+            left))))
+
 (fn parse-pr-info [output]
   (let [lines (icollect [line (output:gmatch "[^\n]+")] line)
         [base-branch head-branch head-oid] lines]
@@ -87,22 +99,27 @@
         true
         (values nil (sys.trim output)))))
 
+(fn pr-remote-head-ref [info]
+  (let [remote (.. "origin/" info.head-branch)]
+    (fetch (commands.fetch-branch-command info.head-branch))
+    (when (= info.head-oid (resolve-commit remote))
+      remote)))
+
 (fn pr-head-ref [pr info]
-  (if (= info.head-oid (resolve-commit info.head-branch))
-      (values info.head-branch nil)
-      (resolve-commit info.head-oid)
-      (values info.head-oid nil)
-      (let [(ok err) (fetch (commands.fetch-pr-head-command pr.number))]
-        (if (and ok (resolve-commit info.head-oid)) (values info.head-oid nil)
-            (values nil
-                    (or err
-                        (.. "Could not fetch PR #" pr.number " from origin")))))))
+  (let [remote (pr-remote-head-ref info)]
+    (if remote (values remote nil) (resolve-commit info.head-oid)
+        (values info.head-oid nil)
+        (let [(ok err) (fetch (commands.fetch-pr-head-command pr.number))]
+          (if (and ok (resolve-commit info.head-oid))
+              (values info.head-oid nil)
+              (values nil (or err
+                              (.. "Could not fetch PR #" pr.number
+                                  " from origin"))))))))
 
 (fn pr-base-ref [info]
   (let [remote (.. "origin/" info.base-branch)
         (_fetched fetch-err) (fetch (commands.fetch-branch-command info.base-branch))]
     (if (resolve-commit remote) (values remote nil)
-        (resolve-commit info.base-branch) (values info.base-branch nil)
         (values nil (or fetch-err (.. "Could not resolve " info.base-branch))))))
 
 (fn pr-revision-from-info [pr info]
@@ -164,7 +181,7 @@
       (values "HEAD" nil)
       (let [(left right) (split-revision revision)]
         (if left
-            (values (if (> (length left) 0) left (current-branch))
+            (values (diff-base-ref revision)
                     (if (> (length right) 0) right "HEAD"))
             (values revision nil)))))
 
@@ -204,10 +221,6 @@
 (fn repo-root []
   (or (read-trimmed (commands.repo-root-command)) (os.getenv "PWD") "."))
 
-(fn base-ref [revision]
-  (let [(left _right) (comparison-sides revision)]
-    left))
-
 (fn temp-root []
   (let [tmp (or (os.getenv "TMPDIR") "/tmp")]
     (if (= (tmp:sub -1) "/") (tmp:sub 1 -2) tmp)))
@@ -225,8 +238,7 @@
               (values nil "Could not write base snapshot")))
         (values nil (.. "Not in " ref)))))
 
-{: base-ref
- : blame-commit
+{: blame-commit
  : blame-lines
  : commit-url
  : comparison-revision
@@ -234,6 +246,7 @@
  : comparison-sides
  : current-branch
  : default-revision
+ : diff-base-ref
  : diff-entries
  : diff-stats
  : diff-stats-command

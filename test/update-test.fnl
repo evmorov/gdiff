@@ -614,7 +614,8 @@
   (let [state (update.init "HEAD" [(entry "M" "a.rb")] {:version 1 :reviews {}}
                            "scope" "src" nil
                            "https://github.com/acme/widgets/pull/17080")]
-    (faith.= "https://github.com/acme/widgets/pull/17080" state.pr_url))
+    (faith.= "https://github.com/acme/widgets/pull/17080" state.pr_url)
+    (faith.= "https://github.com/acme/widgets/pull/17080" state.revision_label))
   (let [state (state [(entry "M" "a.rb")])]
     (faith.= nil state.pr_url)))
 

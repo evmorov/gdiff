@@ -57,8 +57,18 @@
   [config target]
   [dispatch get-state]
   (let [state (get-state)
-        ref (git.base-ref state.revision)
+        ref (git.diff-base-ref state.revision)
         path (action-plan.base-source-path target)
+        (temp err) (git.materialize-base ref path)]
+    (when temp
+      (editor.run config {:path temp} state.stty-state))
+    (dispatch (messages.open-base-finished ref path (not err) err))))
+
+(defcommand open-head-editor
+  [config path]
+  [dispatch get-state]
+  (let [state (get-state)
+        ref state.revision_new_label
         (temp err) (git.materialize-base ref path)]
     (when temp
       (editor.run config {:path temp} state.stty-state))
@@ -131,6 +141,7 @@
  : open-base-editor
  : open-editor
  : open-folder
+ : open-head-editor
  : open-line-commit
  : open-linked-pr
  : persist-reviewed

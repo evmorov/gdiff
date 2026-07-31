@@ -18,7 +18,7 @@
                :pr_url ?pr-url
                :src_dir src-dir
                :repo_root (git.repo-root)
-               :revision_label (git.comparison-revision revision)
+               :revision_label (or ?pr-url (git.comparison-revision revision))
                :revision_old_label old-ref
                :revision_new_label new-ref
                : entries

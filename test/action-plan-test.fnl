@@ -39,6 +39,27 @@
            (action-plan.base-source-path {:kind :file :path "src/.keep"}))
   (faith.= nil (action-plan.base-source-path nil)))
 
+(fn test-open-plan-opens-working-tree-file-in-editor []
+  (let [selected (entry "src/a.rb")]
+    (faith.= {:action :editor :entry selected}
+             (action-plan.open-plan {:kind :file
+                                     :path "src/a.rb"
+                                     :entry selected}
+                                    nil))
+    (faith.= {:action :editor :entry {:path "src/.keep"}}
+             (action-plan.open-plan {:kind :file :path "src/.keep"} nil))
+    (faith.= nil (action-plan.open-plan nil nil))))
+
+(fn test-open-plan-uses-head-snapshot-for-pr-files []
+  (let [pr-url "https://github.com/acme/widgets/pull/1"]
+    (faith.= {:action :head-snapshot :path "src/a.rb"}
+             (action-plan.open-plan {:kind :file
+                                     :path "src/a.rb"
+                                     :entry (entry "src/a.rb")}
+                                    pr-url))
+    (faith.= {:action :folder :path "src"}
+             (action-plan.open-plan {:kind :folder :path "src"} pr-url))))
+
 (fn test-copy-path-adds-slash-only-for-folders []
   (faith.= "src/" (action-plan.copy-path {:kind :folder :path "src"}))
   (faith.= "src/a.rb" (action-plan.copy-path {:kind :file :path "src/a.rb"}))
@@ -68,6 +89,8 @@
  : test-copy-full-path-prefixes-the-repo-root
  : test-fenced-snippet-prefixes-the-path-and-fences-the-text
  : test-copy-path-adds-slash-only-for-folders
+ : test-open-plan-opens-working-tree-file-in-editor
+ : test-open-plan-uses-head-snapshot-for-pr-files
  : test-selected-target-prefers-tree-folder
  : test-selected-target-uses-entry-for-files-and-flat-mode
  : test-selected-target-uses-path-for-unchanged-tree-files

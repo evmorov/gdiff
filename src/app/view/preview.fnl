@@ -1,4 +1,5 @@
 (local preview (require :preview.core))
+(local preview-anchor (require :preview.anchor))
 (local preview-search (require :app.preview-search))
 (local selection (require :app.selection))
 (local line-selection (require :app.line-selection))
@@ -61,6 +62,7 @@
         display (lines-for-width state raw numbers visible cols)]
     (sync-search state display)
     (set-scroll state display visible)
+    (preview-anchor.restore-unified state selected.entry)
     (update-horizontal-scroll state raw cols)))
 
 (fn body [state visible]

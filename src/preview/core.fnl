@@ -353,7 +353,8 @@
 (fn reset-scroll [state]
   (set-fields state [:preview_scroll 0] [:preview_cursor 1]
               [:preview_x_scroll 0] [:preview_x_max_scroll 0]
-              [:preview_display_cache nil] [:split_display_cache nil]))
+              [:preview_display_cache nil] [:split_display_cache nil]
+              [:preview_anchor nil]))
 
 (fn keep-cursor-visible [state]
   (let [visible (row-count state)

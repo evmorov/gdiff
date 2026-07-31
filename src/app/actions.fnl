@@ -2,6 +2,7 @@
 (local action-plan (require :app.action-plan))
 (local notice (require :app.notice))
 (local preview (require :preview.core))
+(local preview-anchor (require :preview.anchor))
 (local folder-preview (require :preview.folder))
 (local review (require :app.review))
 (local reviews (require :storage.reviews))
@@ -274,11 +275,16 @@
   (focus-step state :new :old))
 
 (fn toggle-split [state]
-  (set state.split_mode? (not state.split_mode?))
-  (exit-line-selection state)
-  (preview.reset-scroll state)
-  (when (and state.split_mode? (= state.focus :right))
-    (set state.split_side :old)))
+  (let [entry (selection.selected-entry state)
+        splittable? (preview.splittable? state entry)
+        anchor (when splittable? (preview-anchor.capture state entry))]
+    (set state.split_mode? (not state.split_mode?))
+    (when splittable?
+      (exit-line-selection state)
+      (preview.reset-scroll state)
+      (set state.preview_anchor anchor))
+    (when (and state.split_mode? (= state.focus :right))
+      (set state.split_side :old))))
 
 (fn scroll-horizontal [state delta]
   (let [changed? (preview.scroll-horizontal state delta)]

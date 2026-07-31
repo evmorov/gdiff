@@ -512,6 +512,15 @@
     (update.update state {} (update.read-msg state "s"))
     (faith.= true state.split_mode?)))
 
+(fn test-s-keeps-scroll-when-preview-cannot-split []
+  (let [state (state [(entry "A" "a.rb")])]
+    (set state.preview_scroll 3)
+    (set state.preview_cursor 4)
+    (update.update state {} (update.read-msg state "s"))
+    (faith.= false state.split_mode?)
+    (faith.= 3 state.preview_scroll)
+    (faith.= 4 state.preview_cursor)))
+
 (fn test-tab-cycles-left-old-new-left-in-split []
   (let [state (split-state)]
     (faith.= :left state.focus)
@@ -801,6 +810,7 @@
  : test-y-yanks-the-selected-diff-lines
  : test-y-yanks-the-cursor-line-without-a-selection
  : test-y-yanks-one-line-for-a-wrapped-selection
+ : test-s-keeps-scroll-when-preview-cannot-split
  : test-s-toggles-split-mode
  : test-tab-cycles-left-old-new-left-in-split
  : test-shift-tab-cycles-left-new-old-left-in-split

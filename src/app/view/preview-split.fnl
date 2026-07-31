@@ -1,4 +1,5 @@
 (local preview (require :preview.core))
+(local preview-anchor (require :preview.anchor))
 (local preview-search (require :app.preview-search))
 (local selection (require :app.selection))
 (local line-selection (require :app.line-selection))
@@ -301,6 +302,7 @@
                              :layout computed})
                        computed))]
       (apply-layout state layout visible)
+      (preview-anchor.restore-split state)
       (sync-search state state.split_rows))))
 
 (fn blank-divider [state widths]

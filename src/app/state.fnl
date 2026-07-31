@@ -35,6 +35,7 @@
                :preview_rows 1
                :preview_total 0
                :preview_selection_anchor nil
+               :preview_anchor nil
                :preview_wrap? true
                :show_numbers? false
                :show_blame? false

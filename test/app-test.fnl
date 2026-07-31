@@ -794,8 +794,75 @@
     (app.handle-key state {} :tick)
     (faith.= ["warmed"] (. state.preview_cache warmed-key))))
 
+(fn anchored-preview-state []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        key (preview-key.for-entry "HEAD" selected)
+        lines ["a.rb"
+               "────"
+               "diff --git a/a.rb b/a.rb"
+               "index 111..222"
+               "--- a/a.rb"
+               "+++ b/a.rb"
+               "@@ -1,9 +1,9 @@"]
+        refs [false false false false false false false]
+        rows [{:kind :filename :old "a.rb" :new "a.rb"}
+              {:kind :rule :old "────" :new "────"}
+              {:kind :hunk :old "@@ -1,9 +1,9 @@"}]]
+    (for [no 1 8]
+      (table.insert lines (.. "c" no))
+      (table.insert refs {:side :new :no no})
+      (table.insert rows {:kind :context
+                          :old (.. "c" no)
+                          :new (.. "c" no)
+                          :old-no no
+                          :new-no no}))
+    (table.insert lines "-o9")
+    (table.insert refs {:side :old :no 9})
+    (table.insert lines "+n9")
+    (table.insert refs {:side :new :no 9})
+    (table.insert rows {:kind :change :old "o9" :new "n9" :old-no 9 :new-no 9})
+    (tset state.preview_cache key lines)
+    (tset state.preview_numbers_cache key false)
+    (tset state.preview_line_refs_cache key refs)
+    (tset state.split_cache (.. key "\0split") rows)
+    (set state.split_mode? false)
+    state))
+
+(fn test-split-toggle-keeps-top-line-anchored []
+  (let [state (anchored-preview-state)]
+    (app.view state 10 100)
+    ;; Unified top line 9 is context c2 (new line 2).
+    (set state.preview_scroll 8)
+    (app.handle-key state {} "s")
+    (faith.= true state.split_mode?)
+    (app.view state 10 100)
+    ;; Split row 5 is context c2, kept at the top of the viewport.
+    (faith.= 4 state.preview_scroll)
+    (app.handle-key state {} "s")
+    (faith.= false state.split_mode?)
+    (app.view state 10 100)
+    (faith.= 8 state.preview_scroll)))
+
+(fn test-split-toggle-keeps-cursor-on-same-diff-line []
+  (let [state (anchored-preview-state)]
+    (set state.focus :right)
+    (app.view state 10 100)
+    ;; Unified cursor on line 16, the removed old line 9.
+    (set state.preview_scroll 11)
+    (set state.preview_cursor 16)
+    (app.handle-key state {} "s")
+    (app.view state 10 100)
+    (faith.= 12 state.preview_cursor)
+    (faith.= 6 state.preview_scroll)
+    (let [row (. state.split_rows state.preview_cursor)]
+      (faith.= :change row.kind)
+      (faith.= 9 row.old-no))))
+
 {: test-lowercase-a-toggles-all-reviewed-and-uppercase-a-does-nothing
  : test-search-next-is-relative-to-current-cursor
+ : test-split-toggle-keeps-cursor-on-same-diff-line
+ : test-split-toggle-keeps-top-line-anchored
  : test-backtick-preserves-selected-file-with-search
  : test-backtick-toggles-tree-mode-without-clearing-search
  : test-fetch-failure-shows-sync-notice-not-success

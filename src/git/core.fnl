@@ -63,6 +63,63 @@
               (values url nil)
               (values nil (.. "No linked PR for " branch)))))))
 
+(fn resolve-commit [revision]
+  (read-trimmed (commands.resolve-commit-command revision)))
+
+(fn parse-pr-info [output]
+  (let [lines (icollect [line (output:gmatch "[^\n]+")] line)
+        [base-branch head-branch head-oid] lines]
+    (when (and base-branch head-branch head-oid)
+      {: base-branch : head-branch : head-oid})))
+
+(fn pr-info [pr]
+  (let [(output ok) (sys.read-command (commands.pr-info-command pr.url))
+        info (and ok (parse-pr-info output))]
+    (if info
+        (values info nil)
+        (values nil
+                (.. "Could not read PR info for " pr.url
+                    " (is gh installed and authenticated?)")))))
+
+(fn fetch [cmd]
+  (let [(output ok) (sys.read-command cmd)]
+    (if ok
+        true
+        (values nil (sys.trim output)))))
+
+(fn pr-head-ref [pr info]
+  (if (= info.head-oid (resolve-commit info.head-branch))
+      (values info.head-branch nil)
+      (resolve-commit info.head-oid)
+      (values info.head-oid nil)
+      (let [(ok err) (fetch (commands.fetch-pr-head-command pr.number))]
+        (if (and ok (resolve-commit info.head-oid)) (values info.head-oid nil)
+            (values nil
+                    (or err
+                        (.. "Could not fetch PR #" pr.number " from origin")))))))
+
+(fn pr-base-ref [info]
+  (let [remote (.. "origin/" info.base-branch)
+        (_fetched fetch-err) (fetch (commands.fetch-branch-command info.base-branch))]
+    (if (resolve-commit remote) (values remote nil)
+        (resolve-commit info.base-branch) (values info.base-branch nil)
+        (values nil (or fetch-err (.. "Could not resolve " info.base-branch))))))
+
+(fn pr-revision-from-info [pr info]
+  (let [(head head-err) (pr-head-ref pr info)]
+    (if (not head)
+        (values nil head-err)
+        (let [(base base-err) (pr-base-ref info)]
+          (if (not base)
+              (values nil base-err)
+              (values (.. base "..." head) nil))))))
+
+(fn resolve-pr-revision [pr]
+  (let [(info err) (pr-info pr)]
+    (if (not info)
+        (values nil err)
+        (pr-revision-from-info pr info))))
+
 (fn read-output [cmd]
   (let [(output ok) (sys.read-command cmd)]
     (if ok output "")))
@@ -183,6 +240,9 @@
  : linked-pr-url
  : linked-pr-url-command
  : materialize-base
+ : parse-pr-info
+ : pr-revision-from-info
+ : resolve-pr-revision
  :working-revision commands.working-revision
  :working? commands.working?
  : plain-diff-output

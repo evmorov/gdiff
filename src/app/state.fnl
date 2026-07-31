@@ -5,10 +5,17 @@
 (local sync (require :git.sync))
 (local theme (require :tui.theme))
 
-(fn init [revision entries review-store review-scope src-dir ?diff-stats]
+(fn init [revision
+          entries
+          review-store
+          review-scope
+          src-dir
+          ?diff-stats
+          ?pr-url]
   (let [selected 1
         (old-ref new-ref) (git.comparison-sides revision)
         state {: revision
+               :pr_url ?pr-url
                :src_dir src-dir
                :repo_root (git.repo-root)
                :revision_label (git.comparison-revision revision)

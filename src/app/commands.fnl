@@ -91,7 +91,9 @@
   []
   [dispatch get-state]
   (let [state (get-state)
-        (url err) (git.linked-pr-url state.revision)]
+        (url err) (if state.pr_url
+                      (values state.pr_url nil)
+                      (git.linked-pr-url state.revision))]
     (if url
         (do
           (browser.open url)

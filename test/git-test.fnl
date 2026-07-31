@@ -329,6 +329,62 @@
     (faith.match "%-%-json url %-%-jq %.url" command)
     (faith.match "2>/dev/null" command)))
 
+(fn test-parse-pr-info-reads-gh-output-lines []
+  (faith.= {:base-branch "main" :head-branch "feature" :head-oid "abc123"}
+           (git.parse-pr-info "main\nfeature\nabc123\n"))
+  (faith.= nil (git.parse-pr-info "main\nfeature"))
+  (faith.= nil (git.parse-pr-info "")))
+
+(fn setup-pr-origin []
+  (t.init-repo)
+  (t.sh "git init -b trunk origin-repo")
+  (t.sh "git -C origin-repo config user.email gdiff@example.test")
+  (t.sh "git -C origin-repo config user.name gdiff")
+  (t.write-file "origin-repo/a.txt" "base\n")
+  (t.sh "git -C origin-repo add .")
+  (t.sh "git -C origin-repo commit -m base")
+  (t.sh "git -C origin-repo checkout -b feature")
+  (t.write-file "origin-repo/a.txt" "changed\n")
+  (t.sh "git -C origin-repo add .")
+  (t.sh "git -C origin-repo commit -m change")
+  (t.sh "git -C origin-repo update-ref refs/pull/7/head feature")
+  (t.sh "git remote add origin origin-repo")
+  (let [(output _ok) (sys.read-command "git -C origin-repo rev-parse feature")]
+    (sys.trim output)))
+
+(fn test-pr-revision-fetches-missing-refs-from-origin []
+  (let [head-oid (setup-pr-origin)
+        info {:base-branch "trunk" :head-branch "feature" :head-oid head-oid}
+        (revision err) (git.pr-revision-from-info {:number "7"} info)]
+    (faith.= nil err)
+    (faith.= (.. "origin/trunk..." head-oid) revision)))
+
+(fn test-pr-revision-refreshes-stale-origin-base []
+  (let [head-oid (setup-pr-origin)
+        info {:base-branch "trunk" :head-branch "feature" :head-oid head-oid}
+        (_revision err) (git.pr-revision-from-info {:number "7"} info)]
+    (faith.= nil err)
+    (t.sh "git -C origin-repo checkout trunk")
+    (t.write-file "origin-repo/b.txt" "more\n")
+    (t.sh "git -C origin-repo add .")
+    (t.sh "git -C origin-repo commit -m advance")
+    (let [(revision err) (git.pr-revision-from-info {:number "7"} info)
+          (new-tip _) (sys.read-command "git -C origin-repo rev-parse trunk")
+          (local-tip _) (sys.read-command "git rev-parse origin/trunk")]
+      (faith.= nil err)
+      (faith.= (.. "origin/trunk..." head-oid) revision)
+      (faith.= (sys.trim new-tip) (sys.trim local-tip)))))
+
+(fn test-pr-revision-prefers-matching-local-branch []
+  (let [head-oid (setup-pr-origin)
+        info {:base-branch "trunk" :head-branch "feature" :head-oid head-oid}
+        (_revision err) (git.pr-revision-from-info {:number "7"} info)]
+    (faith.= nil err)
+    (t.sh (.. "git branch feature " head-oid))
+    (let [(revision err) (git.pr-revision-from-info {:number "7"} info)]
+      (faith.= nil err)
+      (faith.= "origin/trunk...feature" revision))))
+
 {: test-base-ref-resolves-left-side
  : test-blame-parser-builds-compact-date-author-labels
  : test-blame-parser-crops-long-first-names-to-eight-symbols
@@ -356,4 +412,8 @@
  : test-diff-stats-code-totals-exclude-markdown-and-comments
  : test-diff-stats-no-tests-totals-exclude-test-folders
  : test-diff-stats-reports-total-additions-and-deletions
- : test-linked-pr-url-command-quotes-branch}
+ : test-linked-pr-url-command-quotes-branch
+ : test-parse-pr-info-reads-gh-output-lines
+ : test-pr-revision-fetches-missing-refs-from-origin
+ : test-pr-revision-prefers-matching-local-branch
+ : test-pr-revision-refreshes-stale-origin-base}

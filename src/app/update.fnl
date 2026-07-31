@@ -106,9 +106,15 @@
 (fn run-command [state config command]
   (command-runner.run state config update command))
 
-(fn init [revision entries review-store review-scope src-dir ?diff-stats]
+(fn init [revision
+          entries
+          review-store
+          review-scope
+          src-dir
+          ?diff-stats
+          ?pr-url]
   (app-state.init revision entries review-store review-scope src-dir
-                  ?diff-stats))
+                  ?diff-stats ?pr-url))
 
 (fn handle-key [state config raw-key]
   (set state.force_next_draw? false)

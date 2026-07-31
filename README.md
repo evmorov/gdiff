@@ -6,6 +6,15 @@ A tiny Fennel TUI for opening files changed by a Git revision range.
 bin/gdiff main HEAD
 ```
 
+You can also pass a GitHub PR URL. gdiff resolves the PR via `gh`, reuses
+your local head branch when it matches, and otherwise fetches the PR head
+from `origin` — this works even after the PR branch was deleted. The base
+branch is refreshed from `origin` so the diff matches what GitHub shows:
+
+```sh
+bin/gdiff https://github.com/owner/repo/pull/123
+```
+
 Run tests with:
 
 ```sh

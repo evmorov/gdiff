@@ -59,6 +59,20 @@
   (faith.= "git blame --line-porcelain -- 'a.rb' 2>/dev/null"
            (commands.blame-command nil "a.rb" [])))
 
+(fn test-pr-info-command-asks-gh-for-refs []
+  (faith.= "gh pr view 'https://github.com/acme/widgets/pull/17080' --json baseRefName,headRefName,headRefOid --jq '[.baseRefName, .headRefName, .headRefOid] | join(\"\\n\")' 2>/dev/null"
+           (commands.pr-info-command "https://github.com/acme/widgets/pull/17080")))
+
+(fn test-pr-fetch-commands-quote-refs []
+  (faith.= "git fetch origin 'pull/17080/head' 2>&1"
+           (commands.fetch-pr-head-command "17080"))
+  (faith.= "git fetch origin 'release branch' 2>&1"
+           (commands.fetch-branch-command "release branch")))
+
+(fn test-resolve-commit-command-quotes-commit-revision []
+  (faith.= "git rev-parse --verify --quiet 'feature branch^{commit}' 2>/dev/null"
+           (commands.resolve-commit-command "feature branch")))
+
 (fn test-commit-url-command-asks-gh-for-commit-page []
   (faith.= "gh browse --no-browser 'abc123' 2>/dev/null"
            (commands.commit-url-command "abc123")))
@@ -87,6 +101,9 @@
  : test-preview-command-requests-full-context
  : test-working-commands-diff-against-head
  : test-working-untracked-preview-uses-no-index
+ : test-pr-fetch-commands-quote-refs
+ : test-pr-info-command-asks-gh-for-refs
+ : test-resolve-commit-command-quotes-commit-revision
  : test-untracked-command-lists-others
  : test-staged-paths-command-lists-cached-names
  : test-revision-exists-command-quotes-commit-revision}

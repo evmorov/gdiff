@@ -601,6 +601,14 @@
     (update.update state {} {:type :yank-finished :count 3 :ok? true})
     (faith.= "Copied 3 lines" state.notice)))
 
+(fn test-init-stores-pr-url []
+  (let [state (update.init "HEAD" [(entry "M" "a.rb")] {:version 1 :reviews {}}
+                           "scope" "src" nil
+                           "https://github.com/acme/widgets/pull/17080")]
+    (faith.= "https://github.com/acme/widgets/pull/17080" state.pr_url))
+  (let [state (state [(entry "M" "a.rb")])]
+    (faith.= nil state.pr_url)))
+
 (fn test-open-pr-finished-updates-notice []
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {}
@@ -800,6 +808,7 @@
  : test-yank-collapses-wrapped-split-rows
  : test-split-search-is-scoped-to-the-focused-side
  : test-yank-finished-updates-notice
+ : test-init-stores-pr-url
  : test-open-pr-finished-updates-notice
  : test-x-opens-the-commit-that-added-the-cursor-line
  : test-x-blames-the-old-ref-for-a-deleted-line

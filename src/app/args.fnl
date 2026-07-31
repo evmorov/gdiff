@@ -5,6 +5,7 @@
   (io.stderr:write "Without a revision, gdiff tries main first, then master.\n")
   (io.stderr:write "Use two revisions to compare them with ...\n")
   (io.stderr:write "Use 'working' or 'w' to review working changes.\n")
+  (io.stderr:write "Use a GitHub PR URL to review that PR; gdiff fetches it when needed.\n")
   (io.stderr:write "Example: gdiff --editor nvim main HEAD\n"))
 
 (fn next-arg [argv i option]
@@ -29,6 +30,18 @@
                 (set found? true)
                 (set i (+ finish 1)))))))
   found?)
+
+(fn pr-from-arg [arg]
+  (let [(owner repo number rest) (arg:match "^https://github%.com/([^/]+)/([^/]+)/pull/(%d+)(.*)$")]
+    (when (and owner (or (= rest "") (rest:match "^[/#?]")))
+      {: owner
+       : repo
+       : number
+       :url (.. "https://github.com/" owner "/" repo "/pull/" number)})))
+
+(fn pr-from-positionals [positionals]
+  (accumulate [found nil _ arg (ipairs positionals) &until found]
+    (pr-from-arg arg)))
 
 (fn revision-from-positionals [positionals]
   (case (length positionals)
@@ -79,7 +92,13 @@
               (set i (+ i 1))))))
     (if parse-error
         (values options nil parse-error)
-        (let [(revision err) (revision-from-positionals positionals)]
-          (values options revision err)))))
+        (let [?pr (pr-from-positionals positionals)]
+          (if (and ?pr (= 1 (length positionals)))
+              (values options nil nil ?pr)
+              ?pr
+              (values options nil
+                      "A PR URL cannot be combined with other revisions")
+              (let [(revision err) (revision-from-positionals positionals)]
+                (values options revision err)))))))
 
-{: parse : revision-from-positionals : usage}
+{: parse : pr-from-arg : revision-from-positionals : usage}

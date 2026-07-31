@@ -49,6 +49,35 @@
     (faith.= "main..feature" revision)
     (faith.= "Two-dot ranges are not supported; use ..." err)))
 
+(fn test-parses-pr-url []
+  (let [(_options revision err pr) (args.parse ["https://github.com/acme/widgets/pull/17080"])]
+    (faith.= nil err)
+    (faith.= nil revision)
+    (faith.= {:owner "acme"
+              :repo "widgets"
+              :number "17080"
+              :url "https://github.com/acme/widgets/pull/17080"}
+             pr)))
+
+(fn test-parses-pr-url-with-trailing-path []
+  (let [(_options _revision err pr) (args.parse ["https://github.com/acme/widgets/pull/17080/changes"])]
+    (faith.= nil err)
+    (faith.= "https://github.com/acme/widgets/pull/17080" pr.url)
+    (faith.= "17080" pr.number)))
+
+(fn test-rejects-pr-url-with-extra-revision []
+  (let [(_options revision err pr) (args.parse ["main"
+                                                "https://github.com/acme/widgets/pull/17080"])]
+    (faith.= nil revision)
+    (faith.= nil pr)
+    (faith.= "A PR URL cannot be combined with other revisions" err)))
+
+(fn test-treats-malformed-pr-url-as-revision []
+  (let [(_options revision err pr) (args.parse ["https://github.com/acme/widgets/pull/17080abc"])]
+    (faith.= nil err)
+    (faith.= nil pr)
+    (faith.= "https://github.com/acme/widgets/pull/17080abc" revision)))
+
 (fn test-requires-editor-value []
   (let [(_options revision err) (args.parse ["--editor"])]
     (faith.= nil revision)
@@ -60,7 +89,11 @@
  : test-parses-explicit-triple-dot-range
  : test-parses-inline-editor
  : test-no-revision-defers-to-default-revision-lookup
+ : test-parses-pr-url
+ : test-parses-pr-url-with-trailing-path
  : test-parses-two-revisions-as-triple-dot-range
  : test-rejects-extra-revision
+ : test-rejects-pr-url-with-extra-revision
  : test-rejects-two-dot-range
- : test-requires-editor-value}
+ : test-requires-editor-value
+ : test-treats-malformed-pr-url-as-revision}

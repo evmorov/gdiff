@@ -59,6 +59,22 @@
   (.. "gh pr view " (sys.shell-quote branch)
       " --json url --jq .url 2>/dev/null"))
 
+(fn pr-info-command [url]
+  (.. "gh pr view " (sys.shell-quote url)
+      " --json baseRefName,headRefName,headRefOid --jq "
+      (sys.shell-quote "[.baseRefName, .headRefName, .headRefOid] | join(\"\\n\")")
+      " 2>/dev/null"))
+
+(fn fetch-pr-head-command [number]
+  (.. "git fetch origin " (sys.shell-quote (.. "pull/" number "/head")) " 2>&1"))
+
+(fn fetch-branch-command [branch]
+  (.. "git fetch origin " (sys.shell-quote branch) " 2>&1"))
+
+(fn resolve-commit-command [revision]
+  (.. "git rev-parse --verify --quiet "
+      (sys.shell-quote (.. revision "^{commit}")) " 2>/dev/null"))
+
 (fn commit-url-command [sha]
   (.. "gh browse --no-browser " (sys.shell-quote sha) " 2>/dev/null"))
 
@@ -87,10 +103,14 @@
  : diff-command
  : diff-patch-command
  : diff-stats-command
+ : fetch-branch-command
+ : fetch-pr-head-command
  : linked-pr-url-command
  : plain-preview-command
+ : pr-info-command
  : preview-command
  : repo-root-command
+ : resolve-commit-command
  : revision-exists-command
  : show-file-command
  : staged-paths-command

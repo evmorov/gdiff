@@ -546,6 +546,38 @@
       (faith.= :file row.type)
       (faith.= "b.rb" row.name))))
 
+(fn test-hide-reviewed-settles-cursor-on-next-visible-entry []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb") (entry "M" "c.rb")])]
+    (app.handle-key state {} "j")
+    (let [second (. state.entries 2)]
+      (set second.reviewed true))
+    (app.handle-key state {} "H")
+    (let [row (selection.selected-tree-row state)]
+      (faith.= :file row.type)
+      (faith.= "c.rb" row.name))))
+
+(fn test-hide-reviewed-settles-cursor-on-previous-visible-entry []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb") (entry "M" "c.rb")])]
+    (app.handle-key state {} "j")
+    (app.handle-key state {} "j")
+    (let [third (. state.entries 3)]
+      (set third.reviewed true))
+    (app.handle-key state {} "H")
+    (let [row (selection.selected-tree-row state)]
+      (faith.= :file row.type)
+      (faith.= "b.rb" row.name))))
+
+(fn test-hide-reviewed-settles-flat-cursor-on-next-visible-entry []
+  (let [state (flat-state [(entry "M" "a.rb")
+                           (entry "M" "b.rb")
+                           (entry "M" "c.rb")])]
+    (app.handle-key state {} "j")
+    (faith.= 2 state.selected)
+    (let [second (. state.entries 2)]
+      (set second.reviewed true))
+    (app.handle-key state {} "H")
+    (faith.= 3 state.selected)))
+
 (fn test-question-mark-toggles-help-modal []
   (let [state (state [(entry "M" "a.rb")])]
     (faith.= nil (. (app.view state 10 100) :overlay))
@@ -923,6 +955,9 @@
  : test-uppercase-h-hides-reviewed-entries-from-list
  : test-hide-reviewed-skips-hidden-entries-in-flat-navigation
  : test-hide-reviewed-keeps-cursor-on-unreviewed-selection
+ : test-hide-reviewed-settles-cursor-on-next-visible-entry
+ : test-hide-reviewed-settles-cursor-on-previous-visible-entry
+ : test-hide-reviewed-settles-flat-cursor-on-next-visible-entry
  : test-question-mark-toggles-help-modal
  : test-help-modal-ignores-action-keys-without-redraw
  : test-help-modal-skips-redraw-on-idle-tick

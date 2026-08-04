@@ -47,6 +47,18 @@
       (tree-rows state)
       (cached-flat-rows state)))
 
+(fn visible-entry-at [state index]
+  (let [entry (. state.entries index)]
+    (when (and entry (visible-entry? state entry)) index)))
+
+(fn nearest-visible-entry-index [state entry-index]
+  (when entry-index
+    (or (faccumulate [found nil index entry-index (length state.entries)
+                      &until found]
+          (visible-entry-at state index))
+        (faccumulate [found nil index entry-index 1 -1 &until found]
+          (visible-entry-at state index)))))
+
 (fn selected-tree-row [state]
   (tree.row-at (tree-rows state) state.tree_selected_row))
 
@@ -173,6 +185,7 @@
  : entry-row-index
  : invalidate-rows
  : move
+ : nearest-visible-entry-index
  : rows
  : selected-entry
  : selected-context

@@ -352,12 +352,14 @@
       (tset state.expanded_folders path nil)))
 
 (fn settled-row-index [state row]
-  (if (not row) state.tree_selected_row
-      (= row.type :folder) (selection.folder-row-index state row.path)
-      row.unchanged (or (selection.file-row-index-by-path state row.path)
-                        (selection.last-file-row-index state row.folder-path)
-                        (selection.folder-row-index state row.folder-path))
-      (selection.entry-row-index state row.entry-index)))
+  (if (not row) state.tree_selected_row (= row.type :folder)
+      (selection.folder-row-index state row.path) row.unchanged
+      (or (selection.file-row-index-by-path state row.path)
+          (selection.last-file-row-index state row.folder-path)
+          (selection.folder-row-index state row.folder-path))
+      (selection.entry-row-index state
+                                 (selection.nearest-visible-entry-index state
+                                                                        row.entry-index))))
 
 (fn settle-cursor [state row]
   (selection.set-tree-row state
@@ -403,7 +405,9 @@
     (selection.invalidate-rows state)
     (if row
         (settle-cursor state row)
-        (selection.move state 0))))
+        (let [index (selection.nearest-visible-entry-index state state.selected)]
+          (when index
+            (selection.set-file state index))))))
 
 (fn toggle-help [state]
   (set state.show_help? (not state.show_help?)))

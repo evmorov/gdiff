@@ -165,6 +165,8 @@ for three-dot ranges, the revision itself otherwise."
                   (when ?code
                     (set stats.code_additions ?code.additions)
                     (set stats.code_deletions ?code.deletions)
+                    (set stats.comment_additions ?code.comment_additions)
+                    (set stats.comment_deletions ?code.comment_deletions)
                     (set stats.no_tests_additions ?code.no_tests_additions)
                     (set stats.no_tests_deletions ?code.no_tests_deletions))
                   (values stats nil)))))

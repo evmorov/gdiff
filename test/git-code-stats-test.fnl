@@ -4,11 +4,14 @@
 (fn patch [lines]
   (.. (table.concat lines "\n") "\n"))
 
-(fn stats [additions deletions ?no-tests-additions ?no-tests-deletions]
-  {: additions
-   : deletions
-   :no_tests_additions (or ?no-tests-additions additions)
-   :no_tests_deletions (or ?no-tests-deletions deletions)})
+(fn stats [additions deletions ?opts]
+  (let [opts (or ?opts {})]
+    {: additions
+     : deletions
+     :comment_additions (or opts.comment-additions 0)
+     :comment_deletions (or opts.comment-deletions 0)
+     :no_tests_additions (or opts.no-tests-additions additions)
+     :no_tests_deletions (or opts.no-tests-deletions deletions)}))
 
 (fn test-parse-counts-added-and-deleted-code-lines []
   (let [result (code-stats.parse (patch ["diff --git a/src/app.js b/src/app.js"
@@ -40,7 +43,7 @@
                                          "@@ -1,1 +1,2 @@"
                                          "+-- setup"
                                          "+return {}"]))]
-    (faith.= (stats 3 0) result)))
+    (faith.= (stats 3 0 {:comment-additions 5 :comment-deletions 1}) result)))
 
 (fn test-parse-skips-markdown-files-and-blank-lines []
   (let [result (code-stats.parse (patch ["--- a/README.md"
@@ -67,7 +70,7 @@
                                          "@@ -1,1 +1,2 @@"
                                          "+# base image"
                                          "+FROM ruby"]))]
-    (faith.= (stats 2 0) result)))
+    (faith.= (stats 2 0 {:comment-additions 2}) result)))
 
 (fn test-parse-counts-hash-lines-in-unknown-file-types []
   (let [result (code-stats.parse (patch ["--- a/notes.txt"
@@ -84,7 +87,7 @@
                                          "@@ -1,2 +0,0 @@"
                                          "-# comment"
                                          "-print(1)"]))]
-    (faith.= (stats 0 1) result)))
+    (faith.= (stats 0 1 {:comment-deletions 1}) result)))
 
 (fn test-parse-handles-fennel-and-yaml []
   (let [result (code-stats.parse (patch ["--- a/src/main.fnl"
@@ -97,7 +100,7 @@
                                          "@@ -1,1 +1,2 @@"
                                          "+# comment"
                                          "+key: value"]))]
-    (faith.= (stats 2 0) result)))
+    (faith.= (stats 2 0 {:comment-additions 2}) result)))
 
 (fn test-parse-excludes-test-folders-from-no-tests-counts []
   (let [result (code-stats.parse (patch ["--- a/spec/app_spec.rb"
@@ -117,7 +120,7 @@
                                          "+++ b/src/app.rb"
                                          "@@ -1,1 +1,2 @@"
                                          "+puts 1"]))]
-    (faith.= (stats 4 1 1 0) result)))
+    (faith.= (stats 4 1 {:no-tests-additions 1 :no-tests-deletions 0}) result)))
 
 (fn test-test-path-matches-folders-not-file-names []
   (faith.= true (code-stats.test-path? "test/app.rb"))

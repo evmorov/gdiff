@@ -111,10 +111,13 @@
                  &until comment?]
       (starts-with? content prefix))))
 
-(fn counted? [?path line]
+(fn classify [?path line]
   (let [content (trim line)]
-    (and ?path (not (markdown-path? ?path)) (< 0 (length content))
-         (not (comment-line? ?path content)))))
+    (when (and ?path (not (markdown-path? ?path)) (< 0 (length content)))
+      (if (comment-line? ?path content) :comment :code))))
+
+(fn counted? [?path line]
+  (= :code (classify ?path line)))
 
 (fn header-path [line]
   (or (line:match "^%+%+%+ b/(.*)$") (line:match "^%-%-%- a/(.*)$")))
@@ -131,17 +134,23 @@
   (var ?path nil)
   (let [stats {:additions 0
                :deletions 0
+               :comment_additions 0
+               :comment_deletions 0
                :no_tests_additions 0
                :no_tests_deletions 0}]
     (each [line (string.gmatch (or text "") "[^\r\n]+")]
       (let [?header-path (header-path line)]
         (if ?header-path (set ?path ?header-path) (header? line) nil
             (line:match "^%+")
-            (when (counted? ?path (line:sub 2))
-              (record stats ?path :additions :no_tests_additions))
+            (case (classify ?path (line:sub 2))
+              :code (record stats ?path :additions :no_tests_additions)
+              :comment (set stats.comment_additions
+                            (+ stats.comment_additions 1)))
             (line:match "^%-")
-            (when (counted? ?path (line:sub 2))
-              (record stats ?path :deletions :no_tests_deletions)))))
+            (case (classify ?path (line:sub 2))
+              :code (record stats ?path :deletions :no_tests_deletions)
+              :comment (set stats.comment_deletions
+                            (+ stats.comment_deletions 1))))))
     stats))
 
 {: comment-line? : counted? : markdown-path? : parse : test-path?}

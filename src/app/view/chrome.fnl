@@ -30,6 +30,11 @@
                       (.. "code "
                           (delta state stats.code_additions
                                  stats.code_deletions))))
+      (when stats.comment_additions
+        (table.insert items
+                      (.. "comments "
+                          (delta state stats.comment_additions
+                                 stats.comment_deletions))))
       (when stats.no_tests_additions
         (table.insert items
                       (.. "no tests "

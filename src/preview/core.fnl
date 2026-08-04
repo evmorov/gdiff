@@ -56,13 +56,14 @@
         (values (format.warning state (sys.trim output)) nil))))
 
 (fn cache-key [state entry]
-  (preview-key.for-entry state.revision entry state.full_context?))
+  (preview-key.for-entry state.revision entry state.full_context?
+                         state.hide_comments?))
 
 (fn lines [state entry]
   (if (not entry)
       (format.no-selection state)
       (let [full-context? state.full_context?
-            key (preview-key.for-entry state.revision entry full-context?)
+            key (cache-key state entry)
             cached (. state.preview_cache key)]
         (if cached
             cached
@@ -201,15 +202,18 @@
   (and state.preview_warm state.preview_warm.dir))
 
 (fn split-key [state entry]
-  (.. (preview-key.for-entry state.revision entry state.full_context?)
-      "\0split"))
+  (.. (cache-key state entry) "\0split"))
+
+(fn warm-covers? [state]
+  (and (warming? state) (not state.full_context?) (not state.hide_comments?)
+       true))
 
 (fn compute-split-rows [state entry key]
   (let [(output ok) (git.plain-diff-output state.revision entry
                                            state.full_context?)
         rows (if ok
                  (split.parse-rows output state.revision_old_label
-                                   state.revision_new_label)
+                                   state.revision_new_label state.hide_comments?)
                  [])]
     (tset state.split_cache key rows)
     rows))
@@ -220,7 +224,7 @@
       (let [key (split-key state entry)
             cached (. state.split_cache key)]
         (if cached cached
-            (and (warming? state) (not state.full_context?)) []
+            (warm-covers? state) []
             (compute-split-rows state entry key)))))
 
 (fn warm-entry [state entry]
@@ -237,7 +241,8 @@
               {: lines
                :split (if (= entry.kind "M")
                           (split.parse-rows output state.revision_old_label
-                                            state.revision_new_label)
+                                            state.revision_new_label
+                                            state.hide_comments?)
                           [])})
             {:lines (format.warning state (sys.trim output)) :split []}))))
 
@@ -263,11 +268,10 @@
 (fn nonblocking-lines [state entry]
   (if (not entry)
       (format.no-selection state)
-      (let [full-context? state.full_context?
-            key (preview-key.for-entry state.revision entry full-context?)
+      (let [key (cache-key state entry)
             cached (. state.preview_cache key)]
         (if cached cached
-            (and (warming? state) (not full-context?)) (loading-lines state)
+            (warm-covers? state) (loading-lines state)
             (lines state entry)))))
 
 (fn prepare-entry [state entry]

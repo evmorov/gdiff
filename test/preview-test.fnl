@@ -58,6 +58,69 @@
       (faith.is (> (length full) (length normal))
                 "full context should render more lines than the default diff"))))
 
+(local commented-diff (table.concat ["--- a/app.rb"
+                                     "+++ b/app.rb"
+                                     "@@ -1,3 +1,4 @@"
+                                     " # note"
+                                     "-old code"
+                                     "+new code"
+                                     "+# added comment"
+                                     " tail"]
+                                    "\n"))
+
+(fn line-index [lines needle]
+  (accumulate [found nil i l (ipairs lines) &until found]
+    (when (string.find (tui.strip-ansi l) needle 1 true) i)))
+
+(fn test-preview-format-hides-comment-lines-when-enabled []
+  (let [state (doto (state) (tset :hide_comments? true))
+        lines (preview-format.diff-lines state commented-diff)
+        text (t.text lines)]
+    (faith.= nil (string.find text "# note" 1 true))
+    (faith.= nil (string.find text "# added comment" 1 true))
+    (faith.match "old code" text)
+    (faith.match "new code" text)
+    (faith.match "tail" text)))
+
+(fn test-preview-format-keeps-line-numbers-of-surviving-lines []
+  (let [state (doto (state) (tset :hide_comments? true))
+        (lines numbers) (preview-format.diff-lines state commented-diff)]
+    (faith.= 2 (. numbers (line-index lines "old code")))
+    (faith.= 2 (. numbers (line-index lines "new code")))
+    (faith.= 4 (. numbers (line-index lines "tail")))))
+
+(fn test-preview-format-keeps-comments-without-a-known-path []
+  (let [state (doto (state) (tset :hide_comments? true))
+        lines (preview-format.diff-lines state
+                                         "@@ -1,1 +1,1 @@\n-# old\n+# new")]
+    (faith.match "# old" (t.text lines))
+    (faith.match "# new" (t.text lines))))
+
+(fn test-preview-format-keeps-comments-by-default []
+  (let [lines (preview-format.diff-lines (state) commented-diff)]
+    (faith.match "# note" (t.text lines))
+    (faith.match "# added comment" (t.text lines))))
+
+(fn test-hide-comments-uses-separate-key-and-filtered-diff []
+  (t.init-repo)
+  (t.write-file "app.rb" "# note\nbefore\n")
+  (t.commit-all "initial")
+  (t.write-file "app.rb" "# note\nbefore\nafter\n")
+  (let [(entries err) (git.diff-entries "HEAD")
+        entry (. entries 1)
+        state (state)
+        normal (preview.lines state entry)
+        normal-key (preview-key.for-entry "HEAD" entry)]
+    (faith.= nil err)
+    (set state.hide_comments? true)
+    (let [hidden (preview.lines state entry)
+          hidden-key (preview-key.for-entry "HEAD" entry nil true)]
+      (faith.not= normal-key hidden-key)
+      (faith.= normal (. state.preview_cache normal-key))
+      (faith.= hidden (. state.preview_cache hidden-key))
+      (faith.match "# note" (t.text normal))
+      (faith.= nil (string.find (t.text hidden) "# note" 1 true)))))
+
 (fn test-visible-lines-can-be-nonblocking-while-warming []
   (let [entry {:status "M" :kind "M" :path "missing.rb" :reviewed false}
         state {:preview_cache {}
@@ -565,6 +628,11 @@
     (faith.= [[1 2]] (. captured :new))))
 
 {: test-full-context-uses-separate-key-and-wider-diff
+ : test-hide-comments-uses-separate-key-and-filtered-diff
+ : test-preview-format-hides-comment-lines-when-enabled
+ : test-preview-format-keeps-line-numbers-of-surviving-lines
+ : test-preview-format-keeps-comments-without-a-known-path
+ : test-preview-format-keeps-comments-by-default
  : test-visible-lines-can-be-nonblocking-while-warming
  : test-warm-entry-bundles-unified-lines-and-split-rows
  : test-split-rows-is-nonblocking-while-warming

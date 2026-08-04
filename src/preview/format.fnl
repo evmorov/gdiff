@@ -2,6 +2,7 @@
 (local tui (require :tui.core))
 (local word-diff (require :preview.word-diff))
 (local diff-parse (require :preview.diff-parse))
+(local comments (require :preview.comments))
 
 (fn header [state title]
   (let [divider (string.rep symbols.line.horizontal (tui.visible-length title))]
@@ -64,6 +65,10 @@
 (fn diff-lines [state output]
   (let [ws-hunks (diff-parse.whitespace-only-hunks output)
         acc {:out [] :numbers [] :refs [] :old-no 1 :new-no 1 :hunk-no 0}
+        hidden? (fn [text]
+                  (and state.hide_comments?
+                       (comments.hidden-line? (or acc.new-path acc.old-path)
+                                              text)))
         push (fn [line ?number ?ref]
                (table.insert acc.out line)
                (table.insert acc.numbers (or ?number false))
@@ -74,13 +79,18 @@
                                   removed-count (length removed)]
                               (each [i line (ipairs lines)]
                                 (if (<= i removed-count)
-                                    (push line (+ acc.old-no i -1)
-                                          {:side :old :no (+ acc.old-no i -1)})
-                                    (push line
-                                          (+ acc.new-no (- i removed-count) -1)
-                                          {:side :new
-                                           :no (+ acc.new-no
-                                                  (- i removed-count) -1)})))
+                                    (when (not (hidden? (. removed i)))
+                                      (push line (+ acc.old-no i -1)
+                                            {:side :old
+                                             :no (+ acc.old-no i -1)}))
+                                    (when (not (hidden? (. added
+                                                           (- i removed-count))))
+                                      (push line
+                                            (+ acc.new-no (- i removed-count)
+                                               -1)
+                                            {:side :new
+                                             :no (+ acc.new-no
+                                                    (- i removed-count) -1)}))))
                               (set acc.old-no (+ acc.old-no removed-count))
                               (set acc.new-no (+ acc.new-no (length added)))))
                   :hunk (fn [line]
@@ -90,7 +100,9 @@
                             (when old (set acc.old-no old))
                             (when new (set acc.new-no new))))
                   :context (fn [text]
-                             (push text acc.new-no {:side :new :no acc.new-no})
+                             (when (not (hidden? text))
+                               (push text acc.new-no
+                                     {:side :new :no acc.new-no}))
                              (set acc.old-no (+ acc.old-no 1))
                              (set acc.new-no (+ acc.new-no 1)))
                   :meta (fn [line] (push (color-line state line)))

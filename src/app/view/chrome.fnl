@@ -44,9 +44,9 @@
 (fn toggle-label [label on?]
   (.. label " " (if on? "on" "off")))
 
-(fn highlighted-toggle [state label on?]
+(fn highlighted-toggle [state label on? ?role]
   (let [text (toggle-label label on?)]
-    (if on? (tui.color state.theme :status-added text) text)))
+    (if on? (tui.color state.theme (or ?role :status-added) text) text)))
 
 (fn status-widgets [state]
   (table.concat [(highlighted-toggle state :tree (= state.view_mode :tree))
@@ -55,7 +55,10 @@
                  (highlighted-toggle state :blame state.show_blame?)
                  (highlighted-toggle state :split state.split_mode?)
                  (highlighted-toggle state :context state.full_context?)
-                 (highlighted-toggle state :hide state.hide_reviewed?)]
+                 (highlighted-toggle state :hide-reviewed state.hide_reviewed?
+                                     :status-modified)
+                 (highlighted-toggle state :no-comments state.hide_comments?
+                                     :status-modified)]
                 (separator state)))
 
 (fn footer [state]

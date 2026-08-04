@@ -40,6 +40,7 @@
                :show_numbers? false
                :show_blame? false
                :hide_reviewed? false
+               :hide_comments? false
                :full_context? false
                :split_mode? true
                :split_side :old

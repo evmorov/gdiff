@@ -57,6 +57,18 @@
            (extend [:css] ["/*" "*"])
            (extend [:erl :hrl :tex] ["%"])))
 
+(local comment-file-names (extend {}
+                                  [:gemfile
+                                   :rakefile
+                                   :guardfile
+                                   :vagrantfile
+                                   :brewfile
+                                   :procfile
+                                   :dockerfile
+                                   :makefile
+                                   :justfile]
+                                  ["#"]))
+
 (local test-dirs {:test true
                   :tests true
                   :testing true
@@ -77,6 +89,10 @@
   (let [extension (path:match "%.(%w+)$")]
     (and extension (extension:lower))))
 
+(fn file-name [path]
+  (let [name (path:match "([^/]+)$")]
+    (and name (name:lower))))
+
 (fn markdown-path? [path]
   (let [extension (file-extension path)]
     (or (= extension "md") (= extension "markdown"))))
@@ -89,7 +105,8 @@
   (= (text:sub 1 (length prefix)) prefix))
 
 (fn comment-line? [path content]
-  (let [prefixes (. comment-prefixes (file-extension path))]
+  (let [prefixes (or (. comment-prefixes (file-extension path))
+                     (. comment-file-names (file-name path)))]
     (accumulate [comment? false _ prefix (ipairs (or prefixes []))
                  &until comment?]
       (starts-with? content prefix))))

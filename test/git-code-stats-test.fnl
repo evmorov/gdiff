@@ -56,6 +56,19 @@
                                          "-   "]))]
     (faith.= (stats 1 0) result)))
 
+(fn test-parse-skips-comments-in-well-known-extensionless-files []
+  (let [result (code-stats.parse (patch ["--- a/Gemfile"
+                                         "+++ b/Gemfile"
+                                         "@@ -1,1 +1,2 @@"
+                                         "+# gems"
+                                         "+gem \"faith\""
+                                         "--- a/Dockerfile"
+                                         "+++ b/Dockerfile"
+                                         "@@ -1,1 +1,2 @@"
+                                         "+# base image"
+                                         "+FROM ruby"]))]
+    (faith.= (stats 2 0) result)))
+
 (fn test-parse-counts-hash-lines-in-unknown-file-types []
   (let [result (code-stats.parse (patch ["--- a/notes.txt"
                                          "+++ b/notes.txt"
@@ -119,6 +132,7 @@
 
 {: test-parse-counts-added-and-deleted-code-lines
  : test-parse-counts-hash-lines-in-unknown-file-types
+ : test-parse-skips-comments-in-well-known-extensionless-files
  : test-parse-excludes-test-folders-from-no-tests-counts
  : test-parse-handles-empty-input
  : test-parse-handles-fennel-and-yaml

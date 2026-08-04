@@ -38,6 +38,7 @@
                         ["b" "Toggle blame"]
                         ["s" "Toggle side-by-side split"]
                         ["c" "Toggle full context"]
+                        ["C" "Hide comment lines"]
                         ["v" "Select lines in diff (toggle)"]
                         ["x" "Open commit for the line on GitHub"]
                         ["y" "Yank line or selection"]

@@ -471,9 +471,11 @@
     (set state.split_mode? true)
     (set state.full_context? false)
     (set state.hide_reviewed? false)
+    (set state.hide_comments? false)
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "tree on │ wrap on │ num off │ blame off │ split on │ context off │ hide off"
+      (faith.= (.. "tree on │ wrap on │ num off │ blame off │ split on │ "
+                   "context off │ hide-reviewed off │ no-comments off")
                footer-right))))
 
 (fn test-view-reflects-toggled-status-in-footer-right []
@@ -485,9 +487,11 @@
     (set state.split_mode? false)
     (set state.full_context? true)
     (set state.hide_reviewed? true)
+    (set state.hide_comments? true)
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
-      (faith.= "tree off │ wrap off │ num on │ blame on │ split off │ context on │ hide on"
+      (faith.= (.. "tree off │ wrap off │ num on │ blame on │ split off │ "
+                   "context on │ hide-reviewed on │ no-comments on")
                footer-right))))
 
 (fn test-uppercase-h-hides-reviewed-entries-from-list []

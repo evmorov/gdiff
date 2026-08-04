@@ -1,5 +1,6 @@
 (local word-diff (require :preview.word-diff))
 (local diff-parse (require :preview.diff-parse))
+(local comments (require :preview.comments))
 
 (fn ordered-pairs [pairs]
   (let [out []]
@@ -58,16 +59,26 @@
         (table.insert acc.rows 1
                       {:kind :filename :old old-title :new new-title})))))
 
-(fn parse-rows [text ?old-ref ?new-ref]
+(fn parse-rows [text ?old-ref ?new-ref ?hide-comments?]
   (let [ws-hunks (diff-parse.whitespace-only-hunks text)
         acc {:rows [] :old-no 1 :new-no 1 :hunk-no 0}
+        hidden? (fn [row]
+                  (and ?hide-comments?
+                       (let [path (or acc.new-path acc.old-path)]
+                         (and path
+                              (or (= nil row.old)
+                                  (comments.hidden-line? path row.old))
+                              (or (= nil row.new)
+                                  (comments.hidden-line? path row.new))
+                              true))))
         handlers {:change (fn [removed added]
                             (each [_ row (ipairs (change-rows removed added
                                                               acc.old-no
                                                               acc.new-no))]
-                              (when (. ws-hunks acc.hunk-no)
-                                (set row.whitespace-hunk? true))
-                              (table.insert acc.rows row))
+                              (when (not (hidden? row))
+                                (when (. ws-hunks acc.hunk-no)
+                                  (set row.whitespace-hunk? true))
+                                (table.insert acc.rows row)))
                             (set acc.old-no (+ acc.old-no (length removed)))
                             (set acc.new-no (+ acc.new-no (length added))))
                   :hunk (fn [line]
@@ -77,12 +88,13 @@
                             (when old (set acc.old-no old))
                             (when new (set acc.new-no new))))
                   :context (fn [text]
-                             (table.insert acc.rows
-                                           {:kind :context
-                                            :old text
-                                            :new text
-                                            :old-no acc.old-no
-                                            :new-no acc.new-no})
+                             (let [row {:kind :context
+                                        :old text
+                                        :new text
+                                        :old-no acc.old-no
+                                        :new-no acc.new-no}]
+                               (when (not (hidden? row))
+                                 (table.insert acc.rows row)))
                              (set acc.old-no (+ acc.old-no 1))
                              (set acc.new-no (+ acc.new-no 1)))
                   :old-path (fn [path] (set acc.old-path path))

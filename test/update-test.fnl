@@ -228,6 +228,16 @@
     (update.update state {} (update.read-msg state "j"))
     (faith.= true state.full_context?)))
 
+(fn test-shift-c-toggles-hide-comments-globally-across-navigation []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
+    (faith.= false state.hide_comments?)
+    (update.update state {} (update.read-msg state "C"))
+    (faith.= true state.hide_comments?)
+    (update.update state {} (update.read-msg state "j"))
+    (faith.= true state.hide_comments?)
+    (update.update state {} (update.read-msg state "C"))
+    (faith.= false state.hide_comments?)))
+
 (fn test-tab-toggles-focus-between-panes []
   (let [state (state [(entry "M" "a.rb")])]
     (faith.= :left state.focus)
@@ -784,6 +794,7 @@
     (faith.= "File not found: missing.rb" state.notice)))
 
 {: test-f-toggles-full-context-globally-across-navigation
+ : test-shift-c-toggles-hide-comments-globally-across-navigation
  : test-tab-toggles-focus-between-panes
  : test-jk-move-preview-cursor-when-diff-is-focused
  : test-preview-cursor-scrolls-the-diff-into-view

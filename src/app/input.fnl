@@ -31,6 +31,7 @@
     "b" :toggle-blame
     "s" :toggle-split
     "c" :toggle-full-context
+    "C" :toggle-hide-comments
     "`" :toggle-tree
     "e" :toggle-expand
     "E" :expand-all

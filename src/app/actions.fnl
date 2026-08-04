@@ -327,6 +327,14 @@
   (set state.full_context? (not state.full_context?))
   (preview.reset-scroll state))
 
+(fn toggle-hide-comments [state]
+  (let [entry (selection.selected-entry state)
+        anchor (preview-anchor.capture state entry)]
+    (exit-line-selection state)
+    (set state.hide_comments? (not state.hide_comments?))
+    (preview.reset-scroll state)
+    (set state.preview_anchor anchor)))
+
 (fn toggle-tree [state]
   (selection.toggle-mode state)
   (when (search.has-query? state)
@@ -430,6 +438,7 @@
                  : toggle-blame
                  : toggle-split
                  : toggle-full-context
+                 : toggle-hide-comments
                  : toggle-tree
                  : toggle-hide-reviewed
                  : toggle-expand

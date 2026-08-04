@@ -73,6 +73,42 @@
     (faith.= nil (. change-rows 2 :whitespace-hunk?))
     (faith.= nil (. change-rows 3 :whitespace-hunk?))))
 
+(fn test-parse-rows-hides-comment-rows-when-enabled []
+  (let [diff (table.concat ["--- a/app.rb"
+                            "+++ b/app.rb"
+                            "@@ -1,4 +1,4 @@"
+                            " # note"
+                            "-# old comment"
+                            "+# new comment"
+                            " ctx"
+                            "-old code"
+                            "+new code"] "\n")
+        rows (split.parse-rows diff nil nil true)
+        kept (icollect [_ row (ipairs rows)]
+               (when (or (= row.kind :context) (= row.kind :change)) row))]
+    (faith.= [{:kind :context :old "ctx" :new "ctx" :old-no 3 :new-no 3}
+              {:kind :change
+               :old "old code"
+               :new "new code"
+               :old-no 4
+               :new-no 4
+               :emphasize? true
+               :spans (word-diff.spans "old code" "new code")}]
+             kept)))
+
+(fn test-parse-rows-keeps-rows-pairing-comment-with-code []
+  (let [diff (table.concat ["--- a/app.rb"
+                            "+++ b/app.rb"
+                            "@@ -1,1 +1,1 @@"
+                            "-# keep aaa tail"
+                            "+keep aaa tail"] "\n")
+        rows (split.parse-rows diff nil nil true)
+        kept (icollect [_ row (ipairs rows)]
+               (when (= row.kind :change) row))]
+    (faith.= 1 (length kept))
+    (faith.= "# keep aaa tail" (. kept 1 :old))
+    (faith.= "keep aaa tail" (. kept 1 :new))))
+
 (fn test-splittable-detects-real-diffs []
   (faith.is (split.splittable? (split.parse-rows sample))))
 
@@ -92,6 +128,8 @@
  : test-parse-rows-pairs-uneven-runs
  : test-parse-rows-aligns-similar-lines-onto-one-row
  : test-parse-rows-tags-whitespace-only-hunks
+ : test-parse-rows-hides-comment-rows-when-enabled
+ : test-parse-rows-keeps-rows-pairing-comment-with-code
  : test-splittable-detects-real-diffs
  : test-not-splittable-for-binary-or-empty
  : test-not-splittable-for-one-sided-changes}

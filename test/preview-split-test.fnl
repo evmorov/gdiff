@@ -109,6 +109,29 @@
     (faith.= "# keep aaa tail" (. kept 1 :old))
     (faith.= "keep aaa tail" (. kept 1 :new))))
 
+(fn test-parse-rows-tags-comment-sides []
+  (let [diff (table.concat ["--- a/app.rb"
+                            "+++ b/app.rb"
+                            "@@ -1,3 +1,3 @@"
+                            " # note"
+                            "-# old comment"
+                            "-old code"
+                            "+# new comment"
+                            "+new code"] "\n")
+        rows (split.parse-rows diff)
+        content (icollect [_ row (ipairs rows)]
+                  (when (or (= row.kind :context) (= row.kind :change)) row))
+        [note-row comment-row code-row] content]
+    (faith.= true note-row.old-comment?)
+    (faith.= true note-row.new-comment?)
+    (faith.= "# old comment" comment-row.old)
+    (faith.= "# new comment" comment-row.new)
+    (faith.= true comment-row.old-comment?)
+    (faith.= true comment-row.new-comment?)
+    (faith.= "old code" code-row.old)
+    (faith.= nil code-row.old-comment?)
+    (faith.= nil code-row.new-comment?)))
+
 (fn test-splittable-detects-real-diffs []
   (faith.is (split.splittable? (split.parse-rows sample))))
 
@@ -130,6 +153,7 @@
  : test-parse-rows-tags-whitespace-only-hunks
  : test-parse-rows-hides-comment-rows-when-enabled
  : test-parse-rows-keeps-rows-pairing-comment-with-code
+ : test-parse-rows-tags-comment-sides
  : test-splittable-detects-real-diffs
  : test-not-splittable-for-binary-or-empty
  : test-not-splittable-for-one-sided-changes}

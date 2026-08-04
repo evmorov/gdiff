@@ -101,6 +101,30 @@
     (faith.match "# note" (t.text lines))
     (faith.match "# added comment" (t.text lines))))
 
+(fn test-preview-format-dims-changed-comment-lines []
+  (let [state (state)
+        diff (table.concat ["--- a/app.rb"
+                            "+++ b/app.rb"
+                            "@@ -1,3 +1,3 @@"
+                            " ctx"
+                            "-# gone remark old"
+                            "-old code"
+                            "+new code"
+                            "+# fresh note added"]
+                           "\n")
+        lines (preview-format.diff-lines state diff)
+        line (fn [needle] (. lines (line-index lines needle)))]
+    (faith.= (tui.color state.theme :comment-deleted "# gone remark old")
+             (line "# gone remark old"))
+    (faith.= (tui.color state.theme :comment-added "# fresh note added")
+             (line "# fresh note added"))
+    (faith.is (string.find (line "# gone remark old") "\27[38;5;124m" 1 true)
+              "deleted comment should use the darker red")
+    (faith.is (string.find (line "# fresh note added") "\27[38;5;28m" 1 true)
+              "added comment should use the darker green")
+    (faith.is (string.find (line "new code") "\27[32m" 1 true)
+              "added code should keep the plain green style")))
+
 (fn test-hide-comments-uses-separate-key-and-filtered-diff []
   (t.init-repo)
   (t.write-file "app.rb" "# note\nbefore\n")
@@ -633,6 +657,7 @@
  : test-preview-format-keeps-line-numbers-of-surviving-lines
  : test-preview-format-keeps-comments-without-a-known-path
  : test-preview-format-keeps-comments-by-default
+ : test-preview-format-dims-changed-comment-lines
  : test-visible-lines-can-be-nonblocking-while-warming
  : test-warm-entry-bundles-unified-lines-and-split-rows
  : test-split-rows-is-nonblocking-while-warming

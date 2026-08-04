@@ -132,6 +132,45 @@
           text (tui.strip-ansi (. node.lines 1))]
       (faith.match "3 03/03/2020 Old" text))))
 
+(fn test-split-preview-colors-comment-rows-differently []
+  (let [entry {:status "M" :kind "M" :path "a.rb"}
+        rows [{:kind :change
+               :old "# old comment"
+               :new "# new comment"
+               :old-no 1
+               :new-no 1
+               :emphasize? true
+               :old-comment? true
+               :new-comment? true}
+              {:kind :change
+               :old "old code"
+               :new "new code"
+               :old-no 2
+               :new-no 2}]
+        key (.. (preview-key.for-entry "HEAD" entry false) "\0split")
+        state {:revision "HEAD"
+               :split_cache {key rows}
+               :preview_wrap? true
+               :show_numbers? false
+               :split_ratio 0.5
+               :preview_scroll 0
+               :preview_x_scroll 0
+               :full_context? false}]
+    (view.prepare state 5 80 {:entry entry})
+    (let [node (view.body state 5 80)]
+      (faith.is (string.find (. node.lines 1) "\27[38;5;124m" 1 true)
+                "deleted comment side should use the comment color")
+      (faith.is (string.find (. node.lines 1) "\27[38;5;28m" 1 true)
+                "added comment side should use the comment color")
+      (faith.= nil (string.find (. node.lines 1) "\27[31m" 1 true)
+               "comment row should not use the plain red")
+      (faith.= nil (string.find (. node.lines 1) "\27[32m" 1 true)
+               "comment row should not use the plain green")
+      (faith.is (string.find (. node.lines 2) "\27[31m" 1 true)
+                "code row should keep the plain red")
+      (faith.is (string.find (. node.lines 2) "\27[32m" 1 true)
+                "code row should keep the plain green"))))
+
 (fn test-split-preview-marks-blank-line-changes-in-whitespace-hunks []
   (let [entry {:status "M" :kind "M" :path "a.rb"}
         rows [{:kind :change :old "" :old-no 5 :whitespace-hunk? true}
@@ -156,6 +195,7 @@
                "blank line outside a whitespace hunk should stay plain"))))
 
 {: test-wrap-rows-keeps-short-rows-as-a-single-visual-row
+ : test-split-preview-colors-comment-rows-differently
  : test-split-preview-marks-blank-line-changes-in-whitespace-hunks
  : test-wrap-rows-splits-long-side-and-pads-shorter
  : test-wrap-rows-wraps-full-width-rows-across-content

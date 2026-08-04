@@ -87,7 +87,9 @@
   (if (= row.kind :hunk) :muted
       (let [value (. row side)]
         (if (and (= row.kind :change) value)
-            (if (= side :old) :status-deleted :status-added)))))
+            (if (= side :old)
+                (if row.old-comment? :comment-deleted :status-deleted)
+                (if row.new-comment? :comment-added :status-added))))))
 
 (fn highlight-row? [state index]
   (and (= state.focus :right)
@@ -162,7 +164,9 @@
        :old-no (when (= i 1) row.old-no)
        :new-no (when (= i 1) row.new-no)
        :old-blame (when (= i 1) row.old-blame)
-       :new-blame (when (= i 1) row.new-blame)})))
+       :new-blame (when (= i 1) row.new-blame)
+       :old-comment? row.old-comment?
+       :new-comment? row.new-comment?})))
 
 (fn wrap-rows [rows old-w new-w _content]
   (let [display []
@@ -200,7 +204,9 @@
          :old-no row.old-no
          :new-no row.new-no
          :old-blame row.old-blame
-         :new-blame row.new-blame})))
+         :new-blame row.new-blame
+         :old-comment? row.old-comment?
+         :new-comment? row.new-comment?})))
 
 (fn display-row [theme-table row]
   (if (= row.kind :change) (display-change theme-table row)

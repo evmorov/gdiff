@@ -62,19 +62,22 @@
 (fn parse-rows [text ?old-ref ?new-ref ?hide-comments?]
   (let [ws-hunks (diff-parse.whitespace-only-hunks text)
         acc {:rows [] :old-no 1 :new-no 1 :hunk-no 0}
+        comment? (fn [?line]
+                   (comments.comment-line? (or acc.new-path acc.old-path) ?line))
+        tag-comments (fn [row]
+                       (when (comment? row.old)
+                         (set row.old-comment? true))
+                       (when (comment? row.new)
+                         (set row.new-comment? true)))
         hidden? (fn [row]
-                  (and ?hide-comments?
-                       (let [path (or acc.new-path acc.old-path)]
-                         (and path
-                              (or (= nil row.old)
-                                  (comments.hidden-line? path row.old))
-                              (or (= nil row.new)
-                                  (comments.hidden-line? path row.new))
-                              true))))
+                  (and ?hide-comments? (or (= nil row.old) row.old-comment?)
+                       (or (= nil row.new) row.new-comment?)
+                       (or row.old-comment? row.new-comment? false)))
         handlers {:change (fn [removed added]
                             (each [_ row (ipairs (change-rows removed added
                                                               acc.old-no
                                                               acc.new-no))]
+                              (tag-comments row)
                               (when (not (hidden? row))
                                 (when (. ws-hunks acc.hunk-no)
                                   (set row.whitespace-hunk? true))
@@ -93,6 +96,7 @@
                                         :new text
                                         :old-no acc.old-no
                                         :new-no acc.new-no}]
+                               (tag-comments row)
                                (when (not (hidden? row))
                                  (table.insert acc.rows row)))
                              (set acc.old-no (+ acc.old-no 1))

@@ -19,7 +19,7 @@
     "o" :open
     "O" :open-base
     " " :toggle-reviewed
-    "a" :toggle-all-reviewed
+    "A" :toggle-all-reviewed
     "\4" :preview-down
     "\21" :preview-up
     "/" :search

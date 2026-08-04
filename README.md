@@ -54,7 +54,7 @@ Keys:
 - `p`: open the linked PR in a browser, if one exists
 - `[` / `]`: move the split left or right
 - `space`: mark selected file as reviewed, or unmark it, without moving
-- `a`: mark all files as reviewed, or unmark them all
+- `A`: mark all files as reviewed, or unmark them all
 - `enter` / `o`: open selected file
 - `q`: quit
 

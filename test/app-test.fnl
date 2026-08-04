@@ -71,14 +71,14 @@
     (faith.= nil err)
     (state entries)))
 
-(fn test-lowercase-a-toggles-all-reviewed-and-uppercase-a-does-nothing []
+(fn test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing []
   (let [state (state [(entry "M" "a.rb") (entry "A" "b.rb")])]
-    (faith.is (app.handle-key state {} "a"))
+    (faith.is (app.handle-key state {} "A"))
     (faith.= 1 state.selected)
     (faith.= {"a.rb" true "b.rb" true} (reviews.paths state.entries))
-    (faith.is (app.handle-key state {} "A"))
-    (faith.= {"a.rb" true "b.rb" true} (reviews.paths state.entries))
     (faith.is (app.handle-key state {} "a"))
+    (faith.= {"a.rb" true "b.rb" true} (reviews.paths state.entries))
+    (faith.is (app.handle-key state {} "A"))
     (faith.= {} (reviews.paths state.entries))))
 
 (fn test-search-next-is-relative-to-current-cursor []
@@ -911,7 +911,7 @@
       (faith.= :change row.kind)
       (faith.= 9 row.old-no))))
 
-{: test-lowercase-a-toggles-all-reviewed-and-uppercase-a-does-nothing
+{: test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing
  : test-search-next-is-relative-to-current-cursor
  : test-split-toggle-keeps-cursor-on-same-diff-line
  : test-split-toggle-keeps-top-line-anchored

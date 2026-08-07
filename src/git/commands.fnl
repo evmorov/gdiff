@@ -105,8 +105,14 @@
 (fn commit-url-command [sha]
   (.. "gh browse --no-browser " (sys.shell-quote sha) " 2>/dev/null"))
 
+(fn files-entry-target [revision entry]
+  (if (or entry.old_file entry.new_file)
+      (.. "--no-index -- " (sys.shell-quote (or entry.old_file "/dev/null"))
+          " " (sys.shell-quote (or entry.new_file "/dev/null")))
+      (no-index-target revision)))
+
 (fn diff-target [revision entry]
-  (if (files? revision) (no-index-target revision)
+  (if (files? revision) (files-entry-target revision entry)
       (and (working? revision) (untracked? entry))
       (.. "--no-index -- /dev/null " (sys.shell-quote entry.path))
       (.. (diff-ref revision) " -- " (sys.shell-quote entry.path))))

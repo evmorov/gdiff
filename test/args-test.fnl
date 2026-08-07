@@ -1,6 +1,7 @@
 (local args (require :app.args))
 (local commands (require :git.commands))
 (local faith (require :faith))
+(local t (require :test-helper))
 
 (fn test-parses-working-keyword []
   (let [(_options revision err) (args.parse ["working"])]
@@ -40,6 +41,14 @@
                                             exists?)]
     (faith.= nil err)
     (faith.= (commands.files-revision "../old copy.txt" "new.txt") revision)))
+
+(fn test-parses-two-existing-folders-as-file-comparison []
+  (t.reset-workdir)
+  (t.mkdir "old dir")
+  (t.mkdir "new dir")
+  (let [(_options revision err) (args.parse ["old dir" "new dir"])]
+    (faith.= nil err)
+    (faith.= (commands.files-revision "old dir" "new dir") revision)))
 
 (fn test-keeps-revision-range-when-only-one-arg-is-a-file []
   (let [exists? #(= $ "main")
@@ -105,6 +114,7 @@
  : test-no-revision-defers-to-default-revision-lookup
  : test-parses-pr-url
  : test-parses-two-existing-files-as-file-comparison
+ : test-parses-two-existing-folders-as-file-comparison
  : test-parses-pr-url-with-trailing-path
  : test-parses-two-revisions-as-triple-dot-range
  : test-rejects-extra-revision

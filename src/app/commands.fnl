@@ -48,10 +48,11 @@
 (defcommand open-editor
   [config entry]
   [dispatch get-state]
-  (let [exists? (sys.file-exists? entry.path)]
+  (let [path (or entry.new_file entry.path)
+        exists? (sys.file-exists? path)]
     (when exists?
-      (editor.run config entry (. (get-state) :stty-state)))
-    (dispatch (messages.open-target-finished :file entry.path exists?))))
+      (editor.run config {: path} (. (get-state) :stty-state)))
+    (dispatch (messages.open-target-finished :file path exists?))))
 
 (defcommand open-base-editor
   [config target]

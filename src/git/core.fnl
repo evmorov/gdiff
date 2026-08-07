@@ -151,9 +151,7 @@ for three-dot ranges, the revision itself otherwise."
 
 (fn files-entries [revision output]
   (let [(left right) (commands.files-paths revision)]
-    (if (= 0 (length (sys.trim output)))
-        []
-        [(parse.entry "M" right (when (not= left right) left))])))
+    (parse.parse-no-index output left right (sys.dir-exists? right))))
 
 (fn diff-entries [revision]
   (run-result (commands.diff-command revision)

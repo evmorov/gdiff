@@ -53,6 +53,25 @@
              (commands.plain-preview-command revision
                                              {:path "b/new.txt" :status "M"}))))
 
+(fn test-folder-comparison-previews-diff-one-file-per-entry []
+  (let [revision (commands.files-revision "old dir" "new")]
+    (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- 'old dir/sub/mod.txt' 'new/sub/mod.txt' 2>&1 || true"
+             (commands.plain-preview-command revision
+                                             {:path "sub/mod.txt"
+                                              :status "M"
+                                              :old_file "old dir/sub/mod.txt"
+                                              :new_file "new/sub/mod.txt"}))
+    (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- '/dev/null' 'new/added.txt' 2>&1 || true"
+             (commands.plain-preview-command revision
+                                             {:path "added.txt"
+                                              :status "A"
+                                              :new_file "new/added.txt"}))
+    (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- 'old dir/removed.txt' '/dev/null' 2>&1 || true"
+             (commands.plain-preview-command revision
+                                             {:path "removed.txt"
+                                              :status "D"
+                                              :old_file "old dir/removed.txt"}))))
+
 (fn test-file-comparison-revision-round-trips-paths []
   (let [revision (commands.files-revision "a 1.txt" "b/new.txt")
         (left right) (commands.files-paths revision)]
@@ -112,6 +131,7 @@
 {: test-basic-git-adapter-commands-are-centralized
  : test-blame-command-quotes-ref-and-path
  : test-file-comparison-commands-diff-with-no-index
+ : test-folder-comparison-previews-diff-one-file-per-entry
  : test-file-comparison-revision-round-trips-paths
  : test-blame-command-limits-to-line-ranges
  : test-commit-url-command-asks-gh-for-commit-page

@@ -51,6 +51,43 @@
       (table.insert entries untracked))
     entries))
 
+(fn strip-dir-prefix [path dir]
+  (let [prefix (.. (dir:gsub "/+$" "") "/")]
+    (when (= prefix (path:sub 1 (length prefix)))
+      (path:sub (+ (length prefix) 1)))))
+
+(fn join-path [dir rel]
+  (.. (dir:gsub "/+$" "") "/" rel))
+
+(fn no-index-dir-entry [status path left right right-dir?]
+  (case status
+    "A" (let [rel (strip-dir-prefix path right)]
+          (when rel
+            (doto (entry "A" rel)
+              (tset :new_file path))))
+    "D" (let [rel (strip-dir-prefix path left)]
+          (when rel
+            (doto (entry "D" rel)
+              (tset :old_file path))))
+    "M" (let [rel (strip-dir-prefix path left)]
+          (when rel
+            (doto (entry "M" rel)
+              (tset :old_file path)
+              (tset :new_file (if right-dir? (join-path right rel) right)))))))
+
+(fn no-index-entry [status path left right right-dir?]
+  (if (or (= path left) (= path right))
+      (doto (entry "M" right (when (not= left right) left))
+        (tset :old_file left)
+        (tset :new_file right))
+      (no-index-dir-entry status path left right right-dir?)))
+
+(fn parse-no-index [text left right right-dir?]
+  (icollect [line (string.gmatch (or text "") "[^\r\n]+")]
+    (let [(status path) (line:match "^([AMD])\t(.*)$")]
+      (when status
+        (no-index-entry status path left right right-dir?)))))
+
 (fn insert-unique [items value]
   (when (and value (< 0 (length value)))
     (var found? false)
@@ -96,6 +133,7 @@
 {: entry
  : entry-from-name-status-line
  : parse-name-status
+ : parse-no-index
  : parse-numstat
  : parse-path-set
  : parse-untracked

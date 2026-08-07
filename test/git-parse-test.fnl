@@ -26,6 +26,54 @@
             :reviewed false
             :status "R"} (first-entry "C057\told.fnl\tnew.fnl\n")))
 
+(fn test-no-index-parses-folder-comparison-lines []
+  (let [text "A\t./new/added.txt\nM\told/sub/mod.txt\nD\told/removed.txt\n"
+        entries (parse.parse-no-index text "old/" "./new" true)]
+    (faith.= {:kind "A"
+              :new_file "./new/added.txt"
+              :path "added.txt"
+              :reviewed false
+              :status "A"} (. entries 1))
+    (faith.= {:kind "M"
+              :new_file "./new/sub/mod.txt"
+              :old_file "old/sub/mod.txt"
+              :path "sub/mod.txt"
+              :reviewed false
+              :status "M"} (. entries 2))
+    (faith.= {:kind "D"
+              :old_file "old/removed.txt"
+              :path "removed.txt"
+              :reviewed false
+              :status "D"} (. entries 3))))
+
+(fn test-no-index-keeps-single-file-comparison-entry []
+  (faith.= {:kind "M"
+            :new_file "new.txt"
+            :old_file "old.txt"
+            :old_path "old.txt"
+            :path "new.txt"
+            :reviewed false
+            :status "M"} (. (parse.parse-no-index "M\told.txt\n"
+                                                             "old.txt" "new.txt"
+                                                             false)
+                                       1)))
+
+(fn test-no-index-folder-to-file-diffs-against-the-file []
+  (faith.= {:kind "M"
+            :new_file "elsewhere/mod.txt"
+            :old_file "old/mod.txt"
+            :path "mod.txt"
+            :reviewed false
+            :status "M"} (. (parse.parse-no-index "M\told/mod.txt\n"
+                                                             "old"
+                                                             "elsewhere/mod.txt"
+                                                             false)
+                                       1)))
+
+(fn test-no-index-ignores-lines-that-are-not-name-status []
+  (faith.= [] (parse.parse-no-index "error: Could not access 'x'\n" "a" "b"
+                                    true)))
+
 (fn test-numstat-collects-totals-and-file-stats []
   (let [stats (parse.parse-numstat "2\t1\tsrc/app.fnl\n-\t-\timage.png\n")]
     (faith.= 2 stats.additions)
@@ -76,6 +124,10 @@
 {: test-name-status-parses-renames-as-renames
  : test-name-status-parses-simple-entry
  : test-name-status-treats-copies-as-rename-entries
+ : test-no-index-folder-to-file-diffs-against-the-file
+ : test-no-index-ignores-lines-that-are-not-name-status
+ : test-no-index-keeps-single-file-comparison-entry
+ : test-no-index-parses-folder-comparison-lines
  : test-numstat-collects-totals-and-file-stats
  : test-numstat-indexes-braced-rename-target
  : test-working-marks-entries-absent-from-staged-set-as-unstaged

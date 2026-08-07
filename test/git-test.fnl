@@ -139,6 +139,62 @@
     (faith.= nil err)
     (faith.= [] entries)))
 
+(fn setup-plain-folders []
+  (t.reset-workdir)
+  (t.mkdir "old/sub")
+  (t.mkdir "new/sub")
+  (t.write-file "old/same.txt" "same\n")
+  (t.write-file "new/same.txt" "same\n")
+  (t.write-file "old/mod.txt" "a\nb\n")
+  (t.write-file "new/mod.txt" "a\nc\n")
+  (t.write-file "old/removed.txt" "gone\n")
+  (t.write-file "new/added.txt" "fresh\n")
+  (t.write-file "old/sub/inner.txt" "1\n")
+  (t.write-file "new/sub/inner.txt" "2\n"))
+
+(fn test-diff-entries-for-folder-comparison-lists-changed-files []
+  (setup-plain-folders)
+  (let [(entries err) (git.diff-entries (git.files-revision "old" "new"))]
+    (faith.= nil err)
+    (faith.= {"added.txt" {:kind "A" :reviewed false :status "A"}
+              "mod.txt" {:kind "M" :reviewed false :status "M"}
+              "removed.txt" {:kind "D" :reviewed false :status "D"}
+              "sub/inner.txt" {:kind "M" :reviewed false :status "M"}}
+             (entries-by-path entries))))
+
+(fn test-diff-entries-for-identical-folders-are-empty []
+  (t.reset-workdir)
+  (t.mkdir "old")
+  (t.mkdir "new")
+  (t.write-file "old/same.txt" "same\n")
+  (t.write-file "new/same.txt" "same\n")
+  (let [(entries err) (git.diff-entries (git.files-revision "old" "new"))]
+    (faith.= nil err)
+    (faith.= [] entries)))
+
+(fn folder-entry [revision path]
+  (let [(entries _err) (git.diff-entries revision)]
+    (accumulate [found nil _ entry (ipairs entries) &until found]
+      (when (= path entry.path) entry))))
+
+(fn test-plain-diff-output-for-folder-entry-shows-only-that-file []
+  (setup-plain-folders)
+  (let [revision (git.files-revision "old" "new")
+        entry (folder-entry revision "mod.txt")
+        (output ok) (git.plain-diff-output revision entry)]
+    (faith.is ok)
+    (faith.match "%-b" output)
+    (faith.match "%+c" output)
+    (faith.= nil (output:match "inner"))))
+
+(fn test-plain-diff-output-for-added-folder-entry-diffs-from-dev-null []
+  (setup-plain-folders)
+  (let [revision (git.files-revision "old" "new")
+        entry (folder-entry revision "added.txt")
+        (output ok) (git.plain-diff-output revision entry)]
+    (faith.is ok)
+    (faith.match "%+fresh" output)))
+
 (fn test-diff-stats-for-file-comparison-index-by-new-path []
   (setup-plain-files)
   (let [(stats err) (git.diff-stats (git.files-revision "old.txt" "new.txt"))]
@@ -479,9 +535,13 @@
  : test-comparison-revision-passes-file-comparison-through
  : test-comparison-sides-for-file-comparison-are-the-paths
  : test-diff-entries-for-file-comparison-synthesizes-entry
+ : test-diff-entries-for-folder-comparison-lists-changed-files
  : test-diff-entries-for-identical-files-are-empty
+ : test-diff-entries-for-identical-folders-are-empty
  : test-diff-stats-for-file-comparison-index-by-new-path
+ : test-plain-diff-output-for-added-folder-entry-diffs-from-dev-null
  : test-plain-diff-output-for-file-comparison-shows-changes
+ : test-plain-diff-output-for-folder-entry-shows-only-that-file
  : test-diff-entries-reports-working-tree-changes
  : test-diff-entries-with-working-marks-unstaged-changes
  : test-diff-entries-with-working-shows-modified-unstaged-file

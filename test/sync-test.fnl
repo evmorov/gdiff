@@ -1,4 +1,5 @@
 (local faith (require :faith))
+(local git-commands (require :git.commands))
 (local sync (require :git.sync))
 (local sys (require :platform.core))
 (local t (require :test-helper))
@@ -21,6 +22,13 @@
   (faith.= ["main" "current"] (sync.targets-for-revision "main..." "current"))
   (faith.= ["feature"]
            (sync.targets-for-revision "feature...feature" "current")))
+
+(fn test-file-comparison-has-no-sync-targets []
+  (let [revision (git-commands.files-revision "old.txt" "new.txt")]
+    (faith.= [] (sync.targets-for-revision revision "current"))
+    (let [state (sync.new-state revision)]
+      (faith.= nil (sync.start state #(faith.is false "should not spawn")))
+      (faith.= false state.running?))))
 
 (fn test-target-status-command-is-quoted-and-structured []
   (let [command (sync.target-status-command "feature branch")]
@@ -126,6 +134,7 @@
  : test-combines-revision-side-warnings
  : test-fetch-command-is-quiet-and-noninteractive
  : test-fetch-failure-has-sync-notice-not-warning
+ : test-file-comparison-has-no-sync-targets
  : test-keeps-old-current-branch-status-parser
  : test-no-upstream-has-sync-notice-not-warning
  : test-range-revision-checks-both-sides

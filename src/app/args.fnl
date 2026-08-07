@@ -1,9 +1,11 @@
 (local commands (require :git.commands))
+(local sys (require :platform.core))
 
 (fn usage []
   (io.stderr:write "Usage: gdiff [--editor <command>] [left [right]]\n")
   (io.stderr:write "Without a revision, gdiff tries main first, then master.\n")
   (io.stderr:write "Use two revisions to compare them with ...\n")
+  (io.stderr:write "Use two existing file paths to compare those files.\n")
   (io.stderr:write "Use 'working' or 'w' to review working changes.\n")
   (io.stderr:write "Use a GitHub PR URL to review that PR; gdiff fetches it when needed.\n")
   (io.stderr:write "Example: gdiff --editor nvim main HEAD\n"))
@@ -43,6 +45,14 @@
   (accumulate [found nil _ arg (ipairs positionals) &until found]
     (pr-from-arg arg)))
 
+(fn files-from-positionals [positionals ?file-exists?]
+  (let [file-exists? (or ?file-exists? sys.file-exists?)]
+    (when (= 2 (length positionals))
+      (let [left (. positionals 1)
+            right (. positionals 2)]
+        (when (and (file-exists? left) (file-exists? right))
+          (commands.files-revision left right))))))
+
 (fn revision-from-positionals [positionals]
   (case (length positionals)
     0 (values nil nil)
@@ -59,7 +69,7 @@
             (values (.. left "..." right) nil)))
     _ (values nil (.. "Unexpected extra argument: " (. positionals 3)))))
 
-(fn parse [argv]
+(fn parse [argv ?file-exists?]
   (let [options {}
         positionals []]
     (fn add-positional [arg]
@@ -92,13 +102,20 @@
               (set i (+ i 1))))))
     (if parse-error
         (values options nil parse-error)
-        (let [?pr (pr-from-positionals positionals)]
+        (let [?pr (pr-from-positionals positionals)
+              ?files (files-from-positionals positionals ?file-exists?)]
           (if (and ?pr (= 1 (length positionals)))
               (values options nil nil ?pr)
               ?pr
               (values options nil
                       "A PR URL cannot be combined with other revisions")
+              ?files
+              (values options ?files nil)
               (let [(revision err) (revision-from-positionals positionals)]
                 (values options revision err)))))))
 
-{: parse : pr-from-arg : revision-from-positionals : usage}
+{: files-from-positionals
+ : parse
+ : pr-from-arg
+ : revision-from-positionals
+ : usage}

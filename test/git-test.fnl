@@ -110,6 +110,53 @@
   (faith.= git.working-revision
            (git.comparison-revision git.working-revision "current")))
 
+(fn test-comparison-revision-passes-file-comparison-through []
+  (let [revision (git.files-revision "old.txt" "new.txt")]
+    (faith.= revision (git.comparison-revision revision "current"))))
+
+(fn test-comparison-sides-for-file-comparison-are-the-paths []
+  (let [(old new) (git.comparison-sides (git.files-revision "old.txt" "new.txt"))]
+    (faith.= "old.txt" old)
+    (faith.= "new.txt" new)))
+
+(fn setup-plain-files []
+  (t.reset-workdir)
+  (t.write-file "old.txt" "a\nb\n")
+  (t.write-file "new.txt" "a\nc\n"))
+
+(fn test-diff-entries-for-file-comparison-synthesizes-entry []
+  (setup-plain-files)
+  (let [(entries err) (git.diff-entries (git.files-revision "old.txt" "new.txt"))]
+    (faith.= nil err)
+    (faith.= [{:kind "M" :old_path "old.txt" :reviewed false :status "M"}]
+             [(. (entries-by-path entries) "new.txt")])))
+
+(fn test-diff-entries-for-identical-files-are-empty []
+  (t.reset-workdir)
+  (t.write-file "old.txt" "same\n")
+  (t.write-file "new.txt" "same\n")
+  (let [(entries err) (git.diff-entries (git.files-revision "old.txt" "new.txt"))]
+    (faith.= nil err)
+    (faith.= [] entries)))
+
+(fn test-diff-stats-for-file-comparison-index-by-new-path []
+  (setup-plain-files)
+  (let [(stats err) (git.diff-stats (git.files-revision "old.txt" "new.txt"))]
+    (faith.= nil err)
+    (faith.= 1 stats.additions)
+    (faith.= 1 stats.deletions)
+    (faith.= {:additions 1 :deletions 1} (. stats.files "new.txt"))))
+
+(fn test-plain-diff-output-for-file-comparison-shows-changes []
+  (setup-plain-files)
+  (let [entry {:path "new.txt" :old_path "old.txt" :status "M"}
+        (output ok) (git.plain-diff-output (git.files-revision "old.txt"
+                                                               "new.txt")
+                                           entry)]
+    (faith.is ok)
+    (faith.match "%-b" output)
+    (faith.match "%+c" output)))
+
 (fn test-diff-base-ref-uses-merge-base-for-three-dot-ranges []
   (t.init-repo)
   (t.write-file "a.txt" "base\n")
@@ -429,6 +476,12 @@
  : test-comparison-revision-expands-single-revision
  : test-comparison-revision-keeps-explicit-range
  : test-comparison-revision-passes-working-through
+ : test-comparison-revision-passes-file-comparison-through
+ : test-comparison-sides-for-file-comparison-are-the-paths
+ : test-diff-entries-for-file-comparison-synthesizes-entry
+ : test-diff-entries-for-identical-files-are-empty
+ : test-diff-stats-for-file-comparison-index-by-new-path
+ : test-plain-diff-output-for-file-comparison-shows-changes
  : test-diff-entries-reports-working-tree-changes
  : test-diff-entries-with-working-marks-unstaged-changes
  : test-diff-entries-with-working-shows-modified-unstaged-file

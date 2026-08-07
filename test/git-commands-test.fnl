@@ -43,6 +43,24 @@
                                             :status "?"
                                             :untracked? true})))
 
+(fn test-file-comparison-commands-diff-with-no-index []
+  (let [revision (commands.files-revision "a 1.txt" "b/new.txt")]
+    (faith.= "git diff --name-status --no-index -- 'a 1.txt' 'b/new.txt' 2>&1 || true"
+             (commands.diff-command revision))
+    (faith.= "git diff --numstat --no-index -- 'a 1.txt' 'b/new.txt' 2>&1 || true"
+             (commands.diff-stats-command revision))
+    (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- 'a 1.txt' 'b/new.txt' 2>&1 || true"
+             (commands.plain-preview-command revision
+                                             {:path "b/new.txt" :status "M"}))))
+
+(fn test-file-comparison-revision-round-trips-paths []
+  (let [revision (commands.files-revision "a 1.txt" "b/new.txt")
+        (left right) (commands.files-paths revision)]
+    (faith.is (commands.files? revision))
+    (faith.is (not (commands.files? "main...feature")))
+    (faith.= "a 1.txt" left)
+    (faith.= "b/new.txt" right)))
+
 (fn test-show-file-command-quotes-ref-and-path []
   (faith.= "git show 'main:src/a b.rb' 2>/dev/null"
            (commands.show-file-command "main" "src/a b.rb")))
@@ -93,6 +111,8 @@
 
 {: test-basic-git-adapter-commands-are-centralized
  : test-blame-command-quotes-ref-and-path
+ : test-file-comparison-commands-diff-with-no-index
+ : test-file-comparison-revision-round-trips-paths
  : test-blame-command-limits-to-line-ranges
  : test-commit-url-command-asks-gh-for-commit-page
  : test-base-temp-path-sanitizes-ref-and-keeps-path

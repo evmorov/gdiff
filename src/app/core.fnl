@@ -40,7 +40,9 @@
         config (merge-options (config-store.load) options)
         (entries err) (git.diff-entries revision)]
     (if err (exit-with-error err) (= (length entries) 0)
-        (print "No changed files.")
+        (print (if (git.files? revision)
+                   "Files are identical."
+                   "No changed files."))
         (let [review-store (reviews.load-store)
               scope (reviews.scope (git.repo-root) revision)
               (diff-stats _stats-err) (git.diff-stats revision)

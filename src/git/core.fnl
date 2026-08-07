@@ -33,7 +33,9 @@
   (or (read-trimmed (commands.current-branch-command)) "HEAD"))
 
 (fn comparison-sides [revision ?current-branch]
-  (if (commands.working? revision)
+  (if (commands.files? revision)
+      (commands.files-paths revision)
+      (commands.working? revision)
       (values "HEAD" "working tree")
       (let [current (or ?current-branch (current-branch))
             (left right) (revision:match "^(.-)%.%.%.(.*)$")]
@@ -43,7 +45,7 @@
             (values revision current)))))
 
 (fn comparison-revision [revision ?current-branch]
-  (if (commands.working? revision) revision
+  (if (or (commands.working? revision) (commands.files? revision)) revision
       (let [(left right) (comparison-sides revision ?current-branch)]
         (.. left "..." right))))
 
@@ -72,7 +74,8 @@
 (fn diff-base-ref [revision]
   "The ref whose file contents the old side of the diff shows: the merge base
 for three-dot ranges, the revision itself otherwise."
-  (if (commands.working? revision) "HEAD"
+  (if (commands.working? revision) "HEAD" (commands.files? revision)
+      (pick-values 1 (commands.files-paths revision))
       (let [(left right) (comparison-sides revision)]
         (if (revision:match "%.%.%.")
             (or (merge-base left right) left)
@@ -146,10 +149,18 @@ for three-dot ranges, the revision itself otherwise."
                        (read-output (commands.staged-paths-command))
                        (read-output (commands.untracked-command))))
 
+(fn files-entries [revision output]
+  (let [(left right) (commands.files-paths revision)]
+    (if (= 0 (length (sys.trim output)))
+        []
+        [(parse.entry "M" right (when (not= left right) left))])))
+
 (fn diff-entries [revision]
   (run-result (commands.diff-command revision)
               (fn [output]
-                (if (commands.working? revision)
+                (if (commands.files? revision)
+                    (values (files-entries revision output) nil)
+                    (commands.working? revision)
                     (values (working-entries output) nil)
                     (values (parse.parse-name-status output) nil)))))
 
@@ -179,7 +190,9 @@ for three-dot ranges, the revision itself otherwise."
   (revision:match "^(.-)%.%.%.(.*)$"))
 
 (fn comparison-ref-targets [revision]
-  (if (commands.working? revision)
+  (if (commands.files? revision)
+      (values nil nil)
+      (commands.working? revision)
       (values "HEAD" nil)
       (let [(left right) (split-revision revision)]
         (if left
@@ -260,5 +273,8 @@ for three-dot ranges, the revision itself otherwise."
  : resolve-pr-revision
  :working-revision commands.working-revision
  :working? commands.working?
+ :files-revision commands.files-revision
+ :files-paths commands.files-paths
+ :files? commands.files?
  : plain-diff-output
  : repo-root}

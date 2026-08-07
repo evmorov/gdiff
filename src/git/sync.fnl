@@ -13,19 +13,21 @@
     (table.insert targets target)))
 
 (fn targets-for-revision [revision ?current-branch]
-  (let [current-branch (or ?current-branch (git.current-branch))
-        targets []
-        seen {}]
-    (fn add-side [side]
-      (add-target targets seen (if (> (length side) 0) side current-branch)))
+  (if (git.files? revision)
+      []
+      (let [current-branch (or ?current-branch (git.current-branch))
+            targets []
+            seen {}]
+        (fn add-side [side]
+          (add-target targets seen (if (> (length side) 0) side current-branch)))
 
-    (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
-      (if left
-          (do
-            (add-side left)
-            (add-side right))
-          (add-target targets seen current-branch)))
-    targets))
+        (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
+          (if left
+              (do
+                (add-side left)
+                (add-side right))
+              (add-target targets seen current-branch)))
+        targets)))
 
 (fn spawn-branch-status [path targets]
   (sys.remove-file path)
@@ -40,7 +42,7 @@
    :targets (targets-for-revision (or ?revision "HEAD"))})
 
 (fn start [state ?spawn]
-  (when (not state.running?)
+  (when (and (not state.running?) (< 0 (length state.targets)))
     (let [spawn (or ?spawn spawn-branch-status)]
       (set state.running? true)
       (spawn state.path state.targets)

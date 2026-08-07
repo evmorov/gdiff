@@ -34,6 +34,19 @@
     (faith.= nil err)
     (faith.= "main...feature" revision)))
 
+(fn test-parses-two-existing-files-as-file-comparison []
+  (let [exists? #(or (= $ "../old copy.txt") (= $ "new.txt"))
+        (_options revision err) (args.parse ["../old copy.txt" "new.txt"]
+                                            exists?)]
+    (faith.= nil err)
+    (faith.= (commands.files-revision "../old copy.txt" "new.txt") revision)))
+
+(fn test-keeps-revision-range-when-only-one-arg-is-a-file []
+  (let [exists? #(= $ "main")
+        (_options revision err) (args.parse ["main" "feature"] exists?)]
+    (faith.= nil err)
+    (faith.= "main...feature" revision)))
+
 (fn test-parses-explicit-triple-dot-range []
   (let [(_options revision err) (args.parse ["main...HEAD"])]
     (faith.= nil err)
@@ -88,8 +101,10 @@
  : test-parses-working-shorthand
  : test-parses-explicit-triple-dot-range
  : test-parses-inline-editor
+ : test-keeps-revision-range-when-only-one-arg-is-a-file
  : test-no-revision-defers-to-default-revision-lookup
  : test-parses-pr-url
+ : test-parses-two-existing-files-as-file-comparison
  : test-parses-pr-url-with-trailing-path
  : test-parses-two-revisions-as-triple-dot-range
  : test-rejects-extra-revision

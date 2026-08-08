@@ -6,6 +6,8 @@
 (local preview-warm (require :preview.warm))
 (local search (require :app.pane-search))
 (local app-state (require :app.state))
+(local git (require :git.core))
+(local pr-refresh (require :git.pr-refresh))
 (local sync (require :git.sync))
 
 (fn update-remote-sync [state]
@@ -71,7 +73,8 @@
   commands.none)
 
 (fn handle-refresh-loaded [state _config msg]
-  (actions.apply-refresh state msg.entries msg.reviewed msg.diff_stats))
+  (actions.apply-refresh state msg.entries msg.reviewed msg.diff_stats
+                         msg.revision))
 
 (local message-handlers
        {:copy-path-finished handle-copy-path-finished
@@ -106,6 +109,20 @@
 (fn run-command [state config command]
   (command-runner.run state config update command))
 
+(fn update-pr-refresh [state config]
+  (let [running? state.pr_refresh.running?]
+    (pr-refresh.update state.pr_refresh)
+    (when (and running? (not state.pr_refresh.running?))
+      (set state.force_next_draw? true)
+      (let [(revision err) (if state.pr_refresh.info
+                               (git.pr-revision-from-fetched-info state.pr_refresh.info)
+                               (values nil state.pr_refresh.error))]
+        (if revision
+            (do
+              (set state.notice (notice.pr-refreshed))
+              (run-command state config (commands.refresh revision)))
+            (set state.notice (notice.pr-refresh-failed err)))))))
+
 (fn init [revision
           entries
           review-store
@@ -119,6 +136,7 @@
 (fn handle-key [state config raw-key]
   (set state.force_next_draw? false)
   (update-remote-sync state)
+  (update-pr-refresh state config)
   (when (= raw-key :tick)
     ;; Drop the cached terminal size so a resize is picked up at idle cadence.
     (set state.term_rows nil)

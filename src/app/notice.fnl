@@ -64,12 +64,24 @@
 (fn remote-in-sync []
   "Remote in sync")
 
+(fn refreshing-pr []
+  "Refreshing PR...")
+
+(fn pr-refreshed []
+  "PR refreshed")
+
+(fn pr-refresh-failed [?error]
+  (or ?error "Could not refresh PR"))
+
 {: copy-finished
  : open-base-finished
  : open-commit-finished
  : open-pr-finished
  : open-target-action
  : open-target-finished
+ : pr-refresh-failed
+ : pr-refreshed
+ : refreshing-pr
  : remote-in-sync
  : review-persist-failed
  : reviewed-all

@@ -33,6 +33,7 @@
             :preview-warm-plan-test
             :preview-viewport-test
             :preview-workers-test
+            :pr-refresh-test
             :reviews-test
             :sync-test
             :tree-test

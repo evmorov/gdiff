@@ -144,6 +144,20 @@ for three-dot ranges, the revision itself otherwise."
         (values nil err)
         (pr-revision-from-info pr info))))
 
+(fn pr-fetched-head-ref [info]
+  (let [remote (.. "origin/" info.head-branch)]
+    (if (= info.head-oid (resolve-commit remote)) remote
+        (resolve-commit info.head-oid) info.head-oid)))
+
+(fn pr-revision-from-fetched-info [info]
+  "Resolve a PR revision from refs that were already fetched, without network."
+  (let [base (.. "origin/" info.base-branch)
+        head (pr-fetched-head-ref info)]
+    (if (not head) (values nil "Could not resolve PR head")
+        (not (resolve-commit base))
+        (values nil (.. "Could not resolve " info.base-branch))
+        (values (.. base "..." head) nil))))
+
 (fn read-output [cmd]
   (let [(output ok) (sys.read-command cmd)]
     (if ok output "")))
@@ -272,6 +286,7 @@ for three-dot ranges, the revision itself otherwise."
  : local-branch?
  : materialize-base
  : parse-pr-info
+ : pr-revision-from-fetched-info
  : pr-revision-from-info
  : resolve-pr-revision
  :working-revision commands.working-revision

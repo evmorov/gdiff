@@ -512,6 +512,22 @@
       (faith.= "origin/trunk...origin/feature" revision)
       (faith.= (sys.trim new-tip) (sys.trim local-tip)))))
 
+(fn test-pr-revision-from-fetched-info-avoids-network []
+  (let [head-oid (setup-pr-origin)
+        info {:base-branch "trunk" :head-branch "feature" :head-oid head-oid}]
+    (t.sh "git fetch origin")
+    (let [(revision err) (git.pr-revision-from-fetched-info info)]
+      (faith.= nil err)
+      (faith.= "origin/trunk...origin/feature" revision))))
+
+(fn test-pr-revision-from-fetched-info-fails-without-refs []
+  (t.init-repo)
+  (let [(revision err) (git.pr-revision-from-fetched-info {:base-branch "trunk"
+                                                           :head-branch "feature"
+                                                           :head-oid "abc123"})]
+    (faith.= nil revision)
+    (faith.is err)))
+
 {: test-blame-parser-builds-compact-date-author-labels
  : test-blame-parser-crops-long-first-names-to-eight-symbols
  : test-blame-ranges-merges-sorted-contiguous-lines
@@ -553,6 +569,8 @@
  : test-linked-pr-url-command-quotes-branch
  : test-parse-pr-info-reads-gh-output-lines
  : test-pr-revision-fetches-pull-head-for-deleted-branch
+ : test-pr-revision-from-fetched-info-avoids-network
+ : test-pr-revision-from-fetched-info-fails-without-refs
  : test-pr-revision-ignores-local-branches
  : test-pr-revision-refreshes-stale-origin-base
  : test-pr-revision-uses-origin-head-branch-when-it-matches}

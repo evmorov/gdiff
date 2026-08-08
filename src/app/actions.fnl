@@ -1,5 +1,6 @@
 (local commands (require :app.commands))
 (local action-plan (require :app.action-plan))
+(local git (require :git.core))
 (local notice (require :app.notice))
 (local preview (require :preview.core))
 (local preview-anchor (require :preview.anchor))
@@ -53,7 +54,16 @@
       (preview.cache-split state entry)))
   state)
 
-(fn apply-refresh [state entries reviewed diff-stats]
+(fn apply-revision [state ?revision]
+  (when (and ?revision (not= ?revision state.revision))
+    (let [(old-ref new-ref) (git.comparison-sides ?revision)]
+      (set state.revision ?revision)
+      (set state.revision_old_label old-ref)
+      (set state.revision_new_label new-ref)
+      (set state.review_scope (reviews.scope state.repo_root ?revision)))))
+
+(fn apply-refresh [state entries reviewed diff-stats ?revision]
+  (apply-revision state ?revision)
   (let [diff-focused? (= state.focus :right)
         prev-cursor state.preview_cursor
         prev-scroll state.preview_scroll]
@@ -416,7 +426,10 @@
   (when (< 0 (length state.sync.targets))
     (set state.show_sync_notice? true)
     (set state.notice (notice.syncing-remote)))
-  (commands.batch (commands.sync-start) (commands.refresh)))
+  (when state.pr_refresh.pr
+    (set state.notice (notice.refreshing-pr)))
+  (commands.batch (commands.sync-start) (commands.pr-refresh-start)
+                  (commands.refresh)))
 
 (local handlers {:up #(navigate $1 -1)
                  :down #(navigate $1 1)

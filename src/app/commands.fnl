@@ -4,6 +4,7 @@
 (local editor (require :platform.editor))
 (local git (require :git.core))
 (local messages (require :app.messages))
+(local pr-refresh (require :git.pr-refresh))
 (local preview-warm (require :preview.warm))
 (local reviews (require :storage.reviews))
 (local sync (require :git.sync))
@@ -44,6 +45,12 @@
   [_dispatch get-state]
   (let [state (get-state)]
     (sync.start state.sync)))
+
+(defcommand pr-refresh-start
+  []
+  [_dispatch get-state]
+  (let [state (get-state)]
+    (pr-refresh.start state.pr_refresh)))
 
 (defcommand open-editor
   [config entry]
@@ -125,16 +132,17 @@
         (dispatch (messages.open-commit-finished nil (or url-err err) false)))))
 
 (defcommand refresh
-  []
+  [?revision]
   [dispatch get-state]
   (let [state (get-state)
+        revision (or ?revision state.revision)
         reviewed (reviews.paths state.entries)
-        (entries err) (git.diff-entries state.revision)
+        (entries err) (git.diff-entries revision)
         (diff-stats _stats-err) (if (not err)
-                                    (git.diff-stats state.revision)
+                                    (git.diff-stats revision)
                                     (values nil nil))]
     (when (not err)
-      (dispatch (messages.refresh-loaded entries reviewed diff-stats)))))
+      (dispatch (messages.refresh-loaded entries reviewed diff-stats revision)))))
 
 {: batch
  : copy-path
@@ -146,6 +154,7 @@
  : open-line-commit
  : open-linked-pr
  : persist-reviewed
+ : pr-refresh-start
  : refresh
  : sync-start
  : warm-preview-cache

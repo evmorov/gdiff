@@ -1,4 +1,6 @@
+(local args (require :app.args))
 (local git (require :git.core))
+(local pr-refresh (require :git.pr-refresh))
 (local preview-warm (require :preview.warm))
 (local search (require :app.search))
 (local selection (require :app.selection))
@@ -65,6 +67,8 @@
                :search (search.new-state)
                :preview_search (search.new-state)
                :sync (sync.new-state revision)
+               :pr_refresh (pr-refresh.new-state (and ?pr-url
+                                                      (args.pr-from-arg ?pr-url)))
                :show_sync_notice? false
                :show_help? false
                :skip_next_draw? false

@@ -4,6 +4,7 @@
 (local git (require :git.core))
 (local preview-key (require :preview.key))
 (local reviews (require :storage.reviews))
+(local sys (require :platform.core))
 (local update (require :app.update))
 
 (fn entry [status path]
@@ -63,6 +64,47 @@
     (faith.= :function (type command))
     (faith.= "Syncing remote..." state.notice)
     (faith.= true state.show_sync_notice?)))
+
+(fn test-r-in-pr-mode-shows-refreshing-pr-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.sync.targets [])
+    (set state.pr_refresh.pr {:url "https://github.com/o/r/pull/7" :number "7"})
+    (let [(_ command) (update.update state {} (update.read-msg state "r"))]
+      (faith.= :function (type command))
+      (faith.= "Refreshing PR..." state.notice))))
+
+(fn test-pr-refresh-error-sets-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.pr_refresh.pr {:url "https://github.com/o/r/pull/7" :number "7"})
+    (set state.pr_refresh.running? true)
+    (faith.is (sys.write-file state.pr_refresh.path
+                              "error\tCould not read PR info\n"))
+    (update.handle-key state {} "j")
+    (faith.= false state.pr_refresh.running?)
+    (faith.= "Could not read PR info" state.notice)))
+
+(fn test-refresh-loaded-applies-new-pr-revision []
+  (let [state (state [(entry "M" "a.rb")])
+        scope state.review_scope]
+    (update.update state {}
+                   {:type :refresh-loaded
+                    :entries [(entry "M" "a.rb")]
+                    :reviewed {}
+                    :revision "origin/main...origin/feature"})
+    (faith.= "origin/main...origin/feature" state.revision)
+    (faith.= "origin/main" state.revision_old_label)
+    (faith.= "origin/feature" state.revision_new_label)
+    (faith.not= scope state.review_scope)))
+
+(fn test-refresh-loaded-with-same-revision-keeps-review-scope []
+  (let [state (state [(entry "M" "a.rb")])
+        scope state.review_scope]
+    (update.update state {}
+                   {:type :refresh-loaded
+                    :entries [(entry "M" "a.rb")]
+                    :reviewed {}
+                    :revision state.revision})
+    (faith.= scope state.review_scope)))
 
 (fn test-refresh-without-sync-targets-skips-sync-notice []
   (let [state (state [(entry "M" "a.rb")])]
@@ -820,6 +862,10 @@
  : test-refresh-resets-preview-cursor-when-files-focused
  : test-refresh-keeps-preview-scroll-when-files-focused
  : test-refresh-clears-stale-preview-cache
+ : test-r-in-pr-mode-shows-refreshing-pr-notice
+ : test-pr-refresh-error-sets-notice
+ : test-refresh-loaded-applies-new-pr-revision
+ : test-refresh-loaded-with-same-revision-keeps-review-scope
  : test-refresh-without-sync-targets-skips-sync-notice
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-shift-y-copies-the-full-path-in-the-left-pane

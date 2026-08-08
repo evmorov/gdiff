@@ -43,8 +43,11 @@
 (fn open-base-finished [ref path ok? ?error]
   (build :open-base-finished {: ref : path : ok? :error ?error}))
 
-(fn refresh-loaded [entries reviewed diff-stats]
-  (build :refresh-loaded {: entries : reviewed :diff_stats diff-stats}))
+(fn refresh-loaded [entries reviewed diff-stats ?revision]
+  (build :refresh-loaded {: entries
+                          : reviewed
+                          :diff_stats diff-stats
+                          :revision ?revision}))
 
 {: action
  : build

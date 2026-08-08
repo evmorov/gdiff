@@ -115,9 +115,9 @@
            (commands.commit-url-command "abc123")))
 
 (fn test-base-temp-path-sanitizes-ref-and-keeps-path []
-  (faith.= "/tmp/gdiff-base/origin_main/src/a.rb"
+  (faith.= "/tmp/gdiff/origin_main/src/a.rb"
            (commands.base-temp-path "/tmp" "origin/main" "src/a.rb"))
-  (faith.= "/tmp/gdiff-base/HEAD/a.rb"
+  (faith.= "/tmp/gdiff/HEAD/a.rb"
            (commands.base-temp-path "/tmp" "HEAD" "a.rb")))
 
 (fn test-untracked-command-lists-others []

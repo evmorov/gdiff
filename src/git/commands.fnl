@@ -61,7 +61,7 @@
 
 (fn base-temp-path [root ref path]
   (let [safe-ref (string.gsub ref "[/:]" "_")]
-    (.. root "/gdiff-base/" safe-ref "/" path)))
+    (.. root "/gdiff/" safe-ref "/" path)))
 
 (fn diff-command [revision]
   (if (files? revision)

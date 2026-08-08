@@ -100,6 +100,16 @@
     (faith.= nil pr)
     (faith.= "https://github.com/acme/widgets/pull/17080abc" revision)))
 
+(fn test-parses-help-flag []
+  (let [(options _revision err) (args.parse ["--help"])]
+    (faith.= nil err)
+    (faith.= true options.help?)))
+
+(fn test-parses-help-shorthand []
+  (let [(options _revision err) (args.parse ["-h"])]
+    (faith.= nil err)
+    (faith.= true options.help?)))
+
 (fn test-requires-editor-value []
   (let [(_options revision err) (args.parse ["--editor"])]
     (faith.= nil revision)
@@ -112,6 +122,8 @@
  : test-parses-inline-editor
  : test-keeps-revision-range-when-only-one-arg-is-a-file
  : test-no-revision-defers-to-default-revision-lookup
+ : test-parses-help-flag
+ : test-parses-help-shorthand
  : test-parses-pr-url
  : test-parses-two-existing-files-as-file-comparison
  : test-parses-two-existing-folders-as-file-comparison

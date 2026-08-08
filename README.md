@@ -43,20 +43,8 @@ bin/gdiff --editor nvim main HEAD
 bin/gdiff -e "idea --wait" main HEAD
 ```
 
-Keys:
-
-- `j` / down arrow: next file
-- `k` / up arrow: previous file
-- `gg`: jump to first file
-- `G`: jump to last file
-- `r`: refresh changed files without losing reviewed marks
-- `y`: copy selected file path
-- `p`: open the linked PR in a browser, if one exists
-- `[` / `]`: move the split left or right
-- `space`: mark selected file as reviewed, or unmark it, without moving
-- `A`: mark all files as reviewed, or unmark them all
-- `enter` / `o`: open selected file
-- `q`: quit
+Press `?` inside gdiff for keyboard shortcuts. Run `bin/gdiff --help` for CLI
+usage.
 
 Config lives at:
 

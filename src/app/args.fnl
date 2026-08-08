@@ -1,14 +1,27 @@
 (local commands (require :git.commands))
 (local sys (require :platform.core))
 
-(fn usage []
-  (io.stderr:write "Usage: gdiff [--editor <command>] [left [right]]\n")
-  (io.stderr:write "Without a revision, gdiff tries main first, then master.\n")
-  (io.stderr:write "Use two revisions to compare them with ...\n")
-  (io.stderr:write "Use two existing paths (files or folders) to compare them.\n")
-  (io.stderr:write "Use 'working' or 'w' to review working changes.\n")
-  (io.stderr:write "Use a GitHub PR URL to review that PR; gdiff fetches it when needed.\n")
-  (io.stderr:write "Example: gdiff --editor nvim main HEAD\n"))
+(local usage-text "Usage: gdiff [options] [left [right]]
+
+Options:
+  -e, --editor <command>                Use this editor for this run.
+  -h, --help                            Show this help and exit.
+
+Examples:
+  gdiff                                 Diff against main, or master.
+  gdiff main HEAD                       Compare two revisions (main...HEAD).
+  gdiff w                               Review working changes (also: working).
+  gdiff old.txt new.txt                 Compare two files.
+  gdiff old-dir new-dir                 Compare two folders.
+  gdiff https://github.com/o/r/pull/1   Review a PR; fetches it when needed.
+  gdiff -e nvim main                    Open files in nvim.
+
+Press ? inside gdiff for keyboard shortcuts.
+")
+
+(fn usage [?out]
+  (let [out (or ?out io.stderr)]
+    (out:write usage-text)))
 
 (fn next-arg [argv i option]
   (let [value (. argv (+ i 1))]
@@ -86,6 +99,10 @@
         (if editor
             (do
               (set options.editor editor)
+              (set i (+ i 1)))
+            (or (= arg "--help") (= arg "-h"))
+            (do
+              (set options.help? true)
               (set i (+ i 1)))
             (or (= arg "--editor") (= arg "-e"))
             (let [(value next-i err) (next-arg argv i arg)]

@@ -59,11 +59,13 @@
 
 (fn main [argv src-dir]
   (let [(options revision err pr) (args.parse argv)]
-    (if err (do
+    (if options.help? (args.usage io.stdout)
+        err (do
               (io.stderr:write err "\n")
               (args.usage)
-              (os.exit 1)) pr (run-pr pr options src-dir) revision
-        (run revision options src-dir)
+              (os.exit 1))
+        pr (run-pr pr options src-dir)
+        revision (run revision options src-dir)
         (let [(revision err) (git.default-revision)]
           (if err
               (do

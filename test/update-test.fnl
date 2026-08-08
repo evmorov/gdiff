@@ -64,6 +64,14 @@
     (faith.= "Syncing remote..." state.notice)
     (faith.= true state.show_sync_notice?)))
 
+(fn test-refresh-without-sync-targets-skips-sync-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.sync.targets [])
+    (let [(_ command) (update.update state {} (update.read-msg state "r"))]
+      (faith.= :function (type command))
+      (faith.= nil state.notice)
+      (faith.= false state.show_sync_notice?))))
+
 (fn refresh-loaded-msg [entries]
   {:type :refresh-loaded : entries :reviewed {}})
 
@@ -812,6 +820,7 @@
  : test-refresh-resets-preview-cursor-when-files-focused
  : test-refresh-keeps-preview-scroll-when-files-focused
  : test-refresh-clears-stale-preview-cache
+ : test-refresh-without-sync-targets-skips-sync-notice
  : test-lowercase-r-refreshes-files-and-starts-sync
  : test-shift-y-copies-the-full-path-in-the-left-pane
  : test-shift-y-yanks-the-selection-with-path-and-fences

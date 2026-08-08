@@ -32,6 +32,10 @@
 (fn current-branch []
   (or (read-trimmed (commands.current-branch-command)) "HEAD"))
 
+(fn local-branch? [branch]
+  (let [(ok _kind _code) (os.execute (commands.local-branch-command branch))]
+    ok))
+
 (fn comparison-sides [revision ?current-branch]
   (if (commands.files? revision)
       (commands.files-paths revision)
@@ -265,6 +269,7 @@ for three-dot ranges, the revision itself otherwise."
  : diff-stats-command
  : linked-pr-url
  : linked-pr-url-command
+ : local-branch?
  : materialize-base
  : parse-pr-info
  : pr-revision-from-info

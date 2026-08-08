@@ -413,8 +413,9 @@
   (set state.show_help? (not state.show_help?)))
 
 (fn refresh-and-sync [state]
-  (set state.show_sync_notice? true)
-  (set state.notice (notice.syncing-remote))
+  (when (< 0 (length state.sync.targets))
+    (set state.show_sync_notice? true)
+    (set state.notice (notice.syncing-remote)))
   (commands.batch (commands.sync-start) (commands.refresh)))
 
 (local handlers {:up #(navigate $1 -1)

@@ -11,17 +11,42 @@
     (sync.update state)
     state))
 
+(fn any-branch [_]
+  true)
+
 (fn test-single-revision-checks-current-branch []
-  (faith.= ["feature"] (sync.targets-for-revision "main" "feature")))
+  (faith.= ["feature"] (sync.targets-for-revision "main" "feature" any-branch)))
 
 (fn test-range-revision-checks-both-sides []
   (faith.= ["main" "feature"]
-           (sync.targets-for-revision "main...feature" "current"))
+           (sync.targets-for-revision "main...feature" "current" any-branch))
   (faith.= ["current" "feature"]
-           (sync.targets-for-revision "...feature" "current"))
-  (faith.= ["main" "current"] (sync.targets-for-revision "main..." "current"))
+           (sync.targets-for-revision "...feature" "current" any-branch))
+  (faith.= ["main" "current"]
+           (sync.targets-for-revision "main..." "current" any-branch))
   (faith.= ["feature"]
-           (sync.targets-for-revision "feature...feature" "current")))
+           (sync.targets-for-revision "feature...feature" "current" any-branch)))
+
+(fn test-only-local-branches-become-sync-targets []
+  (faith.= []
+           (sync.targets-for-revision "origin/main...origin/feature" "current"
+                                      #(= $ "current")))
+  (faith.= ["current"]
+           (sync.targets-for-revision "origin/main..." "current"
+                                      #(= $ "current")))
+  (faith.= ["main"]
+           (sync.targets-for-revision "main...abc1234" "current" #(= $ "main"))))
+
+(fn test-head-side-is-kept-for-script-resolution []
+  (faith.= ["main" "HEAD"]
+           (sync.targets-for-revision "main...HEAD" "current" #(= $ "main"))))
+
+(fn test-pr-style-remote-comparison-does-not-start-sync []
+  (t.reset-workdir)
+  (let [state (sync.new-state "origin/main...origin/feature")]
+    (faith.= [] state.targets)
+    (faith.= nil (sync.start state #(faith.is false "should not spawn")))
+    (faith.= false state.running?)))
 
 (fn test-file-comparison-has-no-sync-targets []
   (let [revision (git-commands.files-revision "old.txt" "new.txt")]
@@ -135,8 +160,11 @@
  : test-fetch-command-is-quiet-and-noninteractive
  : test-fetch-failure-has-sync-notice-not-warning
  : test-file-comparison-has-no-sync-targets
+ : test-head-side-is-kept-for-script-resolution
  : test-keeps-old-current-branch-status-parser
  : test-no-upstream-has-sync-notice-not-warning
+ : test-only-local-branches-become-sync-targets
+ : test-pr-style-remote-comparison-does-not-start-sync
  : test-range-revision-checks-both-sides
  : test-single-revision-checks-current-branch
  : test-start-launches-remote-sync-explicitly

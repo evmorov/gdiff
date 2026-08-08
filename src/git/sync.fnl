@@ -12,21 +12,27 @@
     (tset seen target true)
     (table.insert targets target)))
 
-(fn targets-for-revision [revision ?current-branch]
+(fn sync-target? [target local-branch?]
+  (or (= target "HEAD") (local-branch? target)))
+
+(fn targets-for-revision [revision ?current-branch ?local-branch?]
   (if (git.files? revision)
       []
       (let [current-branch (or ?current-branch (git.current-branch))
+            local-branch? (or ?local-branch? git.local-branch?)
             targets []
             seen {}]
         (fn add-side [side]
-          (add-target targets seen (if (> (length side) 0) side current-branch)))
+          (let [target (if (> (length side) 0) side current-branch)]
+            (when (sync-target? target local-branch?)
+              (add-target targets seen target))))
 
         (let [(left right) (revision:match "^(.-)%.%.%.(.*)$")]
           (if left
               (do
                 (add-side left)
                 (add-side right))
-              (add-target targets seen current-branch)))
+              (add-side "")))
         targets)))
 
 (fn spawn-branch-status [path targets]

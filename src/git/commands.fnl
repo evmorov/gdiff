@@ -40,6 +40,10 @@
 (fn current-branch-command []
   "git branch --show-current 2>/dev/null")
 
+(fn local-branch-command [branch]
+  (.. "git show-ref --verify --quiet "
+      (sys.shell-quote (.. "refs/heads/" branch)) " >/dev/null 2>&1"))
+
 (fn repo-root-command []
   "git rev-parse --show-toplevel 2>/dev/null")
 
@@ -145,6 +149,7 @@
  : files-revision
  : files?
  : linked-pr-url-command
+ : local-branch-command
  : merge-base-command
  : plain-preview-command
  : pr-info-command

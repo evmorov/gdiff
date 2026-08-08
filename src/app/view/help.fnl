@@ -21,6 +21,7 @@
                {:title "Files"
                 :items [["enter / o" "Open file or folder"]
                         ["O" "Open base (e.g. main) version"]
+                        ["0" "Open local (on disk) version"]
                         ["y" "Copy relative path"]
                         ["Y" "Copy full path"]
                         ["space" "Toggle reviewed"]

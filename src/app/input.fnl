@@ -18,6 +18,7 @@
     "l" :preview-right
     "o" :open
     "O" :open-base
+    "0" :open-local
     " " :toggle-reviewed
     "A" :toggle-all-reviewed
     "\4" :preview-down

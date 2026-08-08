@@ -254,6 +254,20 @@
     (faith.= [] opened)
     (faith.= "File not found: lib/workers/destroy.rb" state.notice)))
 
+(fn test-zero-opens-local-file-even-when-pr-is-linked []
+  (t.reset-workdir)
+  (t.write-file "api.rb" "api\n")
+  (let [state (flat-state [(entry "M" "api.rb")])
+        opened []
+        old-run editor.run]
+    (set state.pr_url "https://github.com/acme/widgets/pull/1")
+    (set editor.run (fn [_config entry _stty-state]
+                      (table.insert opened entry.path)
+                      true))
+    (faith.is (app.handle-key state {} "0"))
+    (set editor.run old-run)
+    (faith.= ["api.rb"] opened)))
+
 (fn test-tree-search-matches-folders []
   (let [state (state [(entry "A" "script/shorthand_branch.sh")
                       (entry "M"
@@ -929,6 +943,7 @@
  : test-open-on-deleted-file-shows-not-found
  : test-open-on-deleted-tree-folder-shows-not-found
  : test-open-on-tree-folder-opens-folder
+ : test-zero-opens-local-file-even-when-pr-is-linked
  : test-space-on-tree-folder-toggles-descendant-files
  : test-view-styles-reviewed-checkbox-brackets-as-muted
  : test-tree-mode-navigation-moves-between-folders-and-files

@@ -85,20 +85,23 @@
         (preview.restore-scroll state prev-scroll))
     (commands.batch (commands.warm-preview-cache) (commands.persist-reviewed))))
 
-(fn open-selected [state config]
-  (let [target (action-plan.selected-target state.view_mode
-                                            (selection.selected-tree-row state)
-                                            (selection.selected-entry state))
-        plan (action-plan.open-plan target state.pr_url)]
+(fn current-target [state]
+  (action-plan.selected-target state.view_mode
+                               (selection.selected-tree-row state)
+                               (selection.selected-entry state)))
+
+(fn open-target [state config pr?]
+  (let [plan (action-plan.open-plan (current-target state) pr?)]
     (case (and plan plan.action)
       :folder (commands.open-folder plan.path)
       :head-snapshot (commands.open-head-editor config plan.path)
       :editor (commands.open-editor config plan.entry))))
 
-(fn current-target [state]
-  (action-plan.selected-target state.view_mode
-                               (selection.selected-tree-row state)
-                               (selection.selected-entry state)))
+(fn open-selected [state config]
+  (open-target state config state.pr_url))
+
+(fn open-local-selected [state config]
+  (open-target state config nil))
 
 (fn open-base-selected [state config]
   (let [target (current-target state)]
@@ -437,6 +440,7 @@
                  :focus-back toggle-focus-back
                  :open open-selected
                  :open-base open-base-selected
+                 :open-local open-local-selected
                  : toggle-reviewed
                  : toggle-all-reviewed
                  :preview-down scroll-preview-page-down

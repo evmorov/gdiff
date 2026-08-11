@@ -34,6 +34,7 @@
                 :items [["← / h" "Scroll preview left"]
                         ["→ / l" "Scroll preview right"]
                         ["C-d / C-u" "Page preview down / up"]
+                        ["C-e / C-y" "Scroll preview down / up"]
                         ["w" "Toggle wrap"]
                         ["1" "Toggle line numbers"]
                         ["b" "Toggle blame"]

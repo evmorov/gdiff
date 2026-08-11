@@ -895,6 +895,20 @@
     (set state.split_mode? false)
     state))
 
+(fn test-ctrl-e-and-ctrl-y-scroll-preview-one-line []
+  (let [state (anchored-preview-state)]
+    (app.view state 10 100)
+    (app.handle-key state {} "\5")
+    (faith.= 1 state.preview_scroll)
+    (app.handle-key state {} "\5")
+    (faith.= 2 state.preview_scroll)
+    (app.handle-key state {} "\25")
+    (faith.= 1 state.preview_scroll)
+    (app.handle-key state {} "\25")
+    (faith.= 0 state.preview_scroll)
+    (app.handle-key state {} "\25")
+    (faith.= 0 state.preview_scroll)))
+
 (fn test-split-toggle-keeps-top-line-anchored []
   (let [state (anchored-preview-state)]
     (app.view state 10 100)
@@ -925,10 +939,57 @@
       (faith.= :change row.kind)
       (faith.= 9 row.old-no))))
 
+(fn context-toggle-state []
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        header ["a.rb"
+                "────"
+                "diff --git a/a.rb b/a.rb"
+                "index 111..222"
+                "--- a/a.rb"
+                "+++ b/a.rb"
+                "@@ -5,9 +5,9 @@"]
+        seed (fn [key from]
+               (let [lines []
+                     refs []]
+                 (each [_ line (ipairs header)]
+                   (table.insert lines line)
+                   (table.insert refs false))
+                 (for [no from 12]
+                   (table.insert lines (.. "c" no))
+                   (table.insert refs {:side :new :no no}))
+                 (table.insert lines "-o13")
+                 (table.insert refs {:side :old :no 13})
+                 (table.insert lines "+n13")
+                 (table.insert refs {:side :new :no 13})
+                 (tset state.preview_cache key lines)
+                 (tset state.preview_numbers_cache key false)
+                 (tset state.preview_line_refs_cache key refs)))]
+    (seed (preview-key.for-entry "HEAD" selected) 5)
+    (seed (preview-key.for-entry "HEAD" selected true) 1)
+    state))
+
+(fn test-context-toggle-keeps-top-line-anchored []
+  (let [state (context-toggle-state)]
+    (app.view state 10 100)
+    ;; Limited-context top line 9 is context c6 (new line 6).
+    (set state.preview_scroll 8)
+    (app.handle-key state {} "c")
+    (faith.= true state.full_context?)
+    (app.view state 10 100)
+    ;; Full-context line 13 is c6, kept at the top of the viewport.
+    (faith.= 12 state.preview_scroll)
+    (app.handle-key state {} "c")
+    (faith.= false state.full_context?)
+    (app.view state 10 100)
+    (faith.= 8 state.preview_scroll)))
+
 {: test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing
+ : test-ctrl-e-and-ctrl-y-scroll-preview-one-line
  : test-search-next-is-relative-to-current-cursor
  : test-split-toggle-keeps-cursor-on-same-diff-line
  : test-split-toggle-keeps-top-line-anchored
+ : test-context-toggle-keeps-top-line-anchored
  : test-backtick-preserves-selected-file-with-search
  : test-backtick-toggles-tree-mode-without-clearing-search
  : test-fetch-failure-shows-sync-notice-not-success

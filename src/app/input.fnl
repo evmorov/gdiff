@@ -23,6 +23,8 @@
     "A" :toggle-all-reviewed
     "\4" :preview-down
     "\21" :preview-up
+    "\5" :preview-line-down
+    "\25" :preview-line-up
     "/" :search
     "n" :search-next
     "N" :search-previous

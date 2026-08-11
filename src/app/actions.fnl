@@ -318,6 +318,12 @@
   (scroll-preview state (selection.selected-entry state)
                   (- (preview.page-step state))))
 
+(fn scroll-preview-line-down [state]
+  (scroll-preview state (selection.selected-entry state) 1))
+
+(fn scroll-preview-line-up [state]
+  (scroll-preview state (selection.selected-entry state) -1))
+
 (fn toggle-wrap [state]
   (exit-line-selection state)
   (set-fields state [:preview_wrap? (not state.preview_wrap?)]
@@ -336,9 +342,12 @@
               [:preview_x_scroll 0] [:preview_x_max_scroll 0]))
 
 (fn toggle-full-context [state]
-  (exit-line-selection state)
-  (set state.full_context? (not state.full_context?))
-  (preview.reset-scroll state))
+  (let [entry (selection.selected-entry state)
+        anchor (preview-anchor.capture state entry)]
+    (exit-line-selection state)
+    (set state.full_context? (not state.full_context?))
+    (preview.reset-scroll state)
+    (set state.preview_anchor anchor)))
 
 (fn toggle-hide-comments [state]
   (let [entry (selection.selected-entry state)
@@ -445,6 +454,8 @@
                  : toggle-all-reviewed
                  :preview-down scroll-preview-page-down
                  :preview-up scroll-preview-page-up
+                 :preview-line-down scroll-preview-line-down
+                 :preview-line-up scroll-preview-line-up
                  :preview-left #(scroll-horizontal $1 -8)
                  :preview-right #(scroll-horizontal $1 8)
                  :search pane-search.start

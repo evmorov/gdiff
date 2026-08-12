@@ -110,16 +110,16 @@
              (t.text (folder.render-lines state row record)))))
 
 (fn test-render-lines-shows-unstaged-leaf-but-real-folder-kind []
-  (let [state (state [(unstaged-entry "M" "src/tardis.rb")])
+  (let [state (state [(unstaged-entry "M" "src/acme.rb")])
         row {:path "src"}
         record {:ok? true
                 :output (table.concat ["total 0"
-                                       "-rw-r--r--  1 u  g  1 Jan  1 00:00 tardis.rb"
+                                       "-rw-r--r--  1 u  g  1 Jan  1 00:00 acme.rb"
                                        "-rw-r--r--  1 u  g  1 Jan  1 00:00 other.rb"]
                                       "\n")}]
     (faith.= (table.concat ["[M] src/"
                             "────────"
-                            "[?] tardis.rb"
+                            "[?] acme.rb"
                             "    other.rb"] "\n")
              (t.text (folder.render-lines state row record)))))
 

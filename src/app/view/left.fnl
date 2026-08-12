@@ -44,6 +44,12 @@
 (fn file-label [descriptor]
   (or descriptor.name (entry-view.path-text descriptor.entry)))
 
+(fn move-note-text [state entry]
+  (let [note (entry-view.move-note entry)]
+    (if (= note "")
+        ""
+        (tui.color state.theme :status-renamed note))))
+
 (fn file-row-text [state descriptor selected?]
   (if descriptor.unchanged
       (.. (row-prefix state selected? descriptor.depth)
@@ -51,7 +57,8 @@
       (let [entry descriptor.entry]
         (.. (row-prefix state selected? descriptor.depth)
             (reviewed-text state entry) " " (status-text state entry) " "
-            (search.highlight state (file-label descriptor))))))
+            (search.highlight state (file-label descriptor))
+            (move-note-text state entry)))))
 
 (fn folder-row-text [state descriptor selected?]
   (.. (row-prefix state selected? descriptor.depth)

@@ -1,6 +1,7 @@
 (local commands (require :git.commands))
 (local blame (require :git.blame))
 (local code-stats (require :git.code-stats))
+(local moves (require :git.moves))
 (local parse (require :git.parse))
 (local sys (require :platform.core))
 
@@ -171,14 +172,78 @@ for three-dot ranges, the revision itself otherwise."
   (let [(left right) (commands.files-paths revision)]
     (parse.parse-no-index output left right (sys.dir-exists? right))))
 
+(fn split-revision [revision]
+  (revision:match "^(.-)%.%.%.(.*)$"))
+
+(fn comparison-ref-targets [revision]
+  (if (commands.files? revision)
+      (values nil nil)
+      (commands.working? revision)
+      (values "HEAD" nil)
+      (let [(left right) (split-revision revision)]
+        (if left
+            (values (diff-base-ref revision)
+                    (if (> (length right) 0) right "HEAD"))
+            (values revision nil)))))
+
+(fn clean-spec-path? [path]
+  (not (string.find path "\n" 1 true)))
+
+(fn move-content-specs [old-ref new-ref cands]
+  (let [specs []
+        spec-entries []
+        disk-entries []]
+    (fn add-spec [ref entry]
+      (when (clean-spec-path? entry.path)
+        (table.insert specs (.. ref ":" entry.path))
+        (table.insert spec-entries entry)))
+
+    (each [_ entry (ipairs cands.deleted)]
+      (add-spec old-ref entry))
+    (each [_ entry (ipairs cands.added)]
+      (if new-ref
+          (add-spec new-ref entry)
+          (table.insert disk-entries entry)))
+    (values specs spec-entries disk-entries)))
+
+(fn read-blob-contents [contents specs spec-entries]
+  (when (< 0 (length specs))
+    (let [(output ok) (sys.read-command (commands.cat-file-batch-command specs))]
+      (when ok
+        (each [i record (ipairs (parse.parse-cat-file-batch output))]
+          (let [entry (. spec-entries i)]
+            (when (and entry record.content)
+              (tset contents entry record.content))))))))
+
+(fn fetch-move-contents [revision cands]
+  (let [(old-ref new-ref) (comparison-ref-targets revision)]
+    (when old-ref
+      (let [(specs spec-entries disk-entries) (move-content-specs old-ref
+                                                                  new-ref cands)
+            contents {}]
+        (read-blob-contents contents specs spec-entries)
+        (each [_ entry (ipairs disk-entries)]
+          (tset contents entry (sys.read-file entry.path)))
+        contents))))
+
+(fn annotate-moves [revision entries]
+  (let [cands (moves.candidates entries)
+        contents (and cands (fetch-move-contents revision cands))]
+    (if contents
+        (moves.annotate entries contents)
+        entries)))
+
 (fn diff-entries [revision]
   (run-result (commands.diff-command revision)
               (fn [output]
                 (if (commands.files? revision)
                     (values (files-entries revision output) nil)
                     (commands.working? revision)
-                    (values (working-entries output) nil)
-                    (values (parse.parse-name-status output) nil)))))
+                    (values (annotate-moves revision (working-entries output))
+                            nil)
+                    (values (annotate-moves revision
+                                            (parse.parse-name-status output))
+                            nil)))))
 
 (fn code-diff-stats [revision]
   (let [(output ok) (sys.read-command (commands.diff-patch-command revision))]
@@ -201,20 +266,6 @@ for three-dot ranges, the revision itself otherwise."
 (fn plain-diff-output [revision entry ?full-context?]
   (sys.read-command (commands.plain-preview-command revision entry
                                                     ?full-context?)))
-
-(fn split-revision [revision]
-  (revision:match "^(.-)%.%.%.(.*)$"))
-
-(fn comparison-ref-targets [revision]
-  (if (commands.files? revision)
-      (values nil nil)
-      (commands.working? revision)
-      (values "HEAD" nil)
-      (let [(left right) (split-revision revision)]
-        (if left
-            (values (diff-base-ref revision)
-                    (if (> (length right) 0) right "HEAD"))
-            (values revision nil)))))
 
 (fn blame-target [revision entry side]
   (let [(old-ref new-ref) (comparison-ref-targets revision)]

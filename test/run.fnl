@@ -6,6 +6,7 @@
             :git-test
             :git-code-stats-test
             :git-commands-test
+            :git-moves-test
             :git-parse-test
             :help-test
             :input-test

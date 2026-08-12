@@ -82,6 +82,12 @@
       (.. "git diff --no-ext-diff -U0 --find-renames --find-copies "
           (diff-ref revision) " 2>&1")))
 
+(fn cat-file-batch-command [specs]
+  (let [quoted (icollect [_ spec (ipairs specs)]
+                 (sys.shell-quote spec))]
+    (.. "printf '%s\\n' " (table.concat quoted " ")
+        " | git cat-file --batch 2>/dev/null")))
+
 (fn linked-pr-url-command [branch]
   (.. "gh pr view " (sys.shell-quote branch)
       " --json url --jq .url 2>/dev/null"))
@@ -138,6 +144,7 @@
 
 {: base-temp-path
  : blame-command
+ : cat-file-batch-command
  : commit-url-command
  : current-branch-command
  : diff-command

@@ -5,6 +5,10 @@
   (faith.= "git rev-parse --verify --quiet 'feature branch^{commit}' >/dev/null 2>&1"
            (commands.revision-exists-command "feature branch")))
 
+(fn test-cat-file-batch-command-quotes-specs []
+  (faith.= "printf '%s\\n' 'HEAD:a b.rb' 'main:c.rb' | git cat-file --batch 2>/dev/null"
+           (commands.cat-file-batch-command ["HEAD:a b.rb" "main:c.rb"])))
+
 (fn test-basic-git-adapter-commands-are-centralized []
   (faith.= "git branch --show-current 2>/dev/null"
            (commands.current-branch-command))
@@ -146,4 +150,5 @@
  : test-resolve-commit-command-quotes-commit-revision
  : test-untracked-command-lists-others
  : test-staged-paths-command-lists-cached-names
+ : test-cat-file-batch-command-quotes-specs
  : test-revision-exists-command-quotes-commit-revision}

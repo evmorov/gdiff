@@ -21,19 +21,110 @@
 
 (fn setup-changed-repo []
   (t.init-repo)
-  (t.mkdir "spec/tardis/api")
+  (t.mkdir "spec/acme/api")
   (t.write-file "added-later.txt" "")
   (t.write-file "deleted.txt" "delete me\n")
   (t.write-file "modified.txt" "before\n")
-  (t.write-file "spec/tardis/api_spec.rb" "describe 'api' do\nend\n")
+  (t.write-file "spec/acme/api_spec.rb" "describe 'api' do\nend\n")
   (t.commit-all "initial")
   (t.write-file "added.txt" "new\n")
   (t.sh "git add added.txt")
   (t.write-file "modified.txt" "after\n")
   (t.sh "rm added-later.txt")
   (t.sh "rm deleted.txt")
-  (t.sh "git mv spec/tardis/api_spec.rb spec/tardis/api/v2_spec.rb")
+  (t.sh "git mv spec/acme/api_spec.rb spec/acme/api/v2_spec.rb")
   (t.write-file "untracked.txt" "fresh\n"))
+
+(local old-progress "class ProgressTracker
+  PROGRESS_PATH = \"/tmp/acme/progress.json\"
+
+  def initialize(workflow_run)
+    @workflow_run = workflow_run
+    @started_at = Time.now
+  end
+
+  def record_step(step_name)
+    payload = {step: step_name, run: @workflow_run, at: @started_at}
+    File.write(PROGRESS_PATH, JSON.generate(payload))
+  end
+
+  def clear
+    File.delete(PROGRESS_PATH) if File.exist?(PROGRESS_PATH)
+  end
+end
+")
+
+(local new-progress "module Steps
+  class ProgressTracker
+    def record_step(step_name, workflow_run:)
+      write_payload(step_name, workflow_run)
+    end
+
+    private
+
+    def write_payload(step_name, workflow_run)
+      body = JSON.generate({step_name:, workflow_run:})
+      File.write(progress_path, body)
+    end
+
+    def progress_path
+      ENV.fetch(\"PROGRESS_PATH\", \"/tmp/acme/progress.json\")
+    end
+  end
+end
+")
+
+(fn entry-for [entries path]
+  (accumulate [found nil _ entry (ipairs entries) &until found]
+    (when (= path entry.path) entry)))
+
+(fn test-diff-entries-annotates-untracked-move-in-working-mode []
+  (t.init-repo)
+  (t.mkdir "lib/acme/v2")
+  (t.mkdir "docs")
+  (t.write-file "lib/acme/v2/progress.rb" old-progress)
+  (t.write-file "docs/alpha.rb" "alpha_marker_one\nalpha_marker_two\n")
+  (t.commit-all "initial")
+  (t.sh "rm lib/acme/v2/progress.rb")
+  (t.sh "rm docs/alpha.rb")
+  (t.mkdir "lib/acme/v2/steps")
+  (t.mkdir "spec")
+  (t.write-file "lib/acme/v2/steps/progress.rb" new-progress)
+  (t.write-file "spec/beta.rb" "beta_marker_one\nbeta_marker_two\n")
+  (let [(entries err) (git.diff-entries git.working-revision)
+        deleted (entry-for entries "lib/acme/v2/progress.rb")
+        added (entry-for entries "lib/acme/v2/steps/progress.rb")
+        other-deleted (entry-for entries "docs/alpha.rb")
+        other-added (entry-for entries "spec/beta.rb")]
+    (faith.= nil err)
+    (faith.= "D" deleted.kind)
+    (faith.= "A" added.kind)
+    (faith.= true added.untracked?)
+    (faith.= "lib/acme/v2/steps/progress.rb" deleted.moved_to)
+    (faith.= "lib/acme/v2/progress.rb" added.moved_from)
+    (faith.is (<= 0.35 deleted.moved_score))
+    (faith.= nil other-deleted.moved_to)
+    (faith.= nil other-added.moved_from)))
+
+(fn test-diff-entries-annotates-rewritten-move-in-range-mode []
+  (t.init-repo)
+  (t.mkdir "lib/acme/v2")
+  (t.write-file "lib/acme/v2/progress.rb" old-progress)
+  (t.commit-all "initial")
+  (t.sh "git branch -M main")
+  (t.sh "git checkout -b feature")
+  (t.sh "rm lib/acme/v2/progress.rb")
+  (t.mkdir "lib/acme/v2/steps")
+  (t.write-file "lib/acme/v2/steps/progress.rb" new-progress)
+  (t.commit-all "move progress")
+  (let [(entries err) (git.diff-entries "main...feature")
+        deleted (entry-for entries "lib/acme/v2/progress.rb")
+        added (entry-for entries "lib/acme/v2/steps/progress.rb")]
+    (faith.= nil err)
+    (faith.= "D" deleted.kind)
+    (faith.= "A" added.kind)
+    (faith.= "lib/acme/v2/steps/progress.rb" deleted.moved_to)
+    (faith.= "lib/acme/v2/progress.rb" added.moved_from)))
 
 (fn test-diff-entries-reports-working-tree-changes []
   (setup-changed-repo)
@@ -43,8 +134,8 @@
               "added.txt" {:kind "A" :reviewed false :status "A"}
               "deleted.txt" {:kind "D" :reviewed false :status "D"}
               "modified.txt" {:kind "M" :reviewed false :status "M"}
-              "spec/tardis/api/v2_spec.rb" {:kind "R"
-                                            :old_path "spec/tardis/api_spec.rb"
+              "spec/acme/api/v2_spec.rb" {:kind "R"
+                                            :old_path "spec/acme/api_spec.rb"
                                             :reviewed false
                                             :status "R"}}
              (entries-by-path entries))))
@@ -73,7 +164,7 @@
                                :status "A"
                                :unstaged? true
                                :untracked? true}
-              "spec/tardis/api/v2_spec.rb" {:kind "R"
+              "spec/acme/api/v2_spec.rb" {:kind "R"
                                             :status "R"
                                             :unstaged? false
                                             :untracked? false}}
@@ -81,12 +172,12 @@
 
 (fn test-diff-entries-with-working-shows-modified-unstaged-file []
   (t.init-repo)
-  (t.write-file "tardis.rb" "before\n")
+  (t.write-file "acme.rb" "before\n")
   (t.commit-all "initial")
-  (t.write-file "tardis.rb" "after\n")
+  (t.write-file "acme.rb" "after\n")
   (let [(entries err) (git.diff-entries git.working-revision)]
     (faith.= nil err)
-    (faith.= {"tardis.rb" {:kind "M"
+    (faith.= {"acme.rb" {:kind "M"
                            :status "M"
                            :unstaged? true
                            :untracked? false}}
@@ -385,8 +476,8 @@
 
 (fn test-diff-stats-no-tests-totals-exclude-test-folders []
   (setup-changed-repo)
-  (t.write-file "spec/tardis/new_spec.rb" "puts 1\n")
-  (t.sh "git add spec/tardis/new_spec.rb")
+  (t.write-file "spec/acme/new_spec.rb" "puts 1\n")
+  (t.sh "git add spec/acme/new_spec.rb")
   (let [(stats err) (git.diff-stats "HEAD")]
     (faith.= nil err)
     (faith.= 3 stats.code_additions)
@@ -396,16 +487,16 @@
 
 (fn test-diff-stats-indexes-renamed-files-by-new-path []
   (t.init-repo)
-  (t.mkdir "spec/tardis")
-  (t.write-file "spec/tardis/api_spec.rb" "old\n")
+  (t.mkdir "spec/acme")
+  (t.write-file "spec/acme/api_spec.rb" "old\n")
   (t.commit-all "initial")
-  (t.sh "mkdir -p spec/tardis/api")
-  (t.sh "git mv spec/tardis/api_spec.rb spec/tardis/api/v2_spec.rb")
-  (t.write-file "spec/tardis/api/v2_spec.rb" "old\nnew\n")
+  (t.sh "mkdir -p spec/acme/api")
+  (t.sh "git mv spec/acme/api_spec.rb spec/acme/api/v2_spec.rb")
+  (t.write-file "spec/acme/api/v2_spec.rb" "old\nnew\n")
   (let [(stats err) (git.diff-stats "HEAD")]
     (faith.= nil err)
     (faith.= {:additions 1 :deletions 0}
-             (. stats.files "spec/tardis/api/v2_spec.rb"))))
+             (. stats.files "spec/acme/api/v2_spec.rb"))))
 
 (fn test-default-revision-prefers-main []
   (t.init-repo)
@@ -558,6 +649,8 @@
  : test-plain-diff-output-for-added-folder-entry-diffs-from-dev-null
  : test-plain-diff-output-for-file-comparison-shows-changes
  : test-plain-diff-output-for-folder-entry-shows-only-that-file
+ : test-diff-entries-annotates-untracked-move-in-working-mode
+ : test-diff-entries-annotates-rewritten-move-in-range-mode
  : test-diff-entries-reports-working-tree-changes
  : test-diff-entries-with-working-marks-unstaged-changes
  : test-diff-entries-with-working-shows-modified-unstaged-file

@@ -13,11 +13,11 @@
 
 (fn test-name-status-parses-renames-as-renames []
   (faith.= {:kind "R"
-            :old_path "spec/tardis/api_spec.rb"
-            :path "spec/tardis/api/v2_spec.rb"
+            :old_path "spec/acme/api_spec.rb"
+            :path "spec/acme/api/v2_spec.rb"
             :reviewed false
             :status "R"}
-           (first-entry "R057\tspec/tardis/api_spec.rb\tspec/tardis/api/v2_spec.rb\n")))
+           (first-entry "R057\tspec/acme/api_spec.rb\tspec/acme/api/v2_spec.rb\n")))
 
 (fn test-name-status-treats-copies-as-rename-entries []
   (faith.= {:kind "R"
@@ -82,9 +82,9 @@
     (faith.= nil (. stats.files "image.png"))))
 
 (fn test-numstat-indexes-braced-rename-target []
-  (let [stats (parse.parse-numstat "1\t0\tspec/tardis/{api_spec.rb => api/v2_spec.rb}\n")]
+  (let [stats (parse.parse-numstat "1\t0\tspec/acme/{api_spec.rb => api/v2_spec.rb}\n")]
     (faith.= {:additions 1 :deletions 0}
-             (. stats.files "spec/tardis/api/v2_spec.rb"))))
+             (. stats.files "spec/acme/api/v2_spec.rb"))))
 
 (fn staging-by-path [entries]
   (collect [_ entry (ipairs entries)]
@@ -121,7 +121,31 @@
   (faith.= {"a.rb" true "b.rb" true} (parse.parse-path-set "a.rb\nb.rb\n"))
   (faith.= {} (parse.parse-path-set "")))
 
-{: test-name-status-parses-renames-as-renames
+(fn test-cat-file-batch-parses-blob-records-in-order []
+  (faith.= [{:content "hello"} {:content "abc"}]
+           (parse.parse-cat-file-batch "1a2b blob 5\nhello\n3c4d blob 3\nabc\n")))
+
+(fn test-cat-file-batch-splits-content-by-size-not-lines []
+  (faith.= [{:content "line1\nline2"} {:content "a\0b"}]
+           (parse.parse-cat-file-batch "1a2b blob 11\nline1\nline2\n3c4d blob 3\na\0b\n")))
+
+(fn test-cat-file-batch-keeps-missing-records-positional []
+  (faith.= [{:content "one"} {:missing true} {:content "two"}]
+           (parse.parse-cat-file-batch "1a2b blob 3\none\nHEAD:no such.txt missing\n3c4d blob 3\ntwo\n")))
+
+(fn test-cat-file-batch-treats-non-blob-objects-as-missing []
+  (faith.= [{:missing true} {:content "ok"}]
+           (parse.parse-cat-file-batch "1a2b tree 4\nxxxx\n3c4d blob 2\nok\n")))
+
+(fn test-cat-file-batch-handles-empty-output []
+  (faith.= [] (parse.parse-cat-file-batch "")))
+
+{: test-cat-file-batch-handles-empty-output
+ : test-cat-file-batch-keeps-missing-records-positional
+ : test-cat-file-batch-parses-blob-records-in-order
+ : test-cat-file-batch-splits-content-by-size-not-lines
+ : test-cat-file-batch-treats-non-blob-objects-as-missing
+ : test-name-status-parses-renames-as-renames
  : test-name-status-parses-simple-entry
  : test-name-status-treats-copies-as-rename-entries
  : test-no-index-folder-to-file-diffs-against-the-file

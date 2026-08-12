@@ -1,12 +1,18 @@
+(local moves (require :git.moves))
 (local symbols (require :tui.symbols))
 (local tui (require :tui.core))
 (local word-diff (require :preview.word-diff))
 (local diff-parse (require :preview.diff-parse))
 (local comments (require :preview.comments))
 
-(fn header [state title]
-  (let [divider (string.rep symbols.line.horizontal (tui.visible-length title))]
-    [title (tui.color state.theme :muted divider)]))
+(fn move-note [state ?entry]
+  (let [note (moves.note (or ?entry {}))]
+    (if (= note "") "" (tui.color state.theme :status-renamed note))))
+
+(fn header [state title ?entry]
+  (let [text (.. title (move-note state ?entry))
+        divider (string.rep symbols.line.horizontal (tui.visible-length text))]
+    [text (tui.color state.theme :muted divider)]))
 
 (fn line-color [line]
   (let [first (line:sub 1 1)]
@@ -64,7 +70,7 @@
           (table.insert out (tui.color state.theme role emph)))))
     out))
 
-(fn diff-lines [state output]
+(fn diff-lines [state output ?entry]
   (let [ws-hunks (diff-parse.whitespace-only-hunks output)
         acc {:out [] :numbers [] :refs [] :old-no 1 :new-no 1 :hunk-no 0}
         comment? (fn [text]
@@ -117,7 +123,7 @@
               out []
               numbers []
               refs []]
-          (each [_ line (ipairs (if path (header state path) []))]
+          (each [_ line (ipairs (if path (header state path ?entry) []))]
             (table.insert out line)
             (table.insert numbers false)
             (table.insert refs false))

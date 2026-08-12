@@ -96,6 +96,36 @@
     (faith.match "# old" (t.text lines))
     (faith.match "# new" (t.text lines))))
 
+(fn test-preview-format-appends-move-note-to-diff-header []
+  (let [state (state)
+        entry {:kind "D"
+               :moved_score 0.6
+               :moved_to "lib/steps/progress.rb"
+               :path "lib/progress.rb"}
+        diff (table.concat ["--- a/lib/progress.rb"
+                            "+++ /dev/null"
+                            "@@ -1,1 +0,0 @@"
+                            "-old code"] "\n")
+        lines (preview-format.diff-lines state diff entry)]
+    (faith.= (.. "lib/progress.rb"
+                 (tui.color state.theme :status-renamed
+                            " (moved to lib/steps/progress.rb, 60%)"))
+             (. lines 1))))
+
+(fn test-untracked-preview-header-shows-move-note []
+  (t.init-repo)
+  (t.write-file "progress.rb" "puts 1\n")
+  (let [state (state)
+        entry {:kind "A"
+               :moved_from "lib/progress.rb"
+               :moved_score 0.41
+               :path "progress.rb"
+               :status "A"
+               :untracked? true}
+        lines (preview.lines state entry)]
+    (faith.= "progress.rb (moved from lib/progress.rb, 41%)"
+             (tui.strip-ansi (. lines 1)))))
+
 (fn test-preview-format-keeps-comments-by-default []
   (let [lines (preview-format.diff-lines (state) commented-diff)]
     (faith.match "# note" (t.text lines))
@@ -690,6 +720,8 @@
  : test-scroll-uses-rendered-preview-total-without-loading-diff
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
+ : test-preview-format-appends-move-note-to-diff-header
+ : test-untracked-preview-header-shows-move-note
  : test-untracked-file-preview-shows-added-content-and-caches
  : test-untracked-file-preview-shows-line-numbers
  : test-selection-lines-previews-expanded-listing-file

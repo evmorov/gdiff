@@ -53,18 +53,18 @@
 
 (fn setup-real-folder-preview-repo []
   (t.init-repo)
-  (t.mkdir "lib/tardis/docker/views")
-  (t.mkdir "lib/tardis/docker/workers")
-  (t.write-file "lib/tardis/docker/views/index.rb" "view\n")
-  (t.write-file "lib/tardis/docker/workers/app.rb" "app\n")
-  (t.write-file "lib/tardis/docker/workers/sidekiq.rb" "sidekiq\n")
-  (t.write-file "lib/tardis/docker/web.rb" "web\n")
-  (t.write-file "lib/tardis/docker/api.rb" "api\n")
+  (t.mkdir "lib/acme/docker/views")
+  (t.mkdir "lib/acme/docker/workers")
+  (t.write-file "lib/acme/docker/views/index.rb" "view\n")
+  (t.write-file "lib/acme/docker/workers/app.rb" "app\n")
+  (t.write-file "lib/acme/docker/workers/sidekiq.rb" "sidekiq\n")
+  (t.write-file "lib/acme/docker/web.rb" "web\n")
+  (t.write-file "lib/acme/docker/api.rb" "api\n")
   (t.commit-all "initial")
-  (t.sh "rm -rf lib/tardis/docker/views")
-  (t.sh "rm -rf lib/tardis/docker/workers")
-  (t.sh "rm lib/tardis/docker/web.rb")
-  (t.write-file "lib/tardis/docker/api.rb" "api\nchanged\n"))
+  (t.sh "rm -rf lib/acme/docker/views")
+  (t.sh "rm -rf lib/acme/docker/workers")
+  (t.sh "rm lib/acme/docker/web.rb")
+  (t.write-file "lib/acme/docker/api.rb" "api\nchanged\n"))
 
 (fn real-preview-state []
   (let [(entries err) (git.diff-entries "HEAD")]
@@ -97,11 +97,24 @@
     (faith.= 2 state.selected)))
 
 (fn test-view-renders-renames-with-short-status []
-  (let [state (flat-state [(entry "R" "spec/tardis/api/v2_spec.rb"
-                                  "spec/tardis/api_spec.rb")])
+  (let [state (flat-state [(entry "R" "spec/acme/api/v2_spec.rb"
+                                  "spec/acme/api_spec.rb")])
         view (app.view state 10 100)]
-    (faith.= "> [ ] [R] spec/tardis/api/v2_spec.rb <- spec/tardis/api_spec.rb"
+    (faith.= "> [ ] [R] spec/acme/api/v2_spec.rb <- spec/acme/api_spec.rb"
              (plain-row-text (. view.body.left.rows 1)))))
+
+(fn test-view-renders-move-note-in-rename-color []
+  (let [state (flat-state [(entry "D" "lib/progress.rb")])
+        first-entry (. state.entries 1)]
+    (set first-entry.moved_to "lib/steps/progress.rb")
+    (set first-entry.moved_score 0.6)
+    (let [view (app.view state 10 100)
+          text (. (. view.body.left.rows 1) :text)]
+      (faith.= "> [ ] [D] lib/progress.rb (moved to lib/steps/progress.rb, 60%)"
+               (plain-row-text (. view.body.left.rows 1)))
+      (when (text:find "\27" 1 true)
+        (faith.is (text:find "\27%[[%d;]+m %(moved to")
+                  "move note should be colored")))))
 
 (fn test-view-styles-reviewed-checkbox-brackets-as-muted []
   (let [state (flat-state [(entry "M" "a.rb")])
@@ -229,7 +242,7 @@
 
 (fn test-open-on-deleted-tree-folder-shows-not-found []
   (t.reset-workdir)
-  (let [state (state [(entry "D" "lib/tardis/docker/workers/app.rb")])
+  (let [state (state [(entry "D" "lib/acme/docker/workers/app.rb")])
         opened []
         old-open browser.open]
     (set state.tree_selected_row 1)
@@ -239,7 +252,7 @@
     (faith.is (app.handle-key state {} "o"))
     (set browser.open old-open)
     (faith.= [] opened)
-    (faith.= "Folder not found: lib/tardis/docker/workers" state.notice)))
+    (faith.= "Folder not found: lib/acme/docker/workers" state.notice)))
 
 (fn test-open-on-deleted-file-shows-not-found []
   (t.reset-workdir)
@@ -285,7 +298,7 @@
 (fn test-view-folder-preview-for-real-deleted-folders []
   (setup-real-folder-preview-repo)
   (let [state (real-preview-state)]
-    (select-folder state "lib/tardis/docker")
+    (select-folder state "lib/acme/docker")
     (let [view (app.view state 12 100)
           text (t.text view.body.right.lines)]
       (faith.match "%[M%] api%.rb" text)
@@ -296,10 +309,10 @@
 (fn test-view-folder-preview-sorts-like-left-tree-for-real-repo []
   (setup-real-folder-preview-repo)
   (let [state (real-preview-state)]
-    (select-folder state "lib/tardis/docker")
+    (select-folder state "lib/acme/docker")
     (let [view (app.view state 12 100)]
-      (faith.= (table.concat ["[M] lib/tardis/docker/"
-                              (string.rep "─" 22)
+      (faith.= (table.concat ["[M] lib/acme/docker/"
+                              (string.rep "─" 20)
                               "[M] api.rb"
                               "[D] web.rb"
                               "[D] views/"
@@ -1007,6 +1020,7 @@
  : test-zero-opens-local-file-even-when-pr-is-linked
  : test-space-on-tree-folder-toggles-descendant-files
  : test-view-styles-reviewed-checkbox-brackets-as-muted
+ : test-view-renders-move-note-in-rename-color
  : test-tree-mode-navigation-moves-between-folders-and-files
  : test-tree-search-matches-folders
  : test-tree-view-renders-collapsed-folders-and-file-rows

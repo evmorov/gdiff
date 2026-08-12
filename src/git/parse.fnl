@@ -114,6 +114,32 @@
   (each [_ path (ipairs (numstat-paths path))]
     (tset files path {: additions : deletions})))
 
+(fn batch-record [kind content]
+  (if (= kind "blob")
+      {: content}
+      {:missing true}))
+
+(fn parse-cat-file-batch [output]
+  "Parse `git cat-file --batch` output into ordered records, by byte offsets:
+content may contain newlines and NUL bytes."
+  (let [records []]
+    (var pos 1)
+    (while (<= pos (length output))
+      (let [line-end (string.find output "\n" pos true)
+            header (output:sub pos (if line-end (- line-end 1) -1))
+            (_oid kind size) (header:match "^(%x+) (%S+) (%d+)$")]
+        (if (and line-end kind)
+            (let [content-start (+ line-end 1)
+                  content-end (+ content-start (tonumber size) -1)]
+              (table.insert records
+                            (batch-record kind
+                                          (output:sub content-start content-end)))
+              (set pos (+ content-end 2)))
+            (do
+              (table.insert records {:missing true})
+              (set pos (if line-end (+ line-end 1) (+ (length output) 1)))))))
+    records))
+
 (fn parse-numstat [text]
   (accumulate [stats {:additions 0 :deletions 0 :files {}} line (string.gmatch (or text
                                                                                    "")
@@ -132,6 +158,7 @@
 
 {: entry
  : entry-from-name-status-line
+ : parse-cat-file-batch
  : parse-name-status
  : parse-no-index
  : parse-numstat

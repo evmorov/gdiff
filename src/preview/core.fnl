@@ -42,7 +42,7 @@
                   body (body-lines state content role)
                   body-count (length body)
                   body (if (> body-count 0) body (format.empty-preview state))
-                  out (format.header state entry.path)
+                  out (format.header state entry.path entry)
                   numbers (when (> body-count 0)
                             (file-body-numbers (length out) body-count))]
               (each [_ line (ipairs body)]
@@ -52,7 +52,7 @@
 (fn diff-data [state entry full-context?]
   (let [(output ok) (git.plain-diff-output state.revision entry full-context?)]
     (if ok
-        (format.diff-lines state output)
+        (format.diff-lines state output entry)
         (values (format.warning state (sys.trim output)) nil))))
 
 (fn cache-key [state entry]
@@ -237,7 +237,7 @@
       (let [(output ok) (git.plain-diff-output state.revision entry
                                                state.full_context?)]
         (if ok
-            (let [(lines _numbers) (format.diff-lines state output)]
+            (let [(lines _numbers) (format.diff-lines state output entry)]
               {: lines
                :split (if (= entry.kind "M")
                           (split.parse-rows output state.revision_old_label

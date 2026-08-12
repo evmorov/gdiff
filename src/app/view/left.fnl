@@ -72,10 +72,6 @@
       (folder-row-text state descriptor selected?)
       (file-row-text state descriptor selected?)))
 
-(fn content-width [state]
-  (accumulate [width 0 _ descriptor (ipairs (selection.rows state))]
-    (math.max width (tui.visible-length (row-text state descriptor false)))))
-
 (fn display-row [state descriptor row-index]
   (let [selected? (selection.selected-row? state descriptor row-index)
         focused-selection? (and selected? (= state.focus :left))]
@@ -98,4 +94,4 @@
         scroll (scroll-info first-row count visible)]
     (tui.list visible-rows scroll 0 0)))
 
-{: body : content-width : prepare}
+{: body : prepare}

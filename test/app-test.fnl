@@ -650,6 +650,7 @@
         state (state [selected])
         key (preview-key.for-entry "HEAD" selected)]
     (tset state.preview_cache key ["abcdefghijklmnopqrstuvwxyz"])
+    (set state.split_ratio 0.4)
     (set state.preview_wrap? false)
     (set state.preview_x_scroll 16)
     (let [view (app.view state 10 30)]
@@ -662,6 +663,7 @@
         state (state [selected])
         key (preview-key.for-entry "HEAD" selected)]
     (tset state.preview_cache key ["short" "tiny" "abcdefghijklmnopqrstuvwxyz"])
+    (set state.split_ratio 0.4)
     (set state.preview_wrap? false)
     (set state.preview_x_scroll 100)
     (let [view (app.view state 6 30)]
@@ -675,6 +677,7 @@
         state (state [selected])
         key (preview-key.for-entry "HEAD" selected)]
     (tset state.preview_cache key ["abcdefghijklmnopqrstuvwxyz"])
+    (set state.split_ratio 0.4)
     (set state.preview_wrap? true)
     (set state.preview_x_scroll 10)
     (let [view (app.view state 6 20)]
@@ -762,7 +765,7 @@
     (set state.sync.next_at 0)
     (faith.is (app.handle-key state {} "]"))
     (faith.= false state.sync.running?)
-    (faith.almost= 0.45 state.split_ratio 0.0001)))
+    (faith.almost= 0.3 state.split_ratio 0.0001)))
 
 (fn test-quit-cleans-preview-warmer []
   (t.reset-workdir)

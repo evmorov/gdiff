@@ -185,9 +185,9 @@
 (fn test-split-keys-move-divider-by-five-percent []
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {} (update.read-msg state "["))
-    (faith.almost= 0.35 state.split_ratio 0.0001)
+    (faith.almost= 0.2 state.split_ratio 0.0001)
     (update.update state {} (update.read-msg state "]"))
-    (faith.almost= 0.4 state.split_ratio 0.0001)))
+    (faith.almost= 0.25 state.split_ratio 0.0001)))
 
 (fn test-split-ratio-is-clamped []
   (let [state (state [(entry "M" "a.rb")])]

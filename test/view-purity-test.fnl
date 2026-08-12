@@ -25,7 +25,7 @@
   (let [s (state [(entry "M" "a.rb")])]
     (set s.files_x_scroll 7)
     (set s.files_x_max_scroll 12)
-    (left-view.prepare s)
+    (left-view.prepare s 6)
     (faith.= 0 s.files_x_scroll)
     (faith.= 0 s.files_x_max_scroll)))
 

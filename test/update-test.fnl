@@ -198,6 +198,33 @@
     (update.update state {} (update.read-msg state "]"))
     (faith.= 0.9 state.split_ratio)))
 
+(fn test-d-u-move-file-selection-by-half-list []
+  (let [state (state [(entry "M" "1.rb")
+                      (entry "M" "2.rb")
+                      (entry "M" "3.rb")
+                      (entry "M" "4.rb")
+                      (entry "M" "5.rb")
+                      (entry "M" "6.rb")])]
+    (set state.files_rows 6)
+    (update.update state {} (update.read-msg state "d"))
+    (faith.= 4 state.selected)
+    (update.update state {} (update.read-msg state "d"))
+    (faith.= 6 state.selected)
+    (update.update state {} (update.read-msg state "u"))
+    (faith.= 3 state.selected)))
+
+(fn test-d-u-move-preview-cursor-when-diff-focused []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.focus :right)
+    (set state.preview_rows 10)
+    (set state.preview_total 40)
+    (set state.preview_cursor 1)
+    (update.update state {} (update.read-msg state "d"))
+    (faith.= 6 state.preview_cursor)
+    (faith.= 1 state.selected)
+    (update.update state {} (update.read-msg state "u"))
+    (faith.= 1 state.preview_cursor)))
+
 (fn test-h-l-scroll-preview-horizontally []
   (let [state (state [(entry "M" "a.rb")])]
     (let [(_ command) (update.update state {} (update.read-msg state "l"))]
@@ -856,6 +883,8 @@
  : test-tab-shows-the-focused-panes-search-status
  : test-command-dispatches-back-through-update
  : test-copy-path-copies-selected-tree-folder-path
+ : test-d-u-move-file-selection-by-half-list
+ : test-d-u-move-preview-cursor-when-diff-focused
  : test-h-l-scroll-preview-horizontally
  : test-local-refresh-does-not-start-remote-sync
  : test-refresh-keeps-preview-cursor-when-diff-focused

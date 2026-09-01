@@ -37,7 +37,6 @@
                :preview_x_max_scroll 0
                :files_x_scroll 0
                :files_x_max_scroll 0
-               :files_rows 1
                :preview_rows 1
                :preview_total 0
                :preview_selection_anchor nil

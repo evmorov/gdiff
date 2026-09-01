@@ -81,8 +81,7 @@
   (fcollect [i first-row last-row]
     (display-row state (. rows i) i)))
 
-(fn prepare [state visible]
-  (set state.files_rows visible)
+(fn prepare [state]
   (set state.files_x_scroll 0)
   (set state.files_x_max_scroll 0))
 

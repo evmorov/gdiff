@@ -238,17 +238,6 @@
       (move-preview-cursor state #(preview.move-cursor $1 delta))
       (selection.move state delta)))
 
-(fn files-page-step [state]
-  (math.max 1 (math.floor (/ (or state.files_rows 1) 2))))
-
-(fn navigate-page [state direction]
-  (if (= state.focus :right)
-      (move-preview-cursor state
-                           #(preview.move-cursor $1
-                                                 (* direction
-                                                    (preview.page-step state))))
-      (selection.move state (* direction (files-page-step state)))))
-
 (fn jump [state preview-fn select-fn]
   (if (= state.focus :right)
       (move-preview-cursor state preview-fn)
@@ -456,8 +445,6 @@
 
 (local handlers {:up #(navigate $1 -1)
                  :down #(navigate $1 1)
-                 :page-down #(navigate-page $1 1)
-                 :page-up #(navigate-page $1 -1)
                  : toggle-focus
                  :focus-back toggle-focus-back
                  :open open-selected

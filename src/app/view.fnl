@@ -25,7 +25,7 @@
         visible (body-row-count rows)
         selected (selection.selected-context state)
         _ (preview.prepare-entry state selected.entry)
-        _ (left-view.prepare state visible)
+        _ (left-view.prepare state)
         left (left-view.body state visible)
         right (right-pane state visible cols selected)
         body (tui.split left right state.split_ratio)

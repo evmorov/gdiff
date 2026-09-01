@@ -14,8 +14,6 @@
     :back-tab :focus-back
     "k" :up
     "j" :down
-    "d" :page-down
-    "u" :page-up
     "h" :preview-left
     "l" :preview-right
     "o" :open
@@ -72,7 +70,7 @@
         (messages.action action pending-key) (messages.pending-key pending-key))))
 
 ;; Side-effect-free navigation keys whose repeats can be folded into one repaint.
-(local coalescible-keys {:j true :k true :d true :u true :G true :g true})
+(local coalescible-keys {:j true :k true :G true :g true})
 
 (fn coalesce? [state raw-key]
   (and (. coalescible-keys raw-key) (not (search.active? state)) true))

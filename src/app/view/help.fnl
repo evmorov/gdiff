@@ -5,7 +5,6 @@
 (local groups [{:title "Common"
                 :items [["↑ / k" "Move up"]
                         ["↓ / j" "Move down"]
-                        ["d / u" "Half page down / up"]
                         ["gg" "Jump to top"]
                         ["G" "Jump to bottom"]
                         ["tab" "Switch focus: files / old / new"]

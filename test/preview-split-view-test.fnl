@@ -171,6 +171,38 @@
       (faith.is (string.find (. node.lines 2) "\27[32m" 1 true)
                 "code row should keep the plain green"))))
 
+(fn test-split-preview-colors-moved-rows-orange-with-a-note []
+  (let [entry {:status "M" :kind "M" :path "a.rb"}
+        rows [{:kind :change
+               :old "gone elsewhere to a completely different place in the file"
+               :old-no 3
+               :old-move {:start 19 :stop 19 :first? true}}
+              {:kind :change
+               :new "arrived here"
+               :new-no 19
+               :new-move {:start 3 :stop 3 :first? true}}]
+        key (.. (preview-key.for-entry "HEAD" entry false) "\0split")
+        state {:revision "HEAD"
+               :split_cache {key rows}
+               :preview_wrap? true
+               :show_numbers? false
+               :split_ratio 0.5
+               :preview_scroll 0
+               :preview_x_scroll 0
+               :full_context? false}]
+    (view.prepare state 12 80 {:entry entry})
+    (let [node (view.body state 12 80)
+          first (. node.lines 1)
+          collapsed (-> (tui.strip-ansi (table.concat node.lines "\n"))
+                        (string.gsub "[^%w()]" ""))]
+      (faith.is (string.find first "\27[38;5;208m" 1 true)
+                "moved removed side should be orange")
+      (faith.= nil (string.find first "\27[31m" 1 true))
+      (faith.is (string.find (. node.lines 2) "\27[38;5;208m" 1 true)
+                "wrapped continuation should stay orange")
+      (faith.match "goneelsewhere.*%(movedtoline19%)" collapsed)
+      (faith.match "arrivedhere%(movedfromline3%)" collapsed))))
+
 (fn test-split-preview-marks-blank-line-changes-in-whitespace-hunks []
   (let [entry {:status "M" :kind "M" :path "a.rb"}
         rows [{:kind :change :old "" :old-no 5 :whitespace-hunk? true}
@@ -197,6 +229,7 @@
 {: test-wrap-rows-keeps-short-rows-as-a-single-visual-row
  : test-split-preview-colors-comment-rows-differently
  : test-split-preview-marks-blank-line-changes-in-whitespace-hunks
+ : test-split-preview-colors-moved-rows-orange-with-a-note
  : test-wrap-rows-splits-long-side-and-pads-shorter
  : test-wrap-rows-wraps-full-width-rows-across-content
  : test-split-preview-gutter-shows-blame-next-to-numbers

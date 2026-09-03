@@ -1,6 +1,7 @@
 (local word-diff (require :preview.word-diff))
 (local diff-parse (require :preview.diff-parse))
 (local comments (require :preview.comments))
+(local line-moves (require :preview.line-moves))
 
 (fn ordered-pairs [pairs]
   (let [out []]
@@ -24,16 +25,20 @@
     (drain)
     out))
 
-(fn change-rows [removed added old-no new-no]
+(fn change-rows [removed added old-no new-no moves]
   (icollect [_ p (ipairs (ordered-pairs (word-diff.align removed added)))]
     (let [old (and p.old (. removed p.old))
           new (and p.new (. added p.new))
+          ?old-move (and p.old (. moves.old (+ old-no p.old -1)))
+          ?new-move (and p.new (. moves.new (+ new-no p.new -1)))
           row {:kind :change
                : old
                : new
                :old-no (and p.old (+ old-no p.old -1))
                :new-no (and p.new (+ new-no p.new -1))}]
-      (when (and p.old p.new)
+      (when ?old-move (set row.old-move ?old-move))
+      (when ?new-move (set row.new-move ?new-move))
+      (when (and p.old p.new (not ?old-move) (not ?new-move))
         (set row.emphasize? true)
         (set row.spans (word-diff.spans old new)))
       row)))
@@ -61,6 +66,7 @@
 
 (fn parse-rows [text ?old-ref ?new-ref ?hide-comments?]
   (let [ws-hunks (diff-parse.whitespace-only-hunks text)
+        moves (line-moves.detect text)
         acc {:rows [] :old-no 1 :new-no 1 :hunk-no 0}
         comment? (fn [?line]
                    (comments.comment-line? (or acc.new-path acc.old-path) ?line))
@@ -76,7 +82,7 @@
         handlers {:change (fn [removed added]
                             (each [_ row (ipairs (change-rows removed added
                                                               acc.old-no
-                                                              acc.new-no))]
+                                                              acc.new-no moves))]
                               (tag-comments row)
                               (when (not (hidden? row))
                                 (when (. ws-hunks acc.hunk-no)

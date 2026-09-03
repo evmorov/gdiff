@@ -11,6 +11,7 @@
 (local tui (require :tui.core))
 (local wrap (require :tui.wrap))
 (local word-diff (require :preview.word-diff))
+(local line-moves (require :preview.line-moves))
 
 (fn split-halves [content]
   (let [available (math.max 0 (- content 1))
@@ -83,13 +84,20 @@
     (math.max w (tui.visible-length (or row.old ""))
               (tui.visible-length (or row.new "")))))
 
+(fn move-key [side]
+  (if (= side :old) :old-move :new-move))
+
 (fn change-role [row side]
   (if (= row.kind :hunk) :muted
       (let [value (. row side)]
         (if (and (= row.kind :change) value)
             (if (= side :old)
-                (if row.old-comment? :comment-deleted :status-deleted)
-                (if row.new-comment? :comment-added :status-added))))))
+                (if row.old-move :moved
+                    row.old-comment? :comment-deleted
+                    :status-deleted)
+                (if row.new-move :moved
+                    row.new-comment? :comment-added
+                    :status-added))))))
 
 (fn highlight-row? [state index]
   (and (= state.focus :right)
@@ -166,7 +174,9 @@
        :old-blame (when (= i 1) row.old-blame)
        :new-blame (when (= i 1) row.new-blame)
        :old-comment? row.old-comment?
-       :new-comment? row.new-comment?})))
+       :new-comment? row.new-comment?
+       :old-move row.old-move
+       :new-move row.new-move})))
 
 (fn wrap-rows [rows old-w new-w _content]
   (let [display []
@@ -181,13 +191,13 @@
   (string.rep symbols.line.horizontal (tui.visible-length (or text ""))))
 
 (fn change-side [theme-table row side style-key whitespace-key ?spans]
-  (let [raw (. row side)]
+  (let [raw (. row side)
+        ?mark (. row (move-key side))]
     (when raw
-      (if (and row.whitespace-hunk? (word-diff.whitespace-only? raw))
-          (word-diff.emphasize-whitespace theme-table raw whitespace-key)
-          ?spans
-          (word-diff.emphasize theme-table raw (. ?spans side) style-key)
-          raw))))
+      (if ?mark (.. raw (line-moves.annotation side ?mark))
+          (and row.whitespace-hunk? (word-diff.whitespace-only? raw))
+          (word-diff.emphasize-whitespace theme-table raw whitespace-key) ?spans
+          (word-diff.emphasize theme-table raw (. ?spans side) style-key) raw))))
 
 (fn display-change [theme-table row]
   (let [spans (when (and row.old row.new row.emphasize?)
@@ -206,7 +216,9 @@
          :old-blame row.old-blame
          :new-blame row.new-blame
          :old-comment? row.old-comment?
-         :new-comment? row.new-comment?})))
+         :new-comment? row.new-comment?
+         :old-move row.old-move
+         :new-move row.new-move})))
 
 (fn display-row [theme-table row]
   (if (= row.kind :change) (display-change theme-table row)
@@ -246,7 +258,7 @@
                                       (math.max 1 (or visible 1)))
         content (viewport.content-width state.split_ratio cols scroll?)
         widths (layout-widths state content rows)
-        x-max (scroll-util.max-offset (max-raw-width rows) widths.old)]
+        x-max (scroll-util.max-offset (max-raw-width display) widths.old)]
     {: display :source-map nil : widths :x-max-scroll x-max :wrap? false}))
 
 (fn prepare-wrapped [state rows visible cols]

@@ -310,6 +310,40 @@
           (table.insert out part))
         out)))
 
+(local moved-diff (table.concat ["@@ -1,3 +0,0 @@"
+                                 "-alpha first"
+                                 "-beta second"
+                                 "-gamma third"
+                                 "@@ -0,0 +20,3 @@"
+                                 "+alpha first"
+                                 "+beta second"
+                                 "+gamma third"
+                                 "@@ -30,1 +30,1 @@"
+                                 "-real removal"
+                                 "+real addition"]
+                                "\n"))
+
+(fn test-preview-format-colors-moved-lines-orange-with-a-note []
+  (let [lines (preview-format.diff-lines (state) moved-diff)
+        removed (line-with lines "alpha first")
+        added (line-with lines "alpha first (moved from")]
+    (faith.match "38;5;208" removed)
+    (faith.match "alpha first %(moved to lines 20%-22%)$"
+                 (tui.strip-ansi removed))
+    (faith.match "38;5;208" added)
+    (faith.match "alpha first %(moved from lines 1%-3%)$"
+                 (tui.strip-ansi added))
+    (faith.match "38;5;208" (line-with lines "beta second"))
+    (faith.= nil (string.find (t.text lines) "beta second (moved" 1 true))
+    (faith.match "\27%[31m" (line-with lines "real removal"))
+    (faith.match "\27%[32m" (line-with lines "real addition"))))
+
+(fn test-preview-format-keeps-numbers-for-moved-lines []
+  (let [(lines numbers) (preview-format.diff-lines (state) moved-diff)]
+    (faith.= 1 (. numbers (line-index lines "alpha first (moved to")))
+    (faith.= 20 (. numbers (line-index lines "alpha first (moved from")))
+    (faith.= false (emphasized? (line-with lines "alpha first (moved to")))))
+
 (fn test-preview-format-emphasizes-balanced-word-change []
   (let [lines (preview-format.diff-lines (state)
                                          "@@ -1 +1 @@\n-foo bar baz\n+foo qux baz")]
@@ -734,4 +768,6 @@
  : test-unified-blame-gutter-is-blank-on-wrapped-continuation-lines
  : test-unified-blame-gutter-shows-deleted-line-blame
  : test-unified-blame-requests-only-diff-line-ranges
- : test-visible-lines-renders-and-caches-real-git-preview}
+ : test-visible-lines-renders-and-caches-real-git-preview
+ : test-preview-format-colors-moved-lines-orange-with-a-note
+ : test-preview-format-keeps-numbers-for-moved-lines}

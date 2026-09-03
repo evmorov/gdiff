@@ -4,6 +4,7 @@
 (local word-diff (require :preview.word-diff))
 (local diff-parse (require :preview.diff-parse))
 (local comments (require :preview.comments))
+(local line-moves (require :preview.line-moves))
 
 (fn move-note [state ?entry]
   (let [note (moves.note (or ?entry {}))]
@@ -47,31 +48,42 @@
                                       (. whitespace-styles style-key))
       (word-diff.emphasize state.theme raw ?span style-key)))
 
-(fn change-lines [state removed added comment? ?whitespace-hunk?]
+(fn moved-line [state raw side mark]
+  (tui.color state.theme :moved (.. raw (line-moves.annotation side mark))))
+
+(fn change-lines [state removed added ctx]
   (let [out []
         pairs (word-diff.align removed added)]
     (each [_ p (ipairs pairs)]
       (when p.old
         (let [old (. removed p.old)
-              ?span (when p.new
-                      (. (word-diff.spans old (. added p.new)) :old))
-              emph (emphasized-change state old ?span :emphasis-deleted
-                                      ?whitespace-hunk?)
-              role (if (comment? old) :comment-deleted :status-deleted)]
-          (table.insert out (tui.color state.theme role emph)))))
+              ?mark (. ctx.moves.old (+ ctx.old-no p.old -1))]
+          (if ?mark
+              (table.insert out (moved-line state old :old ?mark))
+              (let [?span (when p.new
+                            (. (word-diff.spans old (. added p.new)) :old))
+                    emph (emphasized-change state old ?span :emphasis-deleted
+                                            ctx.whitespace-hunk?)
+                    role (if (ctx.comment? old) :comment-deleted
+                             :status-deleted)]
+                (table.insert out (tui.color state.theme role emph)))))))
     (each [_ p (ipairs pairs)]
       (when p.new
         (let [new (. added p.new)
-              ?span (when p.old
-                      (. (word-diff.spans (. removed p.old) new) :new))
-              emph (emphasized-change state new ?span :emphasis-added
-                                      ?whitespace-hunk?)
-              role (if (comment? new) :comment-added :status-added)]
-          (table.insert out (tui.color state.theme role emph)))))
+              ?mark (. ctx.moves.new (+ ctx.new-no p.new -1))]
+          (if ?mark
+              (table.insert out (moved-line state new :new ?mark))
+              (let [?span (when p.old
+                            (. (word-diff.spans (. removed p.old) new) :new))
+                    emph (emphasized-change state new ?span :emphasis-added
+                                            ctx.whitespace-hunk?)
+                    role (if (ctx.comment? new) :comment-added :status-added)]
+                (table.insert out (tui.color state.theme role emph)))))))
     out))
 
 (fn diff-lines [state output ?entry]
   (let [ws-hunks (diff-parse.whitespace-only-hunks output)
+        moves (line-moves.detect output)
         acc {:out [] :numbers [] :refs [] :old-no 1 :new-no 1 :hunk-no 0}
         comment? (fn [text]
                    (comments.comment-line? (or acc.new-path acc.old-path) text))
@@ -82,8 +94,12 @@
                (table.insert acc.refs (or ?ref false)))
         handlers {:change (fn [removed added]
                             (let [lines (change-lines state removed added
-                                                      comment?
-                                                      (. ws-hunks acc.hunk-no))
+                                                      {: comment?
+                                                       : moves
+                                                       :whitespace-hunk? (. ws-hunks
+                                                                            acc.hunk-no)
+                                                       :old-no acc.old-no
+                                                       :new-no acc.new-no})
                                   removed-count (length removed)]
                               (each [i line (ipairs lines)]
                                 (if (<= i removed-count)

@@ -8,6 +8,7 @@
                     :status-deleted "\27[31m"
                     :comment-added "\27[38;5;28m"
                     :comment-deleted "\27[38;5;124m"
+                    :moved "\27[38;5;208m"
                     :status-renamed "\27[36m"
                     :status-copied "\27[35m"
                     :status-untracked "\27[90m"

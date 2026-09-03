@@ -132,6 +132,29 @@
     (faith.= nil code-row.old-comment?)
     (faith.= nil code-row.new-comment?)))
 
+(fn test-parse-rows-marks-moved-lines-without-word-emphasis []
+  (let [rows (split.parse-rows (table.concat ["@@ -1,1 +1,1 @@"
+                                              "-alpha first"
+                                              "+alpha other"
+                                              "@@ -30,1 +30,1 @@"
+                                              "-alpha third"
+                                              "+alpha first"]
+                                             "\n"))]
+    (faith.= {:kind :change
+              :old "alpha first"
+              :new "alpha other"
+              :old-no 1
+              :new-no 1
+              :old-move {:start 30 :stop 30 :first? true}}
+             (. rows 2))
+    (faith.= {:kind :change
+              :old "alpha third"
+              :new "alpha first"
+              :old-no 30
+              :new-no 30
+              :new-move {:start 1 :stop 1 :first? true}}
+             (. rows 4))))
+
 (fn test-splittable-detects-real-diffs []
   (faith.is (split.splittable? (split.parse-rows sample))))
 
@@ -154,6 +177,7 @@
  : test-parse-rows-hides-comment-rows-when-enabled
  : test-parse-rows-keeps-rows-pairing-comment-with-code
  : test-parse-rows-tags-comment-sides
+ : test-parse-rows-marks-moved-lines-without-word-emphasis
  : test-splittable-detects-real-diffs
  : test-not-splittable-for-binary-or-empty
  : test-not-splittable-for-one-sided-changes}

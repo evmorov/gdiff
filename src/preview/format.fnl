@@ -60,7 +60,7 @@
               ?mark (. ctx.moves.old (+ ctx.old-no p.old -1))]
           (if ?mark
               (table.insert out (moved-line state old :old ?mark))
-              (let [?span (when p.new
+              (let [?span (when (and p.new (not p.loose?))
                             (. (word-diff.spans old (. added p.new)) :old))
                     emph (emphasized-change state old ?span :emphasis-deleted
                                             ctx.whitespace-hunk?)
@@ -73,7 +73,7 @@
               ?mark (. ctx.moves.new (+ ctx.new-no p.new -1))]
           (if ?mark
               (table.insert out (moved-line state new :new ?mark))
-              (let [?span (when p.old
+              (let [?span (when (and p.old (not p.loose?))
                             (. (word-diff.spans (. removed p.old) new) :new))
                     emph (emphasized-change state new ?span :emphasis-added
                                             ctx.whitespace-hunk?)

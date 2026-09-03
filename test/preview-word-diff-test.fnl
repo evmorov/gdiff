@@ -90,7 +90,28 @@
 (fn test-align-leaves-too-different-lines-unmatched []
   (faith.= []
            (matched (word-diff.align ["the quick brown fox"]
-                                     ["a slow green turtle swims"]))))
+                                     ["a slow green turtle swims"
+                                      "and nothing else in common"]))))
+
+(fn test-align-pairs-a-lone-removed-line-with-a-lone-added-line []
+  (let [pairs (word-diff.align ["3.4.10"] ["4.0.5"])]
+    (faith.= [[1 1]] (matched pairs))
+    (faith.= true (. pairs 1 :loose?))))
+
+(fn test-align-marks-only-fallback-pairs-as-loose []
+  (let [pairs (word-diff.align ["keep aaa tail"] ["keep bbb tail"])]
+    (faith.= [[1 1]] (matched pairs))
+    (faith.= nil (. pairs 1 :loose?))))
+
+(fn test-align-pairs-lone-leftovers-between-matched-lines []
+  (faith.= [[1 1] [2 2] [3 3]]
+           (matched (word-diff.align ["keep aaa tail" "3.4.10" "same start x"]
+                                     ["keep bbb tail" "4.0.5" "same start y"]))))
+
+(fn test-align-leaves-several-leftovers-in-one-gap-unmatched []
+  (faith.= []
+           (matched (word-diff.align ["the quick brown fox" "3.4.10"]
+                                     ["a slow green turtle swims" "4.0.5"]))))
 
 (fn test-line-distance-counts-only-word-content []
   (faith.= 0 (word-diff.line-distance "foo bar" "foo bar"))
@@ -128,6 +149,10 @@
  : test-align-pairs-by-similarity-regardless-of-position
  : test-align-keeps-pairings-monotonic
  : test-align-leaves-too-different-lines-unmatched
+ : test-align-pairs-a-lone-removed-line-with-a-lone-added-line
+ : test-align-marks-only-fallback-pairs-as-loose
+ : test-align-pairs-lone-leftovers-between-matched-lines
+ : test-align-leaves-several-leftovers-in-one-gap-unmatched
  : test-line-distance-counts-only-word-content
  : test-line-distance-ignores-a-shared-prefix-when-the-rest-differs
  : test-align-skips-pairs-that-only-share-a-prefix

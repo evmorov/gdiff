@@ -63,6 +63,11 @@
             {:kind :change :new "brand new line" :new-no 2}]
            (split.parse-rows "@@ -1,1 +1,2 @@\n-keep aaa tail\n+keep bbb tail\n+brand new line")))
 
+(fn test-parse-rows-keeps-a-one-line-replacement-on-one-row []
+  (faith.= [{:kind :hunk :old "@@ -1 +1 @@"}
+            {:kind :change :old "3.4.10" :new "4.0.5" :old-no 1 :new-no 1}]
+           (split.parse-rows "@@ -1 +1 @@\n-3.4.10\n+4.0.5")))
+
 (fn test-parse-rows-tags-whitespace-only-hunks []
   (let [rows (split.parse-rows (.. "@@ -1,2 +1,1 @@\n ctx\n-\n"
                                    "@@ -10,2 +9,2 @@\n-a\n+b\n-"))
@@ -173,6 +178,7 @@
  : test-parse-rows-handles-pure-deletions
  : test-parse-rows-pairs-uneven-runs
  : test-parse-rows-aligns-similar-lines-onto-one-row
+ : test-parse-rows-keeps-a-one-line-replacement-on-one-row
  : test-parse-rows-tags-whitespace-only-hunks
  : test-parse-rows-hides-comment-rows-when-enabled
  : test-parse-rows-keeps-rows-pairing-comment-with-code

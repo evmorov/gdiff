@@ -157,6 +157,29 @@
         (set j (- j 1)))
       pairs)))
 
+(fn flush-gap [out gap]
+  (let [olds (icollect [_ p (ipairs gap)] (when (not p.new) p))
+        news (icollect [_ p (ipairs gap)] (when (not p.old) p))]
+    (if (and (= 1 (length olds)) (= 1 (length news)))
+        (table.insert out {:old (. olds 1 :old)
+                           :new (. news 1 :new)
+                           :loose? true})
+        (each [_ p (ipairs gap)]
+          (table.insert out p)))))
+
+(fn pair-lone-leftovers [pairs]
+  (let [out []]
+    (var gap [])
+    (each [_ p (ipairs pairs)]
+      (if (and p.old p.new)
+          (do
+            (flush-gap out gap)
+            (set gap [])
+            (table.insert out p))
+          (table.insert gap p)))
+    (flush-gap out gap)
+    out))
+
 (fn align [removed added]
   (let [m (length removed)
         n (length added)
@@ -164,11 +187,14 @@
         words-a (fcollect [j 1 n] (word-list (. added j)))
         dist (fn [i j] (word-distance (. words-r i) (. words-a j)))
         allowed? (fn [i j] (<= (dist i j) max-line-distance))]
-    (if (or (= 0 (* m n)) (> (* m n) max-align-cells))
-        (naive-align m n allowed?)
-        (let [dmat (fcollect [i 1 m] (fcollect [j 1 n] (dist i j)))]
-          (dp-align m n (fn [i j] (<= (. dmat i j) max-line-distance))
-                    (fn [i j] (- 1 (. dmat i j))))))))
+    (pair-lone-leftovers (if (or (= 0 (* m n)) (> (* m n) max-align-cells))
+                             (naive-align m n allowed?)
+                             (let [dmat (fcollect [i 1 m]
+                                          (fcollect [j 1 n] (dist i j)))]
+                               (dp-align m n
+                                         (fn [i j]
+                                           (<= (. dmat i j) max-line-distance))
+                                         (fn [i j] (- 1 (. dmat i j)))))))))
 
 (fn emphasize [theme-table raw ?ranges style-key]
   (if (and ?ranges (next ?ranges) (ansi.color?))

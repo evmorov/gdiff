@@ -38,7 +38,7 @@
                :new-no (and p.new (+ new-no p.new -1))}]
       (when ?old-move (set row.old-move ?old-move))
       (when ?new-move (set row.new-move ?new-move))
-      (when (and p.old p.new (not ?old-move) (not ?new-move))
+      (when (and p.old p.new (not p.loose?) (not ?old-move) (not ?new-move))
         (set row.emphasize? true)
         (set row.spans (word-diff.spans old new)))
       row)))

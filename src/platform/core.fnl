@@ -69,6 +69,15 @@
 (fn temp-path []
   (os.tmpname))
 
+(fn command-exists? [program]
+  (let [(ok _kind _code) (os.execute (.. "command -v " (shell-quote program)
+                                         " >/dev/null 2>&1"))]
+    (and ok true)))
+
+(fn os-name []
+  (let [(out ok) (read-command "uname -s 2>/dev/null")]
+    (when ok (trim out))))
+
 (fn ensure-dir [path]
   (let [(ok _kind _code) (os.execute (.. "mkdir -p " (shell-quote path)
                                          " 2>/dev/null"))]
@@ -76,10 +85,12 @@
 
 {: background-command
  : background-shell-command
+ : command-exists?
  : cpu-count
  : dir-exists?
  : ensure-dir
  : file-exists?
+ : os-name
  : read-command
  : read-file
  : remove-dir

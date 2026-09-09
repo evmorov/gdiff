@@ -6,17 +6,11 @@
 (local saved-stty probe.saved-stty)
 (local terminal-size probe.terminal-size)
 
-(fn input-mode [time]
-  (os.execute (.. "stty raw -echo min 0 time " time " 2>/dev/null")))
+(local read-timeout-tenths 1)
 
-(fn blocking-mode []
-  (input-mode 10))
-
-(fn nonblocking-mode []
-  (input-mode 0))
-
-(fn escape-mode []
-  (input-mode 1))
+(fn input-mode []
+  (os.execute (.. "stty raw -echo min 0 time " read-timeout-tenths
+                  " 2>/dev/null")))
 
 (fn cursor [row col]
   (io.write ansi.esc "[" row ";" col "H"))
@@ -96,54 +90,15 @@
 (fn read-key [state]
   (let [c (io.read 1)]
     (if (= c ansi.esc)
-        (let [_ (escape-mode)
-              sequence (read-escape-sequence)
-              _ (blocking-mode)
-              key (keys.decode state c sequence)]
+        (let [key (keys.decode state c (read-escape-sequence))]
           (if (= key :paste-start)
               (paste-key state)
               key))
         (keys.decode state c))))
 
-(fn poll-key [state]
-  ;; Uses a short escape timeout while assembling a sequence so a split arrow
-  ;; key or bracketed paste can't be misread or leak paste as commands, while a
-  ;; lone Escape still resolves promptly instead of stalling.
-  (let [c (io.read 1)]
-    (when c
-      (if (= c ansi.esc)
-          (do
-            (escape-mode)
-            (let [key (keys.decode state c (read-escape-sequence))]
-              (if (= key :paste-start)
-                  (paste-key state)
-                  key)))
-          (keys.decode state c)))))
-
-(fn drain [state coalesce? apply]
-  ;; Returns running? and any non-coalescible key read for the caller to handle
-  ;; next. Restores blocking mode.
-  (nonblocking-mode)
-  (var running true)
-  (var held nil)
-  (var done? false)
-  (while (not done?)
-    (let [key (poll-key state)]
-      (if (not key) (set done? true) (coalesce? key)
-          (do
-            (set running (apply key))
-            (when (not running)
-              (set done? true)))
-          (do
-            (set held key)
-            (set done? true)))))
-  (blocking-mode)
-  (values running held))
-
 (fn raw-terminal [stty-state]
-  (os.execute "stty raw -echo min 0 time 1 2>/dev/null")
+  (input-mode)
   (let [background-rgb (osc.query-background-rgb)]
-    (blocking-mode)
     (io.write ansi.esc "[?1049h" ansi.esc "[?25l" ansi.esc "[?2004h")
     (clear-screen)
     (io.flush)
@@ -165,7 +120,6 @@
  : clear-line
  : clear-screen
  : cursor
- : drain
  : end-frame
  : raw-terminal
  : read-key

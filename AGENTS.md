@@ -22,7 +22,7 @@ gdiff is a Fennel TUI that runs on the installed `fennel` command. There is no b
 
 App code follows a TEA-like loop. Keep new behavior in the matching step.
 
-1. `tui/runtime.fnl` reads a key and calls the app `update` function.
+1. `tui/runtime.fnl` reads a key and calls the app `update` function. The terminal read times out after a tenth of a second and yields a `:tick`. Navigation keys that arrive within that timeout form a burst: the first key gets a full frame, later ones get quick frames with `state.quick_frame?` set, and a full frame follows once input settles. The view may keep the previous preview during a quick frame when the next one is not cached.
 2. `app/input.fnl` maps keys to message types. `app/messages.fnl` builds message tables. Every message is a plain table with a `:type` field.
 3. `app/update.fnl` dispatches on `msg.type` to a handler. Handlers mutate the state table and return a command.
 4. Commands live in `app/commands.fnl`. A command is a function of `[dispatch get-state]`, created with `defcommand`. Commands do the I/O and dispatch result messages such as `copy-path-finished`.

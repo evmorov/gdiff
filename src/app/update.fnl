@@ -3,8 +3,10 @@
 (local commands (require :app.commands))
 (local input (require :app.input))
 (local notice (require :app.notice))
+(local preview (require :preview.core))
 (local preview-warm (require :preview.warm))
 (local search (require :app.pane-search))
+(local selection (require :app.selection))
 (local app-state (require :app.state))
 (local git (require :git.core))
 (local pr-refresh (require :git.pr-refresh))
@@ -133,17 +135,21 @@
   (app-state.init revision entries review-store review-scope src-dir
                   ?diff-stats ?pr-url))
 
+(fn update-warm-cache [state]
+  (when (preview.prepare-entry state (selection.selected-entry state))
+    (set state.force_next_draw? true))
+  (preview-warm.update state.preview_warm state.preview_cache state.split_cache))
+
 (fn handle-key [state config raw-key]
   (set state.force_next_draw? false)
   (update-remote-sync state)
   (update-pr-refresh state config)
   (when (= raw-key :tick)
-    ;; Drop the cached terminal size so a resize is picked up at idle cadence.
-    (set state.term_rows nil)
-    (preview-warm.update state.preview_warm state.preview_cache
-                         state.split_cache))
+    (update-warm-cache state))
   (let [(_ command) (update state config (input.read-msg state raw-key))]
     (run-command state config command))
+  (when (= raw-key :tick)
+    (set state.skip_next_draw? true))
   (not state.quit?))
 
 (fn start-command [state]

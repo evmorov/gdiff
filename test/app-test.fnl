@@ -876,6 +876,59 @@
     (app.handle-key state {} :tick)
     (faith.= ["warmed"] (. state.preview_cache warmed-key))))
 
+(fn test-idle-tick-skips-redraw-unless-something-changed []
+  (let [state (state [(entry "M" "a.rb")])]
+    (faith.is (app.handle-key state {} :tick))
+    (faith.is state.skip_next_draw?)
+    (faith.= false state.force_next_draw?)))
+
+(fn test-idle-tick-forces-redraw-when-selected-preview-warms []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (let [selected (entry "M" "a.rb")
+        state (state [selected])
+        key (preview-key.for-entry "HEAD" selected)]
+    (set state.preview_warm {:dir "warm"
+                             :count 1
+                             :remaining 1
+                             :scan-index 1
+                             :imported {}
+                             :key-index {key 1}
+                             :index-key {1 key}})
+    (faith.is (app.handle-key state {} :tick))
+    (faith.= false state.force_next_draw?)
+    (faith.is (sys.write-file "warm/1.fnl" (fennel.view {:lines ["warmed"]})))
+    (faith.is (app.handle-key state {} :tick))
+    (faith.= ["warmed"] (. state.preview_cache key))
+    (faith.is state.force_next_draw?)))
+
+(fn quick-view [state]
+  (set state.quick_frame? true)
+  (let [view (app.view state 10 100)]
+    (set state.quick_frame? false)
+    view))
+
+(fn test-quick-frame-keeps-previous-preview-until-the-next-one-is-cached []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])
+        first (app.view state 10 100)]
+    (app.handle-key state {} "j")
+    (let [quick (quick-view state)]
+      (faith.is (rawequal first.body.right quick.body.right))
+      (faith.is (not (rawequal first.body.left quick.body.left))))
+    (let [full (app.view state 10 100)]
+      (faith.is (not (rawequal first.body.right full.body.right)))
+      (app.handle-key state {} "k")
+      (let [quick (quick-view state)]
+        (faith.is (not (rawequal full.body.right quick.body.right)))))))
+
+(fn test-quick-frame-rebuilds-preview-when-it-has-focus []
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])
+        first (app.view state 10 100)]
+    (app.handle-key state {} "j")
+    (set state.focus :right)
+    (let [quick (quick-view state)]
+      (faith.is (not (rawequal first.body.right quick.body.right))))))
+
 (fn anchored-preview-state []
   (let [selected (entry "M" "a.rb")
         state (state [selected])
@@ -1054,6 +1107,10 @@
  : test-question-mark-toggles-help-modal
  : test-help-modal-ignores-action-keys-without-redraw
  : test-help-modal-skips-redraw-on-idle-tick
+ : test-idle-tick-skips-redraw-unless-something-changed
+ : test-idle-tick-forces-redraw-when-selected-preview-warms
+ : test-quick-frame-keeps-previous-preview-until-the-next-one-is-cached
+ : test-quick-frame-rebuilds-preview-when-it-has-focus
  : test-escape-closes-help-modal
  : test-view-clamps-preview-horizontal-scroll-when-content-fits
  : test-view-highlights-preview-cursor-only-when-diff-focused

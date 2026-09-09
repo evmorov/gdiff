@@ -227,6 +227,19 @@
             (warm-covers? state) []
             (compute-split-rows state entry key)))))
 
+(fn gutters-ready? [state key]
+  (if state.show_blame? false
+      state.show_numbers? (not= nil (. (or state.preview_numbers_cache {}) key))
+      true))
+
+(fn ready? [state entry]
+  (or (not entry) entry.untracked? (assets.asset? entry)
+      (let [key (cache-key state entry)]
+        (and (not= nil (. state.preview_cache key))
+             (or (not state.split_mode?) (not= entry.kind "M")
+                 (not= nil (. state.split_cache (split-key state entry))))
+             (gutters-ready? state key) true))))
+
 (fn warm-entry [state entry]
   (if (not entry)
       {:lines (format.no-selection state) :split []}
@@ -281,15 +294,18 @@
 (fn listing-row? [state row]
   (and (= state.view_mode :tree) row (= row.type :file) row.unchanged row.path))
 
+(fn selection-gutters [state entry]
+  (when (or state.show_numbers? state.show_blame?)
+    (line-gutters state entry (line-numbers state entry)
+                  (line-refs state entry))))
+
 (fn selection-lines [state selected-entry selected-row]
   (if (and (= state.view_mode :tree) selected-row (= selected-row.type :folder))
       (values (folder-preview.lines state selected-row) nil)
       (listing-row? state selected-row)
       (values (file-lines state {:path selected-row.path}) nil)
-      (let [lines (nonblocking-lines state selected-entry)
-            numbers (line-numbers state selected-entry)
-            refs (line-refs state selected-entry)]
-        (values lines (line-gutters state selected-entry numbers refs)))))
+      (values (nonblocking-lines state selected-entry)
+              (selection-gutters state selected-entry))))
 
 (fn row-count [state]
   (or state.preview_rows 1))
@@ -510,6 +526,7 @@
  : nonblocking-lines
  : page-step
  : prepare-entry
+ : ready?
  : reset-scroll
  : scroll
  : scroll-info

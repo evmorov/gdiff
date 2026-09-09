@@ -14,6 +14,13 @@
         (set state.term_cols cols)
         (values rows cols))))
 
+(fn refresh-size [state]
+  (let [(rows cols) (terminal.terminal-size)
+        changed? (or (not= rows state.term_rows) (not= cols state.term_cols))]
+    (set state.term_rows rows)
+    (set state.term_cols cols)
+    changed?))
+
 (fn draw [view-fn state]
   (let [(rows cols) (current-size state)
         ctx (context.new rows cols state.theme)
@@ -23,4 +30,4 @@
                         (renderer.draw ctx view)))
     (io.flush)))
 
-{: draw :split-widths split.widths}
+{: draw : refresh-size :split-widths split.widths}

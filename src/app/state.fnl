@@ -72,6 +72,9 @@
                :show_help? false
                :skip_next_draw? false
                :force_next_draw? false
+               :quick_frame? false
+               :last_right_pane nil
+               :tick_count 0
                :term_rows nil
                :term_cols nil
                :pending-key nil}]

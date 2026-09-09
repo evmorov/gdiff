@@ -206,6 +206,70 @@
       (set git.plain-diff-output old-plain-diff-output)
       (faith.= [] rows))))
 
+(fn cached-entry-state []
+  (let [entry {:status "M" :kind "M" :path "a.rb" :reviewed false}
+        state (state)]
+    (set state.preview_numbers_cache {})
+    (set state.preview_line_refs_cache {})
+    (set state.split_cache {})
+    (tset state.preview_cache (preview-key.for-entry "HEAD" entry) ["1" "2"])
+    (values state entry)))
+
+(fn without-git [f]
+  (let [old-plain-diff-output git.plain-diff-output]
+    (set git.plain-diff-output
+         (fn [...]
+           (error "this path must not load the diff")))
+    (let [(ok err) (pcall f)]
+      (set git.plain-diff-output old-plain-diff-output)
+      (when (not ok)
+        (error err)))))
+
+(fn test-selection-lines-skip-gutters-when-none-is-shown []
+  (let [(state entry) (cached-entry-state)]
+    (without-git (fn []
+                   (let [(lines gutters) (preview.selection-lines state entry
+                                                                  nil)]
+                     (faith.= ["1" "2"] lines)
+                     (faith.= nil gutters))))
+    (faith.= 0 (t.count-pairs state.preview_numbers_cache))))
+
+(fn test-selection-lines-load-numbers-when-shown []
+  (let [(state entry) (cached-entry-state)
+        old-plain-diff-output git.plain-diff-output]
+    (set state.show_numbers? true)
+    (set git.plain-diff-output (fn [...]
+                                 (values (.. "diff --git a/a.rb b/a.rb\n--- a/a.rb\n+++ b/a.rb\n"
+                                             "@@ -1,2 +1,2 @@\n one\n-two\n+three\n")
+                                         true)))
+    (let [(_ gutters) (preview.selection-lines state entry nil)]
+      (set git.plain-diff-output old-plain-diff-output)
+      (faith.is gutters)
+      (faith.= 1 (t.count-pairs state.preview_numbers_cache)))))
+
+(fn test-ready-needs-cached-lines-and-split-rows []
+  (let [(state entry) (cached-entry-state)
+        key (preview-key.for-entry "HEAD" entry)]
+    (faith.= true (preview.ready? state nil))
+    (faith.= true (preview.ready? state entry))
+    (set state.split_mode? true)
+    (faith.= false (preview.ready? state entry))
+    (tset state.split_cache (.. key "\0split") [])
+    (faith.= true (preview.ready? state entry))
+    (set state.show_numbers? true)
+    (faith.= false (preview.ready? state entry))
+    (tset state.preview_numbers_cache key false)
+    (faith.= true (preview.ready? state entry))
+    (set state.show_blame? true)
+    (faith.= false (preview.ready? state entry))
+    (faith.= false
+             (preview.ready? state {:status "A" :kind "A" :path "new.rb"}))
+    (faith.= true (preview.ready? state
+                                  {:status "A"
+                                   :kind "A"
+                                   :path "new.rb"
+                                   :untracked? true}))))
+
 (fn test-scroll-info-only-appears-when-preview-overflows []
   (let [entry {:status "M" :kind "M" :path "a.rb" :reviewed false}
         state (state)
@@ -752,6 +816,9 @@
  : test-refresh-loaded-clears-stale-cache-and-caches-selected-preview
  : test-selection-lines-renders-folder-rows-through-preview-core
  : test-scroll-uses-rendered-preview-total-without-loading-diff
+ : test-selection-lines-skip-gutters-when-none-is-shown
+ : test-selection-lines-load-numbers-when-shown
+ : test-ready-needs-cached-lines-and-split-rows
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
  : test-preview-format-appends-move-note-to-diff-header

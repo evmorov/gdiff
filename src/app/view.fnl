@@ -10,7 +10,7 @@
 (fn body-row-count [rows]
   (math.max 1 (- rows 4)))
 
-(fn right-pane [state visible cols selected]
+(fn build-right-pane [state visible cols selected]
   (if (preview.split? state selected.entry)
       (do
         (preview-split-view.prepare state visible cols selected)
@@ -20,11 +20,23 @@
         (preview-view.prepare state visible cols selected)
         (preview-view.body state visible))))
 
+(fn defer-preview? [state selected]
+  (and state.quick_frame? (= state.focus :left) state.last_right_pane
+       (not (preview.ready? state selected.entry)) true))
+
+(fn right-pane [state visible cols selected]
+  (if (defer-preview? state selected)
+      state.last_right_pane
+      (let [node (build-right-pane state visible cols selected)]
+        (set state.last_right_pane node)
+        node)))
+
 (fn view [state rows cols]
   (let [count (length state.entries)
         visible (body-row-count rows)
         selected (selection.selected-context state)
-        _ (preview.prepare-entry state selected.entry)
+        _ (when (not (defer-preview? state selected))
+            (preview.prepare-entry state selected.entry))
         _ (left-view.prepare state)
         left (left-view.body state visible)
         right (right-pane state visible cols selected)

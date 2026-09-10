@@ -184,31 +184,38 @@ return (lines numbers refs)."
   (.. state.revision "\0" (or entry.path "") "\0" (or entry.old_path "") "\0"
       (tostring side) "\0" (or signature "")))
 
+(local no-labels {})
+
 (fn blame-request [state entry side ?line-numbers]
   "The cache key and `git blame -L` ranges for one side of an entry."
   (let [ranges (when ?line-numbers (blame.ranges ?line-numbers))
+        empty? (and ranges (= 0 (length ranges)))
         ranges (if (and ranges (> (length ranges) max-blame-ranges)) nil ranges)
         signature (if ranges (ranges-signature ranges) "")]
-    {:key (blame-key state entry side signature) : ranges}))
+    {:key (blame-key state entry side signature) : ranges : empty?}))
 
 (fn cached-blame [state key]
   (. (or state.preview_blame_cache {}) key))
 
-(fn blame-lines [state entry side ?line-numbers]
-  "Blame labels by line number. While a blame-warming run covers this entry, a
-cache miss returns no labels instead of blocking on git; the import fills them."
-  (if (and ?line-numbers (= 0 (length ?line-numbers)))
-      {}
-      (let [request (blame-request state entry side ?line-numbers)
-            cached (cached-blame state request.key)]
+(fn request-labels [state entry side request]
+  "Blame labels by line number for one request. While a blame-warming run covers
+this entry, a cache miss returns the shared empty table instead of blocking on
+git; the import fills the cache."
+  (if request.empty?
+      no-labels
+      (let [cached (cached-blame state request.key)]
         (if cached cached
             (and state.preview_warm state.preview_warm.blame?
-                 (warm-covers-entry? state entry)) {}
+                 (warm-covers-entry? state entry)) no-labels
             (let [lines (git.blame-lines state.revision entry side
                                          request.ranges)]
               (when state.preview_blame_cache
                 (tset state.preview_blame_cache request.key lines))
               lines)))))
+
+(fn blame-lines [state entry side ?line-numbers]
+  (request-labels state entry side
+                  (blame-request state entry side ?line-numbers)))
 
 (fn side-line-numbers [refs side]
   (icollect [_ ref (ipairs (or refs []))]
@@ -217,6 +224,43 @@ cache miss returns no labels instead of blocking on git; the import fills them."
 (fn split-side-numbers [rows side]
   (icollect [_ row (ipairs (or rows []))]
     (. row (if (= side :old) :old-no :new-no))))
+
+(fn blame-requests [state field entry source numbers-for]
+  "Both sides' blame requests for `source`, a refs or split rows table, kept in
+`state[field]` so a frame that sees the same table does not rebuild the ranges."
+  (let [memo (. state field)]
+    (if (and memo (= memo.source source) (= memo.entry entry)
+             (= memo.revision state.revision))
+        memo
+        (let [memo {: source
+                    : entry
+                    :revision state.revision
+                    :old (blame-request state entry :old
+                                        (numbers-for source :old))
+                    :new (blame-request state entry :new
+                                        (numbers-for source :new))}]
+          (tset state field memo)
+          memo))))
+
+(fn requested-blame [state entry requests]
+  (values (request-labels state entry :old requests.old)
+          (request-labels state entry :new requests.new)))
+
+(fn refs-blame-lines [state entry refs]
+  "Blame labels for the old and new side of unified line refs."
+  (if (or (not entry) (not refs))
+      (values no-labels no-labels)
+      (requested-blame state entry
+                       (blame-requests state :preview_blame_requests entry refs
+                                       side-line-numbers))))
+
+(fn split-blame-lines [state entry rows]
+  "Blame labels for the old and new side of split rows."
+  (if (or (not entry) (not rows))
+      (values no-labels no-labels)
+      (requested-blame state entry
+                       (blame-requests state :split_blame_requests entry rows
+                                       split-side-numbers))))
 
 (fn blame-cached? [state entry side numbers]
   (or (= 0 (length numbers))
@@ -245,17 +289,9 @@ cache miss returns no labels instead of blocking on git; the import fills them."
   (let [text (or text "")]
     (.. text (string.rep " " (math.max 0 (- width (tui.visible-length text)))))))
 
-(fn line-gutters [state entry numbers refs]
+(fn gutters-with-blame [state numbers refs old-blame new-blame]
   (when (or (and state.show_numbers? numbers) (and state.show_blame? refs))
     (let [number-w (if state.show_numbers? (number-width numbers) 0)
-          old-blame (if state.show_blame?
-                        (blame-lines state entry :old
-                                     (side-line-numbers refs :old))
-                        {})
-          new-blame (if state.show_blame?
-                        (blame-lines state entry :new
-                                     (side-line-numbers refs :new))
-                        {})
           blame-w (if state.show_blame? (blame-width refs old-blame new-blame)
                       0)
           label-for (fn [ref]
@@ -284,6 +320,41 @@ cache miss returns no labels instead of blocking on git; the import fills them."
                     {:full (.. number-text sep blame-text)}
                     (.. number-text sep blame-text)))
               false))))))
+
+(fn line-gutters [state entry numbers refs]
+  (let [(old-blame new-blame) (if state.show_blame?
+                                  (refs-blame-lines state entry refs)
+                                  (values no-labels no-labels))]
+    (gutters-with-blame state numbers refs old-blame new-blame)))
+
+(fn cached-gutters? [state cache numbers refs old-blame new-blame]
+  (and cache (= cache.numbers numbers) (= cache.refs refs)
+       (= cache.old-blame old-blame) (= cache.new-blame new-blame)
+       (= cache.theme state.theme)
+       (= cache.numbers? (and state.show_numbers? true))
+       (= cache.blame? (and state.show_blame? true))))
+
+(fn cached-line-gutters [state entry numbers refs]
+  "The unified gutters for `entry`, reused across frames while the numbers, refs,
+blame labels, and toggles they were built from are unchanged."
+  (let [(old-blame new-blame) (if state.show_blame?
+                                  (refs-blame-lines state entry refs)
+                                  (values no-labels no-labels))
+        cache state.preview_gutter_cache]
+    (if (cached-gutters? state cache numbers refs old-blame new-blame)
+        cache.gutters
+        (let [gutters (gutters-with-blame state numbers refs old-blame
+                                          new-blame)]
+          (set state.preview_gutter_cache
+               {: numbers
+                : refs
+                : old-blame
+                : new-blame
+                :theme state.theme
+                :numbers? (and state.show_numbers? true)
+                :blame? (and state.show_blame? true)
+                : gutters})
+          gutters))))
 
 (fn split-key [state entry]
   (.. (cache-key state entry) "\0split"))
@@ -448,8 +519,8 @@ ask for, so their cache keys are ready when the output is imported."
 
 (fn selection-gutters [state entry]
   (when (or state.show_numbers? state.show_blame?)
-    (line-gutters state entry (line-numbers state entry)
-                  (line-refs state entry))))
+    (cached-line-gutters state entry (line-numbers state entry)
+                         (line-refs state entry))))
 
 (fn selection-lines [state selected-entry selected-row]
   (if (and (= state.view_mode :tree) selected-row (= selected-row.type :folder))
@@ -654,6 +725,7 @@ ask for, so their cache keys are ready when the output is imported."
 {: lines
  : split-rows
  : blame-lines
+ : split-blame-lines
  : cache-split
  : warm-caches
  : warm-entry

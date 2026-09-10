@@ -802,6 +802,62 @@
     (faith.= [[2 2]] (. captured :old))
     (faith.= [[1 2]] (. captured :new))))
 
+(fn test-unified-gutters-are-reused-across-frames-while-blame-is-shown []
+  (let [entry {:status "M" :kind "M" :path "app.rb" :reviewed false}
+        state (state)
+        old-plain-diff-output git.plain-diff-output
+        old-blame-lines git.blame-lines
+        calls []]
+    (set state.preview_numbers_cache {})
+    (set state.preview_line_refs_cache {})
+    (set state.preview_blame_cache {})
+    (set state.show_numbers? true)
+    (set state.show_blame? true)
+    (set git.plain-diff-output (fn [_revision _entry _full?]
+                                 (values "@@ -1,2 +1,2 @@\n before\n-old\n+new"
+                                         true)))
+    (set git.blame-lines
+         (fn [_revision _entry side]
+           (table.insert calls side)
+           {1 "28/04/2021 Ada" 2 "30/04/2021 Grace"}))
+    (let [(_ first) (preview.selection-lines state entry nil)
+          (_ second) (preview.selection-lines state entry nil)]
+      (set git.plain-diff-output old-plain-diff-output)
+      (set git.blame-lines old-blame-lines)
+      (faith.is first)
+      (faith.= first second
+               "the same gutter table comes back on the next frame")
+      (faith.= 2 (length calls) "each side is blamed once, not once per frame"))))
+
+(fn test-unified-gutters-refresh-when-blame-labels-arrive []
+  (let [entry {:status "M" :kind "M" :path "app.rb" :reviewed false}
+        state (state)
+        old-plain-diff-output git.plain-diff-output
+        old-blame-lines git.blame-lines]
+    (set state.preview_numbers_cache {})
+    (set state.preview_line_refs_cache {})
+    (set state.preview_blame_cache {})
+    (set state.show_blame? true)
+    (set git.plain-diff-output (fn [_revision _entry _full?]
+                                 (values "@@ -1,2 +1,2 @@\n before\n-old\n+new"
+                                         true)))
+    (set git.blame-lines (fn [_revision _entry _side] {}))
+    (let [(_ pending) (preview.selection-lines state entry nil)]
+      (set state.preview_blame_cache {})
+      (set git.blame-lines
+           (fn [_revision _entry _side]
+             {1 "28/04/2021 Ada" 2 "30/04/2021 Grace"}))
+      (let [(_ ready) (preview.selection-lines state entry nil)]
+        (set git.plain-diff-output old-plain-diff-output)
+        (set git.blame-lines old-blame-lines)
+        (faith.is (not (gutter-contains? (icollect [_ g (ipairs pending)]
+                                           (or (and (= (type g) :table) g.full)
+                                               ""))
+                                         "Ada")))
+        (faith.is (gutter-contains? (icollect [_ g (ipairs ready)]
+                                      (or (and (= (type g) :table) g.full) ""))
+                                    "28/04/2021 Ada"))))))
+
 (fn test-warmed-blame-makes-both-views-ready-without-git []
   (setup-repo)
   (t.mkdir "warm")
@@ -987,6 +1043,8 @@
  : test-unified-blame-gutter-is-blank-on-wrapped-continuation-lines
  : test-unified-blame-gutter-shows-deleted-line-blame
  : test-unified-blame-requests-only-diff-line-ranges
+ : test-unified-gutters-are-reused-across-frames-while-blame-is-shown
+ : test-unified-gutters-refresh-when-blame-labels-arrive
  : test-visible-lines-renders-and-caches-real-git-preview
  : test-preview-format-colors-moved-lines-orange-with-a-note
  : test-preview-format-keeps-numbers-for-moved-lines}

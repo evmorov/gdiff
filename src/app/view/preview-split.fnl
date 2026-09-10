@@ -256,10 +256,6 @@
   (icollect [_ row (ipairs (or rows []))]
     (display-row theme-table row)))
 
-(fn row-line-numbers [rows key]
-  (icollect [_ row (ipairs (or rows []))]
-    (. row key)))
-
 (fn blame-labels [rows old-blame new-blame]
   "Every blame label in the rows, in display order, old side before new."
   (let [labels []]
@@ -270,25 +266,41 @@
         (table.insert labels (. new-blame row.new-no))))
     labels))
 
+(fn rows-with-blame [state rows old-blame new-blame]
+  (let [labels (blame-labels rows old-blame new-blame)
+        slots (blame-colors.assign labels)
+        colorize #(blame-colors.colorize state.theme slots $)]
+    (icollect [_ row (ipairs (or rows []))]
+      (let [out {}]
+        (each [k v (pairs row)]
+          (tset out k v))
+        (when row.old-no
+          (set out.old-blame (colorize (. old-blame row.old-no))))
+        (when row.new-no
+          (set out.new-blame (colorize (. new-blame row.new-no))))
+        out))))
+
+(fn cached-blame-rows? [state cache rows old-blame new-blame]
+  (and cache (= cache.rows rows) (= cache.old-blame old-blame)
+       (= cache.new-blame new-blame) (= cache.theme state.theme)))
+
 (fn attach-blame [state entry rows]
+  "Rows with colored blame labels. The result is reused across frames while the
+rows and both blame tables are unchanged, so the layout cache below keeps hitting."
   (if (or (not state.show_blame?) (not entry))
       rows
-      (let [old-blame (preview.blame-lines state entry :old
-                                           (row-line-numbers rows :old-no))
-            new-blame (preview.blame-lines state entry :new
-                                           (row-line-numbers rows :new-no))
-            labels (blame-labels rows old-blame new-blame)
-            slots (blame-colors.assign labels)
-            colorize #(blame-colors.colorize state.theme slots $)]
-        (icollect [_ row (ipairs (or rows []))]
-          (let [out {}]
-            (each [k v (pairs row)]
-              (tset out k v))
-            (when row.old-no
-              (set out.old-blame (colorize (. old-blame row.old-no))))
-            (when row.new-no
-              (set out.new-blame (colorize (. new-blame row.new-no))))
-            out)))))
+      (let [(old-blame new-blame) (preview.split-blame-lines state entry rows)
+            cache state.split_blame_cache]
+        (if (cached-blame-rows? state cache rows old-blame new-blame)
+            cache.attached
+            (let [attached (rows-with-blame state rows old-blame new-blame)]
+              (set state.split_blame_cache
+                   {: rows
+                    : old-blame
+                    : new-blame
+                    :theme state.theme
+                    : attached})
+              attached)))))
 
 (fn prepare-truncated [state rows visible cols]
   (let [display (emphasize-rows state.theme rows)

@@ -1,6 +1,6 @@
 (local faith (require :faith))
 (local view (require :app.view.preview-split))
-(local preview (require :preview.core))
+(local git (require :git.core))
 (local preview-key (require :preview.key))
 (local tui (require :tui.core))
 (local theme (require :tui.theme))
@@ -54,6 +54,63 @@
     (view.prepare state 5 80 {:entry entry})
     (faith.= nil state.split_display_cache.marker)))
 
+(fn test-prepare-reuses-split-layout-while-blame-is-shown []
+  (let [entry {:status "M" :kind "M" :path "a.rb"}
+        rows [{:kind :context :old "x" :new "x" :old-no 1 :new-no 1}
+              {:kind :change :old "old" :new "new" :old-no 2 :new-no 2}]
+        key (.. (preview-key.for-entry "HEAD" entry false) "\0split")
+        state {:revision "HEAD"
+               :split_cache {key rows}
+               :preview_blame_cache {}
+               :preview_wrap? true
+               :show_numbers? true
+               :show_blame? true
+               :split_ratio 0.5
+               :preview_scroll 0
+               :preview_x_scroll 0
+               :full_context? false}
+        old-blame-lines git.blame-lines
+        calls []]
+    (set git.blame-lines
+         (fn [_revision _entry side]
+           (table.insert calls side)
+           {1 "29/04/2021 Evgenii" 2 "30/04/2021 Ada"}))
+    (view.prepare state 5 80 {:entry entry})
+    (set state.split_display_cache.marker true)
+    (view.prepare state 5 80 {:entry entry})
+    (view.prepare state 5 80 {:entry entry})
+    (set git.blame-lines old-blame-lines)
+    (faith.= true state.split_display_cache.marker)
+    (faith.= 2 (length calls) "each side is blamed once, not once per frame")
+    (let [text (tui.strip-ansi (. (view.body state 5 80) :lines 2))]
+      (faith.match "2 30/04/2021 Ada" text))))
+
+(fn test-prepare-refreshes-blame-rows-when-labels-arrive []
+  (let [entry {:status "M" :kind "M" :path "a.rb"}
+        rows [{:kind :context :old "x" :new "x" :old-no 1 :new-no 1}]
+        key (.. (preview-key.for-entry "HEAD" entry false) "\0split")
+        state {:revision "HEAD"
+               :split_cache {key rows}
+               :preview_blame_cache {}
+               :preview_wrap? true
+               :show_numbers? true
+               :show_blame? true
+               :split_ratio 0.5
+               :preview_scroll 0
+               :preview_x_scroll 0
+               :full_context? false}
+        old-blame-lines git.blame-lines]
+    (set git.blame-lines (fn [_revision _entry _side] {}))
+    (view.prepare state 5 80 {:entry entry})
+    (let [pending (tui.strip-ansi (. (view.body state 5 80) :lines 1))]
+      (faith.= nil (string.find pending "Ada" 1 true)))
+    (set state.preview_blame_cache {})
+    (set git.blame-lines (fn [_revision _entry _side] {1 "30/04/2021 Ada"}))
+    (view.prepare state 5 80 {:entry entry})
+    (set git.blame-lines old-blame-lines)
+    (faith.match "1 30/04/2021 Ada"
+                 (tui.strip-ansi (. (view.body state 5 80) :lines 1)))))
+
 (fn test-split-preview-gutter-shows-blame-next-to-numbers []
   (let [entry {:status "M" :kind "M" :path "a.rb"}
         rows [{:kind :context :old "x" :new "x" :old-no 1 :new-no 1}]
@@ -67,14 +124,13 @@
                :preview_scroll 0
                :preview_x_scroll 0
                :full_context? false}
-        old-blame-lines preview.blame-lines]
-    (set preview.blame-lines
-         (fn [_state _entry side]
-           (if (= side :old)
-               {1 "29/04/2021 Evgenii"}
-               {1 "30/04/2021 Ada"})))
+        old-blame-lines git.blame-lines]
+    (set git.blame-lines (fn [_revision _entry side]
+                           (if (= side :old)
+                               {1 "29/04/2021 Evgenii"}
+                               {1 "30/04/2021 Ada"})))
     (view.prepare state 5 80 {:entry entry})
-    (set preview.blame-lines old-blame-lines)
+    (set git.blame-lines old-blame-lines)
     (let [node (view.body state 5 80)
           text (tui.strip-ansi (. node.lines 1))]
       (faith.match "1 29/04/2021 Evgenii" text)
@@ -94,14 +150,14 @@
                :preview_scroll 0
                :preview_x_scroll 0
                :full_context? false}
-        old-blame-lines preview.blame-lines]
-    (set preview.blame-lines
-         (fn [_state _entry side]
+        old-blame-lines git.blame-lines]
+    (set git.blame-lines
+         (fn [_revision _entry side]
            (if (= side :old)
                {1 "29/04/2021 Evgenii" 2 "30/04/2021 Ada"}
                {1 "29/04/2021 Evgenii" 2 "01/05/2021 Grace"})))
     (view.prepare state 5 80 {:entry entry})
-    (set preview.blame-lines old-blame-lines)
+    (set git.blame-lines old-blame-lines)
     (let [node (view.body state 5 80)
           styles-for (fn [line label]
                        (icollect [style text (line:gmatch "(\27%[[%d;]+m)([^\27]*)")]
@@ -135,12 +191,11 @@
                :preview_scroll 0
                :preview_x_scroll 0
                :full_context? false}
-        old-blame-lines preview.blame-lines]
-    (set preview.blame-lines
-         (fn [_state _entry _side]
-           {1 "07/07/2026 Not"}))
+        old-blame-lines git.blame-lines]
+    (set git.blame-lines (fn [_revision _entry _side]
+                           {1 "07/07/2026 Not"}))
     (view.prepare state 10 60 {:entry entry})
-    (set preview.blame-lines old-blame-lines)
+    (set git.blame-lines old-blame-lines)
     (let [node (view.body state 10 60)
           first (tui.strip-ansi (. node.lines 1))
           second (tui.strip-ansi (. node.lines 2))]
@@ -161,12 +216,12 @@
                :preview_scroll 0
                :preview_x_scroll 0
                :full_context? false}
-        old-blame-lines preview.blame-lines]
-    (set preview.blame-lines
-         (fn [_state _entry side]
+        old-blame-lines git.blame-lines]
+    (set git.blame-lines
+         (fn [_revision _entry side]
            (if (= side :old) {3 "03/03/2020 Old"} {})))
     (view.prepare state 5 80 {:entry entry})
-    (set preview.blame-lines old-blame-lines)
+    (set git.blame-lines old-blame-lines)
     (let [node (view.body state 5 80)
           text (tui.strip-ansi (. node.lines 1))]
       (faith.match "3 03/03/2020 Old" text))))
@@ -328,4 +383,6 @@
  : test-split-preview-colors-blame-by-author
  : test-split-preview-leaves-wrapped-continuation-gutter-blank
  : test-split-preview-shows-deleted-line-blame
- : test-prepare-reuses-cached-split-layout}
+ : test-prepare-reuses-cached-split-layout
+ : test-prepare-reuses-split-layout-while-blame-is-shown
+ : test-prepare-refreshes-blame-rows-when-labels-arrive}

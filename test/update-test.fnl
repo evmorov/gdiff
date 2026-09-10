@@ -27,19 +27,19 @@
 (fn test-read-msg-keeps-pending-g-in-state []
   (let [state (state [(entry "M" "a.rb")])]
     (faith.= {:type :pending-key :pending-key "g"} (update.read-msg state "g"))
-    (faith.= nil state.pending-key)
+    (faith.= nil state.pending_key)
     (update.update state {} (update.read-msg state "g"))
-    (faith.= "g" state.pending-key)
+    (faith.= "g" state.pending_key)
     (faith.= {:type :top} (update.read-msg state "g"))
     (update.update state {} (update.read-msg state "g"))
-    (faith.= nil state.pending-key)))
+    (faith.= nil state.pending_key)))
 
 (fn test-unknown-key-clears-pending-g []
   (let [state (state [(entry "M" "a.rb")])]
     (update.update state {} (update.read-msg state "g"))
-    (faith.= "g" state.pending-key)
+    (faith.= "g" state.pending_key)
     (update.update state {} (update.read-msg state "z"))
-    (faith.= nil state.pending-key)
+    (faith.= nil state.pending_key)
     (faith.= {:type :pending-key :pending-key "g"} (update.read-msg state "g"))))
 
 (fn test-update-returns-command-for-review-persistence []
@@ -257,14 +257,56 @@
     (set state.split_display_cache {:stale true})
     (set state.preview_x_scroll 8)
     (set state.preview_x_max_scroll 12)
-    (update.update state {} (update.read-msg state "b"))
+    (let [(_ command) (update.update state {} (update.read-msg state "b"))]
+      (faith.= :function (type command) "blame on starts a warm run"))
     (faith.= true state.show_blame?)
     (faith.= nil state.preview_display_cache)
     (faith.= nil state.split_display_cache)
     (faith.= 0 state.preview_x_scroll)
     (faith.= 0 state.preview_x_max_scroll)
-    (update.update state {} (update.read-msg state "b"))
+    (let [(_ command) (update.update state {} (update.read-msg state "b"))]
+      (faith.= (. (require :app.commands) :none) command
+               "blame off does not start a warm run"))
     (faith.= false state.show_blame?)))
+
+(fn test-pr-refresh-finished-with-error-sets-notice-without-command []
+  (let [state (state [(entry "M" "a.rb")])
+        (_ command) (update.update state {}
+                                   {:type :pr-refresh-finished
+                                    :error "Could not read PR info"})]
+    (faith.= "Could not read PR info" state.notice)
+    (faith.= true state.force_next_draw?)
+    (faith.= nil (command #nil #state))))
+
+(fn test-pr-refresh-resolved-with-revision-refreshes []
+  (let [state (state [(entry "M" "a.rb")])
+        (_ command) (update.update state {}
+                                   {:type :pr-refresh-resolved
+                                    :revision "origin/main...origin/feature"})]
+    (faith.= "PR refreshed" state.notice)
+    (faith.= :function (type command))))
+
+(fn test-quit-returns-warm-cleanup-command []
+  (let [state (state [(entry "M" "a.rb")])
+        (_ command) (update.update state {} {:type :quit})]
+    (faith.= true state.quit?)
+    (faith.= :function (type command))))
+
+(fn test-toggle-expand-loads-missing-folder-listing-through-a-command []
+  (let [state (state [(entry "M" "lib/sub/a.rb") (entry "M" "lib/sub/b.rb")])]
+    (set state.tree_selected_row 1)
+    (let [row (. (require :app.selection) :selected-tree-row)
+          folder (row state)]
+      (faith.= :folder folder.type)
+      (let [(_ command) (update.update state {} {:type :toggle-expand})]
+        (faith.= :function (type command) "listing is loaded by a command")
+        (faith.= nil (. state.expanded_folders folder.path))
+        (set state.folder_preview_cache {folder.path {:ok? true :output ""}})
+        (update.update state {}
+                       {:type :folder-listings-loaded
+                        :records {}
+                        :then :toggle-expand})
+        (faith.is (. state.expanded_folders folder.path))))))
 
 (fn test-f-toggles-full-context-globally-across-navigation []
   (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
@@ -904,5 +946,9 @@
  : test-uppercase-r-does-not-start-sync
  : test-unknown-key-clears-pending-g
  : test-b-toggles-blame-and-resets-preview-layout
+ : test-pr-refresh-finished-with-error-sets-notice-without-command
+ : test-pr-refresh-resolved-with-revision-refreshes
+ : test-quit-returns-warm-cleanup-command
+ : test-toggle-expand-loads-missing-folder-listing-through-a-command
  : test-w-toggles-preview-wrap-and-resets-horizontal-scroll
  : test-update-returns-command-for-review-persistence}

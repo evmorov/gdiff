@@ -26,6 +26,7 @@
 
 (fn new-state []
   {:dir nil
+   :blame? false
    :count 0
    :remaining 0
    :workers 0
@@ -37,31 +38,42 @@
 (fn cleanup [state]
   (when state.dir
     (sys.remove-dir state.dir))
-  (set-fields state [:dir nil] [:count 0] [:remaining 0] [:workers 0]
-              [:scan-index 1] [:imported {}] [:key-index {}] [:index-key {}]))
+  (set-fields state [:dir nil] [:blame? false] [:count 0] [:remaining 0]
+              [:workers 0] [:scan-index 1] [:imported {}] [:key-index {}]
+              [:index-key {}]))
 
-(fn write-manifest [path revision entries ?old-label ?new-label]
+(fn write-manifest [path revision entries ?old-label ?new-label ?blame?]
   (sys.write-file path
                   (fennel.view {: revision
                                 : entries
                                 :old-label ?old-label
-                                :new-label ?new-label})))
+                                :new-label ?new-label
+                                :blame? (and ?blame? true)})))
 
 (fn start-workers [src-dir manifest dir count]
   (for [i 1 count]
     (sys.background-command (worker-command src-dir manifest dir i count))))
 
-(fn reset-for-run [state dir entries key-index index-key]
-  (set-fields state [:dir dir] [:count (length entries)]
-              [:remaining (length entries)] [:workers 0] [:scan-index 1]
-              [:imported {}] [:key-index key-index] [:index-key index-key]))
+(fn reset-for-run [state dir entries key-index index-key ?blame?]
+  (set-fields state [:dir dir] [:blame? (and ?blame? true)]
+              [:count (length entries)] [:remaining (length entries)]
+              [:workers 0] [:scan-index 1] [:imported {}] [:key-index key-index]
+              [:index-key index-key]))
 
-(fn start-run [state src-dir revision entries dir ?old-label ?new-label]
+(fn start-run [state
+               src-dir
+               revision
+               entries
+               dir
+               ?old-label
+               ?new-label
+               ?blame?]
   (let [manifest (manifest-path dir)]
-    (when (write-manifest manifest revision entries ?old-label ?new-label)
+    (when (write-manifest manifest revision entries ?old-label ?new-label
+                          ?blame?)
       (let [(key-index index-key) (plan.index-entries revision entries)
             workers (plan.worker-count entries (sys.cpu-count))]
-        (reset-for-run state dir entries key-index index-key)
+        (reset-for-run state dir entries key-index index-key ?blame?)
         (set state.workers workers)
         (if (< 0 workers)
             (do
@@ -69,13 +81,15 @@
               true)
             (cleanup state))))))
 
-(fn start [state src-dir revision entries ?old-label ?new-label]
+(fn start [state src-dir revision entries ?old-label ?new-label ?blame?]
+  "Start a background run for `entries`. With `?blame?`, workers also blame
+each entry so the blame gutters fill without blocking."
   (cleanup state)
   (when (< 0 (length entries))
     (let [dir (make-dir)]
       (when dir
         (when (not (start-run state src-dir revision entries dir ?old-label
-                              ?new-label))
+                              ?new-label ?blame?))
           (cleanup state))))))
 
 (fn read-output [path]
@@ -97,15 +111,28 @@
            1
            (+ (or state.scan-index 1) 1))))
 
-(fn import-output [state cache index ?split-cache]
+(fn store-into [?cache key value]
+  (when (and ?cache (not= nil value))
+    (tset ?cache key value)))
+
+(fn store-output [caches key data]
+  "Copy one worker output into the app caches. `caches` has `lines` and may
+have `split`, `numbers`, `refs`, and `blame` tables."
+  (tset caches.lines key data.lines)
+  (store-into caches.split (.. key "\0split") data.split)
+  (store-into caches.numbers key data.numbers)
+  (store-into caches.refs key data.refs)
+  (when (and caches.blame data.blame)
+    (each [blame-key blame-lines (pairs data.blame)]
+      (tset caches.blame blame-key blame-lines))))
+
+(fn import-output [state caches index]
   (let [path (plan.output-path state.dir index)
         data (read-output path)]
     (when data
       (let [key (. state.index-key index)]
         (when key
-          (tset cache key data.lines)
-          (when (and ?split-cache (not (= nil data.split)))
-            (tset ?split-cache (.. key "\0split") data.split))))
+          (store-output caches key data)))
       (sys.remove-file path)
       (mark-imported state index)
       true)))
@@ -114,16 +141,16 @@
   (when (and state.dir (<= (remaining state) 0))
     (cleanup state)))
 
-(fn import-entry [state cache revision entry ?split-cache]
+(fn import-entry [state caches revision entry]
   (when (and state.dir entry)
     (let [key (preview-key.for-entry revision entry)
           index (. state.key-index key)]
       (when index
-        (let [imported? (import-output state cache index ?split-cache)]
+        (let [imported? (import-output state caches index)]
           (finish-if-complete state)
           imported?)))))
 
-(fn update [state cache ?split-cache]
+(fn update [state caches]
   (when state.dir
     (var checks 0)
     (var imports 0)
@@ -132,7 +159,7 @@
                   (< 0 (remaining state)))
         (let [index (or state.scan-index 1)]
           (when (not (. state.imported index))
-            (when (import-output state cache index ?split-cache)
+            (when (import-output state caches index)
               (set imports (+ imports 1))))
           (advance-scan-index state)
           (set checks (+ checks 1))))))

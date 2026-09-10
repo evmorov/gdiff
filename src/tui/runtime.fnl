@@ -74,7 +74,7 @@
     (let [(_ background-rgb) (terminal.raw-terminal stty-state)]
       (set program.state.theme (theme.new background-rgb)))
     (let [(ok err) (pcall (fn []
-                            (set program.state.stty-state stty-state)
+                            (set program.state.stty_state stty-state)
                             (loop program)))]
       (terminal.restore-terminal stty-state)
       (when (not ok)

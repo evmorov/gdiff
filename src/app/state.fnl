@@ -77,7 +77,7 @@
                :tick_count 0
                :term_rows nil
                :term_cols nil
-               :pending-key nil}]
+               :pending_key nil}]
     (selection.set-initial-tree-row state)
     state))
 

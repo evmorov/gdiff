@@ -44,7 +44,7 @@
         second-key (preview-key.for-entry "HEAD" second)
         state (warm-state [first second])
         cache {}]
-    (preview-warm.update state cache)
+    (preview-warm.update state {:lines cache})
     (faith.= ["first"] (. cache first-key))
     (faith.= ["second"] (. cache second-key))
     (faith.= nil state.dir)
@@ -60,10 +60,30 @@
         state (warm-state [first])
         cache {}
         split-cache {}]
-    (preview-warm.update state cache split-cache)
+    (preview-warm.update state {:lines cache :split split-cache})
     (faith.= ["unified"] (. cache first-key))
     (faith.= [{:kind :change :old "a" :new "b"}]
              (. split-cache (.. first-key "\0split")))))
+
+(fn test-update-imports-numbers-refs-and-blame-caches []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (t.write-file "warm/manifest.fnl" "{}")
+  (faith.is (sys.write-file "warm/1.fnl"
+                            (fennel.view {:lines ["unified"]
+                                          :numbers [false 1]
+                                          :refs [false {:side :new :no 1}]
+                                          :split []
+                                          :blame {"blame-key" {1 "01/01/2024 ann"}}})))
+  (let [first (entry "M" "a.rb")
+        first-key (preview-key.for-entry "HEAD" first)
+        state (warm-state [first])
+        caches {:lines {} :split {} :numbers {} :refs {} :blame {}}]
+    (preview-warm.update state caches)
+    (faith.= ["unified"] (. caches.lines first-key))
+    (faith.= [false 1] (. caches.numbers first-key))
+    (faith.= [false {:side :new :no 1}] (. caches.refs first-key))
+    (faith.= {1 "01/01/2024 ann"} (. caches.blame "blame-key"))))
 
 (fn test-update-imports-ready-previews-out-of-order []
   (t.reset-workdir)
@@ -75,13 +95,13 @@
         second-key (preview-key.for-entry "HEAD" second)
         state (warm-state [first second])
         cache {}]
-    (preview-warm.update state cache)
+    (preview-warm.update state {:lines cache})
     (faith.= nil (. cache first-key))
     (faith.= ["second"] (. cache second-key))
     (faith.= 1 state.remaining)
     (faith.= "warm" state.dir)
     (write-output "warm" 1 ["first"])
-    (preview-warm.update state cache)
+    (preview-warm.update state {:lines cache})
     (faith.= ["first"] (. cache first-key))
     (faith.= nil state.dir)))
 
@@ -95,9 +115,9 @@
         state (warm-state [first second])
         cache {}]
     (write-output "warm" 2 ["second"])
-    (faith.= nil (preview-warm.import-entry state cache "HEAD" first))
+    (faith.= nil (preview-warm.import-entry state {:lines cache} "HEAD" first))
     (faith.= nil (. cache second-key))
-    (faith.is (preview-warm.import-entry state cache "HEAD" second))
+    (faith.is (preview-warm.import-entry state {:lines cache} "HEAD" second))
     (faith.= ["second"] (. cache second-key))
     (faith.= nil (. cache first-key))
     (faith.= 1 state.remaining)))
@@ -162,13 +182,13 @@
         cache {}]
     (for [i 1 10]
       (write-output "warm" i [(.. "file " i)]))
-    (preview-warm.update state cache)
+    (preview-warm.update state {:lines cache})
     (faith.= 2 state.remaining)
     (faith.= 9 state.scan-index)
     (faith.= ["file 1"] (. cache (preview-key.for-entry "HEAD" (. entries 1))))
     (faith.= ["file 8"] (. cache (preview-key.for-entry "HEAD" (. entries 8))))
     (faith.= nil (. cache (preview-key.for-entry "HEAD" (. entries 9))))
-    (preview-warm.update state cache)
+    (preview-warm.update state {:lines cache})
     (faith.= nil state.dir)
     (faith.= ["file 10"]
              (. cache (preview-key.for-entry "HEAD" (. entries 10))))))
@@ -193,6 +213,7 @@
 
 {: test-fennel-command-builds-standard-subprocess-environment
  : test-import-entry-checks-only-the-requested-ready-preview
+ : test-update-imports-numbers-refs-and-blame-caches
  : test-missing-entries-skips-cached-previews
  : test-side-priority-entries-handles-small-lists
  : test-side-priority-entries-warmer-from-edges-to-center

@@ -59,7 +59,7 @@
         (values nil key))))
 
 (fn read-msg [state raw-key]
-  (let [(pending-key action) (next-key state.pending-key raw-key)]
+  (let [(pending-key action) (next-key state.pending_key raw-key)]
     (if (= raw-key :quit) (messages.quit) state.show_help?
         (if (or (= raw-key "q") (= raw-key :escape) (= action :toggle-help))
             (messages.action :toggle-help nil)

@@ -46,10 +46,15 @@
           true)
         false)))
 
-(fn dir-exists? [path]
-  (let [(ok _kind _code) (os.execute (.. "test -d " (shell-quote path)
-                                         " 2>/dev/null"))]
+(fn command-succeeds? [cmd]
+  (let [(ok _kind _code) (os.execute cmd)]
     (= ok true)))
+
+(fn getenv [name]
+  (os.getenv name))
+
+(fn dir-exists? [path]
+  (command-succeeds? (.. "test -d " (shell-quote path) " 2>/dev/null")))
 
 (fn remove-file [path]
   (os.remove path))
@@ -86,10 +91,12 @@
 {: background-command
  : background-shell-command
  : command-exists?
+ : command-succeeds?
  : cpu-count
  : dir-exists?
  : ensure-dir
  : file-exists?
+ : getenv
  : os-name
  : read-command
  : read-file

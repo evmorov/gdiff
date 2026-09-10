@@ -49,15 +49,27 @@
                           :diff_stats diff-stats
                           :revision ?revision}))
 
+(fn folder-listings-loaded [records then]
+  (build :folder-listings-loaded {: records : then}))
+
+(fn pr-refresh-finished [?info ?error]
+  (build :pr-refresh-finished {:info ?info :error ?error}))
+
+(fn pr-refresh-resolved [?revision ?error]
+  (build :pr-refresh-resolved {:revision ?revision :error ?error}))
+
 {: action
  : build
  : ignore
  : copy-path-finished
+ : folder-listings-loaded
  : open-base-finished
  : open-commit-finished
  : open-pr-finished
  : open-target-finished
  : pending-key
+ : pr-refresh-finished
+ : pr-refresh-resolved
  : quit
  : refresh-loaded
  : review-persist-failed

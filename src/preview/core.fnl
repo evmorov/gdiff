@@ -59,63 +59,58 @@
   (preview-key.for-entry state.revision entry state.full_context?
                          state.hide_comments?))
 
+(fn entry-data [state entry]
+  (if (assets.asset? entry) (format.asset state entry)
+      entry.untracked? (file-lines state entry)
+      (diff-data state entry state.full_context?)))
+
+(fn store-entry-data [state key lines ?numbers ?refs]
+  (tset state.preview_cache key lines)
+  (when state.preview_numbers_cache
+    (tset state.preview_numbers_cache key (or ?numbers false)))
+  (when state.preview_line_refs_cache
+    (tset state.preview_line_refs_cache key (or ?refs false))))
+
+(fn load-entry [state entry]
+  "Compute the preview for `entry`, fill the line, number, and ref caches, and
+return (lines numbers refs)."
+  (let [(lines numbers refs) (entry-data state entry)]
+    (store-entry-data state (cache-key state entry) lines numbers refs)
+    (values lines numbers refs)))
+
 (fn lines [state entry]
   (if (not entry)
       (format.no-selection state)
-      (let [full-context? state.full_context?
-            key (cache-key state entry)
-            cached (. state.preview_cache key)]
-        (if cached
-            cached
-            (assets.asset? entry)
-            (let [lines (format.asset state entry)]
-              (tset state.preview_cache key lines)
-              lines)
-            entry.untracked?
-            (let [(lines numbers) (file-lines state entry)]
-              (tset state.preview_cache key lines)
-              (when state.preview_numbers_cache
-                (tset state.preview_numbers_cache key (or numbers false)))
-              lines)
-            (let [(lines numbers refs) (diff-data state entry full-context?)]
-              (tset state.preview_cache key lines)
-              (when state.preview_numbers_cache
-                (tset state.preview_numbers_cache key (or numbers false)))
-              (when state.preview_line_refs_cache
-                (tset state.preview_line_refs_cache key (or refs false)))
-              lines)))))
+      (let [cached (. state.preview_cache (cache-key state entry))]
+        (if cached cached (pick-values 1 (load-entry state entry))))))
 
 (fn line-numbers [state entry]
-  (if (or (not entry) (assets.asset? entry)) nil
-      (let [key (cache-key state entry)
-            cached (. (or state.preview_numbers_cache {}) key)]
-        (if (not (= nil cached)) cached entry.untracked?
-            (let [(_ numbers) (file-lines state entry)]
-              (when state.preview_numbers_cache
-                (tset state.preview_numbers_cache key (or numbers false)))
-              numbers) (let [(_ numbers refs) (diff-data state entry
-                                                                    state.full_context?)]
-                                    (when state.preview_numbers_cache
-                                      (tset state.preview_numbers_cache key
-                                            (or numbers false)))
-                                    (when state.preview_line_refs_cache
-                                      (tset state.preview_line_refs_cache key
-                                            (or refs false)))
-                                    numbers)))))
+  (when (and entry (not (assets.asset? entry)))
+    (let [cached (. (or state.preview_numbers_cache {}) (cache-key state entry))]
+      (if (not= nil cached)
+          cached
+          (let [(_ numbers) (load-entry state entry)]
+            numbers)))))
 
 (fn line-refs [state entry]
-  (if (or (not entry) entry.untracked? (assets.asset? entry))
-      nil
-      (let [key (cache-key state entry)
-            cached (. (or state.preview_line_refs_cache {}) key)]
-        (if (not (= nil cached))
-            cached
-            (let [(_ numbers refs) (diff-data state entry state.full_context?)]
-              (when state.preview_numbers_cache
-                (tset state.preview_numbers_cache key (or numbers false)))
-              (when state.preview_line_refs_cache
-                (tset state.preview_line_refs_cache key (or refs false)))
-              refs)))))
+  (when (and entry (not entry.untracked?) (not (assets.asset? entry)))
+    (let [cached (. (or state.preview_line_refs_cache {})
+                    (cache-key state entry))]
+      (if (not= nil cached)
+          cached
+          (let [(_ _ refs) (load-entry state entry)]
+            refs)))))
+
+(fn warming? [state]
+  (and state.preview_warm state.preview_warm.dir))
+
+(fn warm-covers? [state]
+  (and (warming? state) (not state.full_context?) (not state.hide_comments?)
+       true))
+
+(fn warm-covers-entry? [state entry]
+  (and (warm-covers? state)
+       (not= nil (. state.preview_warm.key-index (cache-key state entry)))))
 
 ;; Beyond this many disjoint ranges, blame the whole file instead of building a
 ;; giant `git blame -L ...` command line.
@@ -128,25 +123,48 @@
   (.. state.revision "\0" (or entry.path "") "\0" (or entry.old_path "") "\0"
       (tostring side) "\0" (or signature "")))
 
+(fn blame-request [state entry side ?line-numbers]
+  "The cache key and `git blame -L` ranges for one side of an entry."
+  (let [ranges (when ?line-numbers (blame.ranges ?line-numbers))
+        ranges (if (and ranges (> (length ranges) max-blame-ranges)) nil ranges)
+        signature (if ranges (ranges-signature ranges) "")]
+    {:key (blame-key state entry side signature) : ranges}))
+
+(fn cached-blame [state key]
+  (. (or state.preview_blame_cache {}) key))
+
 (fn blame-lines [state entry side ?line-numbers]
+  "Blame labels by line number. While a blame-warming run covers this entry, a
+cache miss returns no labels instead of blocking on git; the import fills them."
   (if (and ?line-numbers (= 0 (length ?line-numbers)))
       {}
-      (let [ranges (when ?line-numbers (blame.ranges ?line-numbers))
-            ranges (if (and ranges (> (length ranges) max-blame-ranges)) nil
-                       ranges)
-            signature (if ranges (ranges-signature ranges) "")
-            key (blame-key state entry side signature)
-            cached (. (or state.preview_blame_cache {}) key)]
-        (if cached
-            cached
-            (let [lines (git.blame-lines state.revision entry side ranges)]
+      (let [request (blame-request state entry side ?line-numbers)
+            cached (cached-blame state request.key)]
+        (if cached cached
+            (and state.preview_warm state.preview_warm.blame?
+                 (warm-covers-entry? state entry)) {}
+            (let [lines (git.blame-lines state.revision entry side
+                                         request.ranges)]
               (when state.preview_blame_cache
-                (tset state.preview_blame_cache key lines))
+                (tset state.preview_blame_cache request.key lines))
               lines)))))
 
 (fn side-line-numbers [refs side]
   (icollect [_ ref (ipairs (or refs []))]
     (when (and ref (= ref.side side)) ref.no)))
+
+(fn split-side-numbers [rows side]
+  (icollect [_ row (ipairs (or rows []))]
+    (. row (if (= side :old) :old-no :new-no))))
+
+(fn blame-cached? [state entry side numbers]
+  (or (= 0 (length numbers))
+      (not= nil
+            (cached-blame state (. (blame-request state entry side numbers)
+                                   :key)))))
+
+(fn blame-candidate? [entry]
+  (and entry (not entry.untracked?) (not (assets.asset? entry)) true))
 
 (fn number-width [numbers]
   (accumulate [width 0 _ number (ipairs (or numbers []))]
@@ -198,15 +216,8 @@
                     (.. number-text sep blame-text)))
               false))))))
 
-(fn warming? [state]
-  (and state.preview_warm state.preview_warm.dir))
-
 (fn split-key [state entry]
   (.. (cache-key state entry) "\0split"))
-
-(fn warm-covers? [state]
-  (and (warming? state) (not state.full_context?) (not state.hide_comments?)
-       true))
 
 (fn compute-split-rows [state entry key]
   (let [(output ok) (git.plain-diff-output state.revision entry
@@ -227,8 +238,24 @@
             (warm-covers? state) []
             (compute-split-rows state entry key)))))
 
-(fn gutters-ready? [state key]
-  (if state.show_blame? false
+(fn split-blame-needed? [state entry]
+  (and state.split_mode? (= entry.kind "M")))
+
+(fn split-blame-ready? [state entry]
+  (let [rows (. state.split_cache (split-key state entry))]
+    (and rows (blame-cached? state entry :old (split-side-numbers rows :old))
+         (blame-cached? state entry :new (split-side-numbers rows :new)) true)))
+
+(fn blame-ready? [state entry key]
+  (let [refs (. (or state.preview_line_refs_cache {}) key)]
+    (and (not= nil refs)
+         (blame-cached? state entry :old (side-line-numbers (or refs []) :old))
+         (blame-cached? state entry :new (side-line-numbers (or refs []) :new))
+         (or (not (split-blame-needed? state entry))
+             (split-blame-ready? state entry)) true)))
+
+(fn gutters-ready? [state entry key]
+  (if state.show_blame? (blame-ready? state entry key)
       state.show_numbers? (not= nil (. (or state.preview_numbers_cache {}) key))
       true))
 
@@ -238,26 +265,71 @@
         (and (not= nil (. state.preview_cache key))
              (or (not state.split_mode?) (not= entry.kind "M")
                  (not= nil (. state.split_cache (split-key state entry))))
-             (gutters-ready? state key) true))))
+             (gutters-ready? state entry key) true))))
+
+(fn warm-caches [state]
+  "The app caches a warm import fills, keyed the same way the worker output is."
+  {:lines state.preview_cache
+   :split state.split_cache
+   :numbers state.preview_numbers_cache
+   :refs state.preview_line_refs_cache
+   :blame state.preview_blame_cache})
+
+(fn blame-missing? [state entry]
+  (and (blame-candidate? entry)
+       (not (blame-ready? state entry (cache-key state entry)))))
+
+(fn warm-missing-entries [state entries]
+  "Entries the background workers should compute: previews not yet cached, plus
+entries whose blame is not cached while blame is shown."
+  (icollect [_ entry (ipairs entries)]
+    (when (or (= nil (. state.preview_cache (cache-key state entry)))
+              (and state.show_blame? (blame-missing? state entry)))
+      entry)))
+
+(fn warm-blame [state entry refs split-rows]
+  "Blame both sides of an entry for the line sets the unified and split views
+ask for, so their cache keys are ready when the output is imported."
+  (when state.show_blame?
+    (let [out {}]
+      (each [_ [side numbers] (ipairs [[:old (side-line-numbers refs :old)]
+                                       [:new (side-line-numbers refs :new)]
+                                       [:old
+                                        (split-side-numbers split-rows :old)]
+                                       [:new
+                                        (split-side-numbers split-rows :new)]])]
+        (let [request (blame-request state entry side numbers)]
+          (when (and (< 0 (length numbers)) (not (. out request.key)))
+            (tset out request.key
+                  (git.blame-lines state.revision entry side request.ranges)))))
+      out)))
+
+(fn warm-diff-entry [state entry]
+  (let [(output ok) (git.plain-diff-output state.revision entry
+                                           state.full_context?)]
+    (if ok
+        (let [(lines numbers refs) (format.diff-lines state output entry)
+              split-rows (if (= entry.kind "M")
+                             (split.parse-rows output state.revision_old_label
+                                               state.revision_new_label
+                                               state.hide_comments?)
+                             [])]
+          {: lines
+           :numbers (or numbers false)
+           :refs (or refs false)
+           :split split-rows
+           :blame (warm-blame state entry refs split-rows)})
+        {:lines (format.warning state (sys.trim output))
+         :numbers false
+         :refs false
+         :split []})))
 
 (fn warm-entry [state entry]
-  (if (not entry)
-      {:lines (format.no-selection state) :split []}
-      (assets.asset? entry)
-      {:lines (format.asset state entry) :split []}
-      entry.untracked?
-      {:lines (file-lines state entry) :split []}
-      (let [(output ok) (git.plain-diff-output state.revision entry
-                                               state.full_context?)]
-        (if ok
-            (let [(lines _numbers) (format.diff-lines state output entry)]
-              {: lines
-               :split (if (= entry.kind "M")
-                          (split.parse-rows output state.revision_old_label
-                                            state.revision_new_label
-                                            state.hide_comments?)
-                          [])})
-            {:lines (format.warning state (sys.trim output)) :split []}))))
+  (if (not entry) {:lines (format.no-selection state) :split []}
+      (assets.asset? entry) {:lines (format.asset state entry) :split []}
+      entry.untracked? (let [(lines numbers) (file-lines state entry)]
+                         {: lines :numbers (or numbers false) :split []})
+      (warm-diff-entry state entry)))
 
 (fn cache-split [state entry]
   (when (and entry (= entry.kind "M") (not entry.untracked?)
@@ -288,8 +360,8 @@
             (lines state entry)))))
 
 (fn prepare-entry [state entry]
-  (preview-warm.import-entry state.preview_warm state.preview_cache
-                             state.revision entry state.split_cache))
+  (preview-warm.import-entry state.preview_warm (warm-caches state)
+                             state.revision entry))
 
 (fn listing-row? [state row]
   (and (= state.view_mode :tree) row (= row.type :file) row.unchanged row.path))
@@ -503,7 +575,9 @@
  : split-rows
  : blame-lines
  : cache-split
+ : warm-caches
  : warm-entry
+ : warm-missing-entries
  : splittable?
  : split?
  : split-active?

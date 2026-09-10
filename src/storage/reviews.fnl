@@ -3,8 +3,8 @@
 (local sys (require :platform.core))
 
 (fn state-dir []
-  (let [xdg (os.getenv "XDG_STATE_HOME")
-        home (os.getenv "HOME")]
+  (let [xdg (sys.getenv "XDG_STATE_HOME")
+        home (sys.getenv "HOME")]
     (if (and xdg (> (length xdg) 0))
         (.. xdg "/gdiff")
         (.. (or home ".") "/.local/state/gdiff"))))

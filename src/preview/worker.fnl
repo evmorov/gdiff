@@ -21,6 +21,7 @@
       (let [state {:revision manifest.revision
                    :revision_old_label manifest.old-label
                    :revision_new_label manifest.new-label
+                   :show_blame? (and manifest.blame? true)
                    :preview_cache {}
                    :split_cache {}}]
         (var canceled? false)

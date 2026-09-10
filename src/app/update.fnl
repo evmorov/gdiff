@@ -2,13 +2,14 @@
 (local command-runner (require :app.command-runner))
 (local commands (require :app.commands))
 (local input (require :app.input))
+(local messages (require :app.messages))
 (local notice (require :app.notice))
+(local folder-preview (require :preview.folder))
 (local preview (require :preview.core))
 (local preview-warm (require :preview.warm))
 (local search (require :app.pane-search))
 (local selection (require :app.selection))
 (local app-state (require :app.state))
-(local git (require :git.core))
 (local pr-refresh (require :git.pr-refresh))
 (local sync (require :git.sync))
 
@@ -25,12 +26,11 @@
       (set state.force_next_draw? true))))
 
 (fn handle-quit [state _config _msg]
-  (preview-warm.cleanup state.preview_warm)
   (set state.quit? true)
-  commands.none)
+  (commands.warm-cleanup))
 
 (fn handle-pending-key [state _config msg]
-  (set state.pending-key msg.pending-key)
+  (set state.pending_key msg.pending-key)
   commands.none)
 
 (fn handle-ignore [state _config _msg]
@@ -78,14 +78,38 @@
   (actions.apply-refresh state msg.entries msg.reviewed msg.diff_stats
                          msg.revision))
 
+(fn handle-folder-listings-loaded [state config msg]
+  (folder-preview.store-records state msg.records)
+  (command-runner.command-or-none (actions.handle state config msg.then)))
+
+(fn handle-pr-refresh-finished [state _config msg]
+  (set state.force_next_draw? true)
+  (if msg.info
+      (commands.pr-refresh-resolve msg.info)
+      (do
+        (set state.notice (notice.pr-refresh-failed msg.error))
+        commands.none)))
+
+(fn handle-pr-refresh-resolved [state _config msg]
+  (if msg.revision
+      (do
+        (set state.notice (notice.pr-refreshed))
+        (commands.refresh msg.revision))
+      (do
+        (set state.notice (notice.pr-refresh-failed msg.error))
+        commands.none)))
+
 (local message-handlers
        {:copy-path-finished handle-copy-path-finished
+        :folder-listings-loaded handle-folder-listings-loaded
         :ignore handle-ignore
         :open-base-finished handle-open-base-finished
         :open-commit-finished handle-open-commit-finished
         :open-pr-finished handle-open-pr-finished
         :open-target-finished handle-open-target-finished
         :pending-key handle-pending-key
+        :pr-refresh-finished handle-pr-refresh-finished
+        :pr-refresh-resolved handle-pr-refresh-resolved
         :quit handle-quit
         :refresh-loaded handle-refresh-loaded
         :review-persist-failed handle-review-persist-failed
@@ -94,7 +118,7 @@
         :yank-fenced-finished handle-yank-fenced-finished})
 
 (fn handle-action [state config msg msg-type]
-  (set state.pending-key msg.pending-key)
+  (set state.pending_key msg.pending-key)
   (command-runner.command-or-none (actions.handle state config msg-type)))
 
 (fn command-for-message [state config msg]
@@ -111,19 +135,17 @@
 (fn run-command [state config command]
   (command-runner.run state config update command))
 
-(fn update-pr-refresh [state config]
+(fn dispatch-now [state config msg]
+  (let [(_ command) (update state config msg)]
+    (run-command state config command)))
+
+(fn poll-pr-refresh [state]
+  "Poll the background PR refresh and return a message once it has finished."
   (let [running? state.pr_refresh.running?]
     (pr-refresh.update state.pr_refresh)
     (when (and running? (not state.pr_refresh.running?))
-      (set state.force_next_draw? true)
-      (let [(revision err) (if state.pr_refresh.info
-                               (git.pr-revision-from-fetched-info state.pr_refresh.info)
-                               (values nil state.pr_refresh.error))]
-        (if revision
-            (do
-              (set state.notice (notice.pr-refreshed))
-              (run-command state config (commands.refresh revision)))
-            (set state.notice (notice.pr-refresh-failed err)))))))
+      (messages.pr-refresh-finished state.pr_refresh.info
+                                    state.pr_refresh.error))))
 
 (fn init [revision
           entries
@@ -138,16 +160,16 @@
 (fn update-warm-cache [state]
   (when (preview.prepare-entry state (selection.selected-entry state))
     (set state.force_next_draw? true))
-  (preview-warm.update state.preview_warm state.preview_cache state.split_cache))
+  (preview-warm.update state.preview_warm (preview.warm-caches state)))
 
 (fn handle-key [state config raw-key]
   (set state.force_next_draw? false)
   (update-remote-sync state)
-  (update-pr-refresh state config)
+  (case (poll-pr-refresh state)
+    msg (dispatch-now state config msg))
   (when (= raw-key :tick)
     (update-warm-cache state))
-  (let [(_ command) (update state config (input.read-msg state raw-key))]
-    (run-command state config command))
+  (dispatch-now state config (input.read-msg state raw-key))
   (when (= raw-key :tick)
     (set state.skip_next_draw? true))
   (not state.quit?))

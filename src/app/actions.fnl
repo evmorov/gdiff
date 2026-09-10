@@ -10,6 +10,7 @@
 (local search (require :app.search))
 (local pane-search (require :app.pane-search))
 (local preview-search (require :app.preview-search))
+(local preview-selection (require :app.preview-selection))
 (local line-selection (require :app.line-selection))
 (local selection (require :app.selection))
 (local tree (require :app.tree))
@@ -123,85 +124,20 @@
     (line-selection.stop state)
     (set state.notice nil)))
 
-(fn split-side-lines [logical-rows source-map display-len lo hi side]
-  (let [seen {}
-        out []]
-    (for [i (math.max 1 lo) (math.min display-len hi)]
-      (let [src (if source-map (. source-map i) i)
-            row (and src (. logical-rows src))
-            value (and row (. row side))]
-        (when (and value (not (. seen src)))
-          (tset seen src true)
-          (table.insert out value))))
-    out))
-
-(fn split-selection [state]
-  (let [(lo hi) (line-selection.range state.preview_selection_anchor
-                                      (or state.preview_cursor 1))
-        display (or state.split_rows [])
-        logical (or state.split_logical_rows display)
-        lines (split-side-lines logical state.split_source_map (length display)
-                                lo hi state.split_side)]
-    (values (table.concat lines "\n") (length lines))))
-
-(fn preview-selection [state]
-  (if (split-active? state)
-      (split-selection state)
-      (let [display (preview.display-lines state)
-            source (preview.display-source state)
-            source-map (preview.display-source-map state)
-            anchor state.preview_selection_anchor
-            cursor (or state.preview_cursor 1)]
-        (values (line-selection.selected-text display anchor cursor source
-                                              source-map)
-                (line-selection.line-count display anchor cursor source-map)))))
-
-(fn single-source-index [display anchor cursor source-map]
-  "The source line index under the cursor, or nil when the selection spans
-  more than one source line."
-  (when (= 1 (line-selection.line-count display anchor cursor source-map))
-    (if source-map (. source-map cursor) cursor)))
-
-(fn split-line-target [state]
-  (let [display (or state.split_rows [])
-        logical (or state.split_logical_rows display)
-        cursor (or state.preview_cursor 1)
-        index (single-source-index display state.preview_selection_anchor
-                                   cursor state.split_source_map)
-        row (and index (. logical index))
-        side state.split_side
-        no (and row (if (= side :old) row.old-no row.new-no))]
-    (when no {: side : no :entry (selection.selected-entry state)})))
-
-(fn preview-line-target [state]
-  (let [entry (selection.selected-entry state)
-        display (preview.display-lines state)
-        cursor (or state.preview_cursor 1)
-        index (single-source-index display state.preview_selection_anchor
-                                   cursor (preview.display-source-map state))
-        refs (and index (preview.line-refs state entry))
-        ref (and refs (. refs index))]
-    (when ref {:side ref.side :no ref.no : entry})))
-
-(fn line-blame-target [state]
-  (if (split-active? state)
-      (split-line-target state)
-      (preview-line-target state)))
-
 (fn open-commit-selected [state]
   (when (= state.focus :right)
-    (let [target (line-blame-target state)]
+    (let [target (preview-selection.line-target state)]
       (when target
         (commands.open-line-commit target)))))
 
 (fn yank-preview [state]
-  (let [(text count) (preview-selection state)]
+  (let [(text count) (preview-selection.text state)]
     (exit-line-selection state)
     (when (> count 0)
       (commands.yank text count))))
 
 (fn yank-preview-with-path [state]
-  (let [(text count) (preview-selection state)
+  (let [(text count) (preview-selection.text state)
         path (action-plan.copy-path (current-target state))]
     (exit-line-selection state)
     (when (> count 0)
@@ -339,7 +275,9 @@
   (exit-line-selection state)
   (set-fields state [:show_blame? (not state.show_blame?)]
               [:preview_display_cache nil] [:split_display_cache nil]
-              [:preview_x_scroll 0] [:preview_x_max_scroll 0]))
+              [:preview_x_scroll 0] [:preview_x_max_scroll 0])
+  (when state.show_blame?
+    (commands.warm-preview-cache)))
 
 (fn toggle-full-context [state]
   (let [entry (selection.selected-entry state)
@@ -388,16 +326,29 @@
                           (or (settled-row-index state row)
                               state.tree_selected_row)))
 
+(fn expand-folders [state row paths expand?]
+  (each [_ path (ipairs paths)]
+    (set-folder-expanded state path expand?))
+  (selection.invalidate-rows state)
+  (settle-cursor state row)
+  (when (search.has-query? state)
+    (search.rebuild state true)))
+
+(fn expand-or-load [state row paths expand? then]
+  "Expand or collapse `paths`. Expanding needs each folder's listing, so when
+some are not cached yet, return a command that loads them and replays `then`."
+  (let [missing (if expand? (folder-preview.missing-paths state paths) [])]
+    (if (next missing)
+        (commands.load-folder-listings missing then)
+        (expand-folders state row paths expand?))))
+
 (fn toggle-expand [state]
   (when (= state.view_mode :tree)
     (let [row (selection.selected-tree-row state)
           path (and row (row-folder-path row))]
       (when (and path (< 0 (length path)))
-        (set-folder-expanded state path (= nil (. state.expanded_folders path)))
-        (selection.invalidate-rows state)
-        (settle-cursor state row)
-        (when (search.has-query? state)
-          (search.rebuild state true))))))
+        (expand-or-load state row [path]
+                        (= nil (. state.expanded_folders path)) :toggle-expand)))))
 
 (fn nested-changed-folders [state]
   (icollect [_ row (ipairs (tree.rows state.entries {}))]
@@ -411,14 +362,8 @@
   (when (= state.view_mode :tree)
     (let [paths (nested-changed-folders state)]
       (when (< 0 (length paths))
-        (let [row (selection.selected-tree-row state)
-              expand? (not (all-expanded? state paths))]
-          (each [_ path (ipairs paths)]
-            (set-folder-expanded state path expand?))
-          (selection.invalidate-rows state)
-          (settle-cursor state row)
-          (when (search.has-query? state)
-            (search.rebuild state true)))))))
+        (expand-or-load state (selection.selected-tree-row state) paths
+                        (not (all-expanded? state paths)) :expand-all)))))
 
 (fn toggle-hide-reviewed [state]
   (let [row (and (= state.view_mode :tree) (selection.selected-tree-row state))]

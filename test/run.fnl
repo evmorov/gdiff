@@ -50,7 +50,6 @@
             :tui-terminal-osc-test
             :tui-terminal-probe-test
             :tui-runtime-test
-            :tui-runtime-test
             :update-test
             :util-math-test
             :util-scroll-test

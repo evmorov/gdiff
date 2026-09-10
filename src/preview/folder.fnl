@@ -254,6 +254,21 @@
                          (tset cache path record)
                          record))))
 
+(fn load-records [paths]
+  "Read the folder listings for `paths`, keyed by path."
+  (collect [_ path (ipairs paths)]
+    (values path (load-record path))))
+
+(fn store-records [state records]
+  (let [cache (ensure-cache state)]
+    (each [path record (pairs records)]
+      (tset cache path record))))
+
+(fn missing-paths [state paths]
+  (let [cache (ensure-cache state)]
+    (icollect [_ path (ipairs paths)]
+      (when (not (. cache path)) path))))
+
 (fn lines [state row]
   (render-lines state row (record-for state row.path)))
 
@@ -267,4 +282,11 @@
                           (not left.folder?))))
     out))
 
-{: folder-entries : folder-plan-for : lines : parsed-listing : render-lines}
+{: folder-entries
+ : folder-plan-for
+ : lines
+ : load-records
+ : missing-paths
+ : parsed-listing
+ : render-lines
+ : store-records}

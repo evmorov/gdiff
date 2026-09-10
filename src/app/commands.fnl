@@ -3,8 +3,10 @@
 (local clipboard (require :platform.clipboard))
 (local editor (require :platform.editor))
 (local git (require :git.core))
+(local folder-preview (require :preview.folder))
 (local messages (require :app.messages))
 (local pr-refresh (require :git.pr-refresh))
+(local preview (require :preview.core))
 (local preview-warm (require :preview.warm))
 (local reviews (require :storage.reviews))
 (local sync (require :git.sync))
@@ -35,10 +37,27 @@
   [_dispatch get-state]
   (let [state (get-state)]
     (preview-warm.start state.preview_warm state.src_dir state.revision
-                        (preview-warm.missing-entries state.revision
-                                                      (preview-warm.side-priority-entries state.entries)
-                                                      state.preview_cache)
-                        state.revision_old_label state.revision_new_label)))
+                        (preview.warm-missing-entries state
+                                                      (preview-warm.side-priority-entries state.entries))
+                        state.revision_old_label state.revision_new_label
+                        state.show_blame?)))
+
+(defcommand warm-cleanup
+  []
+  [_dispatch get-state]
+  (preview-warm.cleanup (. (get-state) :preview_warm)))
+
+(defcommand load-folder-listings
+  [paths then]
+  [dispatch _get-state]
+  (dispatch (messages.folder-listings-loaded (folder-preview.load-records paths)
+                                             then)))
+
+(defcommand pr-refresh-resolve
+  [info]
+  [dispatch _get-state]
+  (let [(revision err) (git.pr-revision-from-fetched-info info)]
+    (dispatch (messages.pr-refresh-resolved revision err))))
 
 (defcommand sync-start
   []
@@ -58,7 +77,7 @@
   (let [path (or entry.new_file entry.path)
         exists? (sys.file-exists? path)]
     (when exists?
-      (editor.run config {: path} (. (get-state) :stty-state)))
+      (editor.run config {: path} (. (get-state) :stty_state)))
     (dispatch (messages.open-target-finished :file path exists?))))
 
 (defcommand open-base-editor
@@ -69,7 +88,7 @@
         path (action-plan.base-source-path target)
         (temp err) (git.materialize-base ref path)]
     (when temp
-      (editor.run config {:path temp} state.stty-state))
+      (editor.run config {:path temp} state.stty_state))
     (dispatch (messages.open-base-finished ref path (not err) err))))
 
 (defcommand open-head-editor
@@ -79,7 +98,7 @@
         ref state.revision_new_label
         (temp err) (git.materialize-base ref path)]
     (when temp
-      (editor.run config {:path temp} state.stty-state))
+      (editor.run config {:path temp} state.stty_state))
     (dispatch (messages.open-base-finished ref path (not err) err))))
 
 (defcommand open-folder
@@ -146,6 +165,7 @@
 
 {: batch
  : copy-path
+ : load-folder-listings
  : none
  : open-base-editor
  : open-editor
@@ -154,9 +174,11 @@
  : open-line-commit
  : open-linked-pr
  : persist-reviewed
+ : pr-refresh-resolve
  : pr-refresh-start
  : refresh
  : sync-start
+ : warm-cleanup
  : warm-preview-cache
  : yank
  : yank-fenced}

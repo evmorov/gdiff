@@ -20,8 +20,7 @@
         (values nil (sys.trim output)))))
 
 (fn revision-exists? [revision]
-  (let [(ok _kind _code) (os.execute (commands.revision-exists-command revision))]
-    ok))
+  (sys.command-succeeds? (commands.revision-exists-command revision)))
 
 (fn default-revision []
   (if (revision-exists? "main")
@@ -34,8 +33,7 @@
   (or (read-trimmed (commands.current-branch-command)) "HEAD"))
 
 (fn local-branch? [branch]
-  (let [(ok _kind _code) (os.execute (commands.local-branch-command branch))]
-    ok))
+  (sys.command-succeeds? (commands.local-branch-command branch)))
 
 (fn comparison-sides [revision ?current-branch]
   (if (commands.files? revision)
@@ -301,10 +299,10 @@ for three-dot ranges, the revision itself otherwise."
         (values nil "Could not resolve commit URL"))))
 
 (fn repo-root []
-  (or (read-trimmed (commands.repo-root-command)) (os.getenv "PWD") "."))
+  (or (read-trimmed (commands.repo-root-command)) (sys.getenv "PWD") "."))
 
 (fn temp-root []
-  (let [tmp (or (os.getenv "TMPDIR") "/tmp")]
+  (let [tmp (or (sys.getenv "TMPDIR") "/tmp")]
     (if (= (tmp:sub -1) "/") (tmp:sub 1 -2) tmp)))
 
 (fn parent-dir [path]

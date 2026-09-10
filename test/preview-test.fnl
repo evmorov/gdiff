@@ -5,6 +5,8 @@
 (local preview-file (require :preview.file))
 (local preview-format (require :preview.format))
 (local preview-key (require :preview.key))
+(local fennel (require :fennel))
+(local sys (require :platform.core))
 (local tui (require :tui.core))
 (local t (require :test-helper))
 (local update (require :app.update))
@@ -779,7 +781,48 @@
     (faith.= [[2 2]] (. captured :old))
     (faith.= [[1 2]] (. captured :new))))
 
+(fn test-warmed-blame-makes-both-views-ready-without-git []
+  (setup-repo)
+  (t.mkdir "warm")
+  (t.write-file "warm/manifest.fnl" "{}")
+  (let [(entries err) (git.diff-entries "HEAD")
+        entry (. entries 1)
+        app (update.init "HEAD" entries {:version 1 :reviews {}} "scope" "src")
+        worker {:revision "HEAD"
+                :revision_old_label "HEAD"
+                :revision_new_label "working tree"
+                :show_blame? true
+                :preview_cache {}
+                :split_cache {}}
+        output (preview.warm-entry worker entry)
+        key (preview-key.for-entry "HEAD" entry)]
+    (faith.= nil err)
+    (faith.is (next output.blame) "worker output carries blame labels")
+    (faith.is (sys.write-file "warm/1.fnl" (fennel.view output)))
+    (set app.show_blame? true)
+    (set app.split_mode? true)
+    (set app.preview_warm.dir "warm")
+    (set app.preview_warm.blame? true)
+    (set app.preview_warm.count 1)
+    (set app.preview_warm.remaining 1)
+    (set app.preview_warm.key-index {key 1})
+    (set app.preview_warm.index-key {1 key})
+    (faith.= false (preview.ready? app entry))
+    (faith.= {} (preview.blame-lines app entry :new [2])
+             "a miss while warming does not block on git")
+    (faith.is (preview.prepare-entry app entry))
+    (faith.= true (preview.ready? app entry)
+             "unified and split blame keys are cached by the import")
+    (let [real-blame git.blame-lines]
+      (set git.blame-lines #(error "blame must come from the cache"))
+      (let [gutters (preview.line-gutters app entry
+                                          (preview.line-numbers app entry)
+                                          (preview.line-refs app entry))]
+        (faith.is gutters))
+      (set git.blame-lines real-blame))))
+
 {: test-full-context-uses-separate-key-and-wider-diff
+ : test-warmed-blame-makes-both-views-ready-without-git
  : test-hide-comments-uses-separate-key-and-filtered-diff
  : test-preview-format-hides-comment-lines-when-enabled
  : test-preview-format-keeps-line-numbers-of-surviving-lines

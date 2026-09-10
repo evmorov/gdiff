@@ -32,7 +32,7 @@ App code follows a TEA-like loop. Keep new behavior in the matching step.
 Rules that fall out of this:
 
 - Key handling belongs in `input.fnl`, not in view or command code.
-- Anything that shells out, reads or writes files, touches the clipboard, or opens a browser or editor goes through a `platform` function and is triggered from a command. Handlers in `update.fnl` and `actions.fnl` should only change state. The existing exceptions are loading a preview on a cache miss and polling the sync status file. Do not add new I/O to handlers.
+- Anything that shells out, reads or writes files, touches the clipboard, or opens a browser or editor goes through a `platform` function and is triggered from a command. Handlers in `update.fnl` and `actions.fnl` should only change state. The existing exceptions are loading a preview on a cache miss and polling the sync and PR refresh status files in `handle-key`; the PR refresh result is then dispatched as a message. Do not add new I/O to handlers.
 - Planning is separate from doing. `action-plan.fnl`, `selection-plan.fnl`, `search-plan.fnl`, `preview/warm-plan.fnl`, and `git/commands.fnl` build plain data or command strings. The effectful code executes them.
 - View `body` functions must not mutate state. `view-purity-test.fnl` checks this. Views that need to compute layout do so in a `prepare` function that runs before drawing.
 

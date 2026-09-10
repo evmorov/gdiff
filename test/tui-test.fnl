@@ -289,6 +289,17 @@
     (faith.not= (theme.style-for light :line-added)
                 (theme.style-for dark :line-added))))
 
+(fn test-blame-palette-follows-the-background []
+  (let [light (theme.new {:r 255 :g 255 :b 255})
+        dark (theme.new {:r 16 :g 24 :b 32})]
+    (for [i 1 7]
+      (let [role (.. "blame-" i)]
+        (faith.match "^\27%[38;5;%d+m$" (theme.style-for theme.default role))
+        (faith.match "^\27%[38;5;%d+m$" (theme.style-for light role))
+        (faith.not= (theme.style-for light role) (theme.style-for dark role))))
+    (faith.not= (theme.style-for dark :blame-1) (theme.style-for dark :blame-2))
+    (faith.= nil (theme.style-for theme.default :blame-8))))
+
 (fn test-tint-restyles-after-resets []
   (let [t (theme.new {:r 255 :g 255 :b 255})
         style (theme.style-for t :line-added)
@@ -307,6 +318,7 @@
 
 {: test-tint-style-mixes-background-toward-target
  : test-line-tints-derive-from-background-only
+ : test-blame-palette-follows-the-background
  : test-tint-restyles-after-resets
  : test-selected-row-replaces-line-backgrounds
  : test-empty-footer-is-nil

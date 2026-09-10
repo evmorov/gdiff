@@ -80,6 +80,44 @@
       (faith.match "1 29/04/2021 Evgenii" text)
       (faith.match "1 30/04/2021 Ada" text))))
 
+(fn test-split-preview-colors-blame-by-author []
+  (let [entry {:status "M" :kind "M" :path "a.rb"}
+        rows [{:kind :context :old "x" :new "x" :old-no 1 :new-no 1}
+              {:kind :context :old "y" :new "y" :old-no 2 :new-no 2}]
+        key (.. (preview-key.for-entry "HEAD" entry false) "\0split")
+        state {:revision "HEAD"
+               :split_cache {key rows}
+               :preview_wrap? true
+               :show_numbers? false
+               :show_blame? true
+               :split_ratio 0.5
+               :preview_scroll 0
+               :preview_x_scroll 0
+               :full_context? false}
+        old-blame-lines preview.blame-lines]
+    (set preview.blame-lines
+         (fn [_state _entry side]
+           (if (= side :old)
+               {1 "29/04/2021 Evgenii" 2 "30/04/2021 Ada"}
+               {1 "29/04/2021 Evgenii" 2 "01/05/2021 Grace"})))
+    (view.prepare state 5 80 {:entry entry})
+    (set preview.blame-lines old-blame-lines)
+    (let [node (view.body state 5 80)
+          styles-for (fn [line label]
+                       (icollect [style text (line:gmatch "(\27%[[%d;]+m)([^\27]*)")]
+                         (when (= 1 (text:find label 1 true)) style)))
+          evgenii (styles-for (. node.lines 1) "29/04/2021 Evgenii")
+          ada (styles-for (. node.lines 2) "30/04/2021 Ada")
+          grace (styles-for (. node.lines 2) "01/05/2021 Grace")]
+      (faith.= 2 (length evgenii))
+      (faith.= (. evgenii 1) (. evgenii 2))
+      (faith.match "^\27%[38;5;%d+m$" (. evgenii 1))
+      (faith.= 1 (length ada))
+      (faith.= 1 (length grace))
+      (faith.not= (. evgenii 1) (. ada 1))
+      (faith.not= (. evgenii 1) (. grace 1))
+      (faith.not= (. ada 1) (. grace 1)))))
+
 (fn test-split-preview-leaves-wrapped-continuation-gutter-blank []
   (let [entry {:status "M" :kind "M" :path "a.rb"}
         rows [{:kind :context
@@ -287,6 +325,7 @@
  : test-wrap-rows-splits-long-side-and-pads-shorter
  : test-wrap-rows-wraps-full-width-rows-across-content
  : test-split-preview-gutter-shows-blame-next-to-numbers
+ : test-split-preview-colors-blame-by-author
  : test-split-preview-leaves-wrapped-continuation-gutter-blank
  : test-split-preview-shows-deleted-line-blame
  : test-prepare-reuses-cached-split-layout}

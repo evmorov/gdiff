@@ -52,6 +52,7 @@
     (background-code (mix-toward rgb target amount))))
 
 {: background-style
+ : luminance
  : mix-toward
  : nearby-background
  : parse-background-response

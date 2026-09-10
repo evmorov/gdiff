@@ -732,8 +732,28 @@
     (let [gutters (preview.line-gutters state entry nil
                                         [{:side :new :no 1} {:side :new :no 2}])]
       (set git.blame-lines old-blame-lines)
-      (faith.= "26/06/2026 Evgenii" (. (. gutters 1) :full))
-      (faith.match "^07/07/2026 Not" (. (. gutters 2) :full)))))
+      (faith.= "26/06/2026 Evgenii" (tui.strip-ansi (. (. gutters 1) :full)))
+      (faith.match "^07/07/2026 Not" (tui.strip-ansi (. (. gutters 2) :full))))))
+
+(fn test-unified-blame-gutter-colors-each-author-differently []
+  (let [state (state)
+        entry {:path "app.rb"}
+        old-blame-lines git.blame-lines]
+    (set state.show_blame? true)
+    (set git.blame-lines (fn [_revision _entry _side]
+                           {1 "26/06/2026 Evgenii"
+                            2 "07/07/2026 Ada"
+                            3 "08/07/2026 Evgenii"}))
+    (let [gutters (preview.line-gutters state entry nil
+                                        [{:side :new :no 1}
+                                         {:side :new :no 2}
+                                         {:side :new :no 3}])
+          style (fn [i]
+                  (string.match (. (. gutters i) :full) "^\27%[[%d;]+m"))]
+      (set git.blame-lines old-blame-lines)
+      (faith.match "^\27%[38;5;%d+m" (style 1))
+      (faith.= (style 1) (style 3))
+      (faith.not= (style 1) (style 2)))))
 
 (fn test-unified-blame-gutter-is-blank-on-wrapped-continuation-lines []
   (let [state (state)
@@ -763,7 +783,7 @@
            (if (= side :old) {3 "03/03/2020 Old"} {})))
     (let [gutters (preview.line-gutters state entry nil [{:side :old :no 3}])]
       (set git.blame-lines old-blame-lines)
-      (faith.= "03/03/2020 Old" (. (. gutters 1) :full)))))
+      (faith.= "03/03/2020 Old" (tui.strip-ansi (. (. gutters 1) :full))))))
 
 (fn test-unified-blame-requests-only-diff-line-ranges []
   (let [state (state)
@@ -963,6 +983,7 @@
  : test-visible-count-never-drops-below-one
  : test-unified-preview-gutter-combines-line-number-and-blame
  : test-unified-blame-gutter-is-left-aligned
+ : test-unified-blame-gutter-colors-each-author-differently
  : test-unified-blame-gutter-is-blank-on-wrapped-continuation-lines
  : test-unified-blame-gutter-shows-deleted-line-blame
  : test-unified-blame-requests-only-diff-line-ranges

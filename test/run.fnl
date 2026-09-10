@@ -26,6 +26,7 @@
             :selection-context-test
             :selection-plan-test
             :preview-test
+            :preview-blame-colors-test
             :preview-line-moves-test
             :preview-split-test
             :preview-split-view-test

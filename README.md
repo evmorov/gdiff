@@ -21,7 +21,7 @@ That means reading a lot more diffs than before. gdiff is built for that: a diff
 - Moved files are detected when Git missed the rename. The file list shows `(moved to new/path, 87%)` on the old file and `(moved from old/path, 87%)` on the new one.
 - Whitespace-only hunks are marked.
 - Search in the diff and in the file list.
-- Blame: one key adds a gutter with the commit date and author for every line, in both unified and side-by-side view. Blame is loaded in the background while the gutter is shown.
+- Blame: one key adds a gutter with the commit date and author for every line, in both unified and side-by-side view. Each author gets their own color. Blame is loaded in the background while the gutter is shown.
 - Full context: one key switches the diff from hunks to the whole file with the changes highlighted in place.
 - Hide comments: one key hides comment lines from the diff. Changed comment lines are also colored differently from changed code when shown.
 - Toggles for line numbers and line wrapping.

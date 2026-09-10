@@ -13,6 +13,7 @@
 (local word-diff (require :preview.word-diff))
 (local line-moves (require :preview.line-moves))
 (local highlight (require :preview.highlight))
+(local blame-colors (require :preview.blame-colors))
 
 (fn split-halves [content]
   (let [available (math.max 0 (- content 1))
@@ -259,21 +260,34 @@
   (icollect [_ row (ipairs (or rows []))]
     (. row key)))
 
+(fn blame-labels [rows old-blame new-blame]
+  "Every blame label in the rows, in display order, old side before new."
+  (let [labels []]
+    (each [_ row (ipairs (or rows []))]
+      (when row.old-no
+        (table.insert labels (. old-blame row.old-no)))
+      (when row.new-no
+        (table.insert labels (. new-blame row.new-no))))
+    labels))
+
 (fn attach-blame [state entry rows]
   (if (or (not state.show_blame?) (not entry))
       rows
       (let [old-blame (preview.blame-lines state entry :old
                                            (row-line-numbers rows :old-no))
             new-blame (preview.blame-lines state entry :new
-                                           (row-line-numbers rows :new-no))]
+                                           (row-line-numbers rows :new-no))
+            labels (blame-labels rows old-blame new-blame)
+            slots (blame-colors.assign labels)
+            colorize #(blame-colors.colorize state.theme slots $)]
         (icollect [_ row (ipairs (or rows []))]
           (let [out {}]
             (each [k v (pairs row)]
               (tset out k v))
             (when row.old-no
-              (set out.old-blame (. old-blame row.old-no)))
+              (set out.old-blame (colorize (. old-blame row.old-no))))
             (when row.new-no
-              (set out.new-blame (. new-blame row.new-no)))
+              (set out.new-blame (colorize (. new-blame row.new-no))))
             out)))))
 
 (fn prepare-truncated [state rows visible cols]

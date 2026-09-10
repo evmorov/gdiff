@@ -1,5 +1,6 @@
 (local git (require :git.core))
 (local blame (require :git.blame))
+(local blame-colors (require :preview.blame-colors))
 (local assets (require :preview.assets))
 (local bat (require :platform.bat))
 (local highlight (require :preview.highlight))
@@ -257,19 +258,27 @@ cache miss returns no labels instead of blocking on git; the import fills them."
                         {})
           blame-w (if state.show_blame? (blame-width refs old-blame new-blame)
                       0)
+          label-for (fn [ref]
+                      (and state.show_blame? ref ref.no
+                           (. (if (= ref.side :old) old-blame new-blame) ref.no)))
+          slots (blame-colors.assign (icollect [_ ref (ipairs (or refs []))]
+                                       (label-for ref)))
           source (or refs numbers)]
       (icollect [i _item (ipairs source)]
         (let [ref (and refs (. refs i))
               number (and state.show_numbers? numbers (. numbers i))
-              blame (and state.show_blame? ref ref.no
-                         (. (if (= ref.side :old) old-blame new-blame) ref.no))]
+              blame (label-for ref)]
           (if (or number blame)
               (let [number-text (if (> number-w 0)
                                     (padded (and number (tostring number))
                                             number-w)
                                     "")
                     sep (if (and (> number-w 0) (> blame-w 0)) " " "")
-                    blame-text (if (> blame-w 0) (padded-right blame blame-w)
+                    blame-text (if (> blame-w 0)
+                                   (padded-right (blame-colors.colorize state.theme
+                                                                        slots
+                                                                        blame)
+                                                 blame-w)
                                    "")]
                 (if state.show_blame?
                     {:full (.. number-text sep blame-text)}

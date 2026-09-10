@@ -10,6 +10,10 @@
   (let [s (or s "")]
     (or (s:match "^(.-)/*$") s)))
 
+(fn basename [path]
+  (let [path (or path "")]
+    (or (path:match "([^/]+)$") path)))
+
 (fn continuation-byte? [byte]
   (and byte (>= byte 128) (< byte 192)))
 
@@ -29,4 +33,4 @@
               (set i (+ i 1))))
           (s:sub 1 (- i 1))))))
 
-{: contains? : crop : strip-trailing-slash : trim}
+{: basename : contains? : crop : strip-trailing-slash : trim}

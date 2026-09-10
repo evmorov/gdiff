@@ -7,13 +7,14 @@
 (local line-moves (require :preview.line-moves))
 (local highlight (require :preview.highlight))
 (local theme (require :tui.theme))
+(local str (require :util.string))
 
 (fn move-note [state ?entry]
   (let [note (moves.note (or ?entry {}))]
     (if (= note "") "" (tui.color state.theme :status-renamed note))))
 
-(fn header [state title ?entry]
-  (let [text (.. title (move-note state ?entry))
+(fn header [state path ?entry]
+  (let [text (.. (str.basename path) (move-note state ?entry))
         divider (string.rep symbols.line.horizontal (tui.visible-length text))]
     [text (tui.color state.theme :muted divider)]))
 

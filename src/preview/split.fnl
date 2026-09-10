@@ -3,6 +3,7 @@
 (local comments (require :preview.comments))
 (local line-moves (require :preview.line-moves))
 (local highlight (require :preview.highlight))
+(local str (require :util.string))
 
 (fn ordered-pairs [pairs]
   (let [out []]
@@ -66,7 +67,8 @@
       (and fallback (< 0 (length fallback)) fallback)))
 
 (fn header-title [path ?ref]
-  (if (and ?ref (< 0 (length ?ref))) (.. path " (" ?ref ")") path))
+  (let [name (str.basename path)]
+    (if (and ?ref (< 0 (length ?ref))) (.. name " (" ?ref ")") name)))
 
 (fn prepend-header [acc ?old-ref ?new-ref]
   (let [old-path (header-path acc.old-path acc.new-path)

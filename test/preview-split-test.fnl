@@ -32,6 +32,15 @@
     (faith.= {:kind :filename :old "f (main)" :new "f (feature)"} (. rows 1))
     (faith.= {:kind :rule :old "f (main)" :new "f (feature)"} (. rows 2))))
 
+(fn test-parse-rows-titles-columns-with-the-file-name-only []
+  (let [diff (table.concat ["--- a/lib/deep/old.rb"
+                            "+++ b/lib/deep/new.rb"
+                            "@@ -1,1 +1,1 @@"
+                            "-old"
+                            "+new"] "\n")
+        rows (split.parse-rows diff "main" "")]
+    (faith.= {:kind :filename :old "old.rb (main)" :new "new.rb"} (. rows 1))))
+
 (fn test-parse-rows-handles-pure-additions []
   (faith.= [{:kind :hunk :old "@@ -0,0 +1,2 @@"}
             {:kind :change :new "a" :new-no 1}
@@ -200,6 +209,7 @@
  : test-parse-rows-replaces-headers-with-a-filename-title
  : test-parse-rows-labels-each-column-with-its-ref
  : test-parse-rows-handles-pure-additions
+ : test-parse-rows-titles-columns-with-the-file-name-only
  : test-parse-rows-handles-pure-deletions
  : test-parse-rows-pairs-uneven-runs
  : test-parse-rows-aligns-similar-lines-onto-one-row

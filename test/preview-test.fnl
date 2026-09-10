@@ -110,7 +110,7 @@
                             "@@ -1,1 +0,0 @@"
                             "-old code"] "\n")
         lines (preview-format.diff-lines state diff entry)]
-    (faith.= (.. "lib/progress.rb"
+    (faith.= (.. "progress.rb"
                  (tui.color state.theme :status-renamed
                             " (moved to lib/steps/progress.rb, 60%)"))
              (. lines 1))))

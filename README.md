@@ -2,7 +2,7 @@
 
 gdiff is a terminal tool for reviewing Git changes. Changed files are on the left, the diff is on the right. You move with vim keys, search, switch between unified and side-by-side view, and open a file in your editor when you need more context.
 
-![gdiff showing a side-by-side diff with the file tree on the left](docs/gdiff-3-sep-2026.png)
+![gdiff showing a side-by-side diff with the file tree on the left](docs/gdiff-10-sep-2026.png)
 
 ## Why
 

@@ -21,6 +21,7 @@
     (faith.= {:type :toggle-all-reviewed} (update.read-msg state "A"))
     (faith.= {:type :toggle-wrap} (update.read-msg state "w"))
     (faith.= {:type :toggle-blame} (update.read-msg state "b"))
+    (faith.= {:type :toggle-highlight} (update.read-msg state "S"))
     (faith.= {:type :open-pr} (update.read-msg state "p"))
     (faith.= {:type :open-commit} (update.read-msg state "x"))))
 
@@ -268,6 +269,26 @@
       (faith.= (. (require :app.commands) :none) command
                "blame off does not start a warm run"))
     (faith.= false state.show_blame?)))
+
+(fn test-uppercase-s-toggles-syntax-highlighting-and-rewarms []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.highlight_available? true)
+    (set state.highlight? true)
+    (let [(_ command) (update.update state {} (update.read-msg state "S"))]
+      (faith.= :function (type command)))
+    (faith.= false state.highlight?)
+    (let [(_ command) (update.update state {} (update.read-msg state "S"))]
+      (faith.= :function (type command)))
+    (faith.= true state.highlight?)))
+
+(fn test-uppercase-s-without-bat-shows-a-notice []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.highlight_available? false)
+    (set state.highlight? false)
+    (let [(_ command) (update.update state {} (update.read-msg state "S"))]
+      (faith.= (. (require :app.commands) :none) command))
+    (faith.= false state.highlight?)
+    (faith.= "Syntax highlighting needs bat on PATH" state.notice)))
 
 (fn test-pr-refresh-finished-with-error-sets-notice-without-command []
   (let [state (state [(entry "M" "a.rb")])
@@ -886,6 +907,8 @@
     (faith.= "File not found: missing.rb" state.notice)))
 
 {: test-f-toggles-full-context-globally-across-navigation
+ : test-uppercase-s-toggles-syntax-highlighting-and-rewarms
+ : test-uppercase-s-without-bat-shows-a-notice
  : test-shift-c-toggles-hide-comments-globally-across-navigation
  : test-tab-toggles-focus-between-panes
  : test-jk-move-preview-cursor-when-diff-is-focused

@@ -48,7 +48,9 @@
            (notice.open-commit-finished false nil "Line is not committed yet"))
   (faith.= "Could not save reviewed marks" (notice.review-persist-failed))
   (faith.= "Syncing remote..." (notice.syncing-remote))
-  (faith.= "Remote in sync" (notice.remote-in-sync)))
+  (faith.= "Remote in sync" (notice.remote-in-sync))
+  (faith.= "Syntax highlighting needs bat on PATH"
+           (notice.highlight-unavailable)))
 
 {: test-misc-notices
  : test-path-notices

@@ -39,6 +39,7 @@
                         ["1" "Toggle line numbers"]
                         ["b" "Toggle blame"]
                         ["s" "Toggle side-by-side split"]
+                        ["S" "Toggle syntax highlighting"]
                         ["c" "Toggle full context"]
                         ["C" "Hide comment lines"]
                         ["v" "Select lines in diff (toggle)"]

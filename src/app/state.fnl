@@ -13,8 +13,10 @@
           review-scope
           src-dir
           ?diff-stats
-          ?pr-url]
+          ?pr-url
+          ?highlight]
   (let [selected 1
+        highlight (or ?highlight {})
         (old-ref new-ref) (git.comparison-sides revision)
         state {: revision
                :pr_url ?pr-url
@@ -56,7 +58,11 @@
                :expanded_folders {}
                :folder_preview_cache {}
                :theme theme.default
+               :highlight? (and highlight.on? true)
+               :highlight_available? (and highlight.available? true)
+               :bat_theme highlight.bat-theme
                :preview_cache {}
+               :preview_highlight_cache {}
                :preview_numbers_cache {}
                :preview_line_refs_cache {}
                :preview_blame_cache {}

@@ -266,7 +266,50 @@
     (faith.= "abc" (ansi.strip-ansi text))
     (faith.= nil (style:find "48;" 1 true))))
 
-{: test-empty-footer-is-nil
+(fn test-tint-style-mixes-background-toward-target []
+  (faith.= "\27[48;2;224;248;224m"
+           (colors.tint-style {:r 255 :g 255 :b 255} {:r 0 :g 200 :b 0} 0.12))
+  (faith.= nil (colors.tint-style nil {:r 0 :g 200 :b 0} 0.12)))
+
+(fn test-line-tints-derive-from-background-only []
+  (let [light (theme.new {:r 255 :g 255 :b 255})
+        dark (theme.new {:r 16 :g 24 :b 32})]
+    (faith.= true (theme.line-tints? light))
+    (faith.= true (theme.line-tints? dark))
+    (faith.= false (theme.line-tints? theme.default))
+    (faith.= nil (theme.style-for theme.default :line-added))
+    (faith.= "\27[48;5;194m" (theme.style-for theme.default :emphasis-added))
+    (faith.= "\27[48;5;194m" (theme.style-for light :emphasis-added))
+    (faith.= "\27[48;5;224m" (theme.style-for dark :emphasis-deleted))
+    (faith.= nil (theme.style-for theme.default :emphasis-tint-added))
+    (faith.match "^\27%[48;2;" (theme.style-for light :line-deleted))
+    (faith.match "^\27%[48;2;" (theme.style-for light :emphasis-tint-added))
+    (faith.not= (theme.style-for light :line-added)
+                (theme.style-for light :emphasis-tint-added))
+    (faith.not= (theme.style-for light :line-added)
+                (theme.style-for dark :line-added))))
+
+(fn test-tint-restyles-after-resets []
+  (let [t (theme.new {:r 255 :g 255 :b 255})
+        style (theme.style-for t :line-added)
+        out (theme.tint t :line-added "\27[35mdef\27[0m add")]
+    (faith.= "def add" (ansi.strip-ansi out))
+    (faith.= (.. style "\27[35mdef\27[0m" style " add\27[0m") out)))
+
+(fn test-selected-row-replaces-line-backgrounds []
+  (let [t (theme.new {:r 255 :g 255 :b 255})
+        tinted (theme.tint t :line-added "\27[35mdef\27[0m add")
+        row (theme.selected-row t tinted 10)]
+    (faith.= "def add   " (ansi.strip-ansi row))
+    (faith.= nil (row:find (theme.style-for t :line-added) 1 true))
+    (faith.is (row:find "\27[35mdef" 1 true))
+    (faith.is (row:find (. t :selected-row) 1 true))))
+
+{: test-tint-style-mixes-background-toward-target
+ : test-line-tints-derive-from-background-only
+ : test-tint-restyles-after-resets
+ : test-selected-row-replaces-line-backgrounds
+ : test-empty-footer-is-nil
  : test-bottom-rule-connects-footer-right-separator
  : test-bottom-rule-connects-all-footer-right-separators
  : test-bottom-rule-connects-body-divider

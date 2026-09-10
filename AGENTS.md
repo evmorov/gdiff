@@ -40,6 +40,7 @@ Rules that fall out of this:
 
 - `preview/core.fnl` owns the preview cache keyed by `preview/key.fnl`. It decides between diff, full-file, folder, and asset previews.
 - `preview/diff-parse.fnl` parses unified diff text into handler callbacks. `preview/format.fnl` renders unified rows, `preview/split.fnl` renders side-by-side rows. Both use `preview/word-diff.fnl` for line alignment and word emphasis, and `preview/line-moves.fnl` for moved-line marks.
+- `preview/highlight.fnl` holds the pure parts of syntax highlighting: which lines a diff needs, mapping bat output back to line numbers, and word emphasis over already styled text. `platform/bat.fnl` builds and runs the bat command. `preview/core.fnl` decides per entry whether to run bat, so cached preview lines and split rows already carry the final styled text. Highlighting is on when bat is installed, the `S` toggle is on (it starts on unless the config sets `:syntax false`), and the terminal background is known, because changed lines are marked with background tints derived from it. The preview cache key carries the highlight state, so toggling swaps between plain and styled previews and starts a new warm run.
 - `preview/warm.fnl` spawns `fennel` subprocesses running `preview/worker.fnl` to fill the cache in the background. They communicate through a temp directory with a manifest and one output file per entry. `preview/workers.fnl` decides how many workers to start.
 - Cursor movement must not wait for warming. Do not add blocking work to the key loop.
 

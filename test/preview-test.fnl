@@ -10,6 +10,7 @@
 (local tui (require :tui.core))
 (local t (require :test-helper))
 (local update (require :app.update))
+(local theme (require :tui.theme))
 
 (fn setup-repo []
   (t.init-repo)
@@ -821,7 +822,94 @@
         (faith.is gutters))
       (set git.blame-lines real-blame))))
 
-{: test-full-context-uses-separate-key-and-wider-diff
+(local highlight-diff (table.concat ["diff --git a/f.py b/f.py"
+                                     "index 1..2 100644"
+                                     "--- a/f.py"
+                                     "+++ b/f.py"
+                                     "@@ -1,2 +1,2 @@"
+                                     " ctx"
+                                     "-total = 1"
+                                     "+total = 2"]
+                                    "\n"))
+
+(fn tinted-state []
+  (doto (state)
+    (tset :theme (theme.new {:r 255 :g 255 :b 255}))))
+
+(fn test-preview-format-uses-highlighted-lines-with-line-tints []
+  (let [state (tinted-state)
+        styled {:old {2 "\27[31mtotal\27[0m = 1"}
+                :new {1 "\27[36mctx\27[0m" 2 "\27[31mtotal\27[0m = 2"}}
+        lines (preview-format.diff-lines state highlight-diff nil styled)
+        ctx (line-with lines "ctx")
+        old (line-with lines "total = 1")
+        new (line-with lines "total = 2")
+        deleted (theme.style-for state.theme :line-deleted)
+        added (theme.style-for state.theme :line-added)]
+    (faith.= "\27[36mctx\27[0m" ctx)
+    (faith.= "total = 1" (tui.strip-ansi old))
+    (faith.= "total = 2" (tui.strip-ansi new))
+    (faith.= 1 (old:find deleted 1 true))
+    (faith.= 1 (new:find added 1 true))
+    (faith.is (old:find "\27[31mtotal" 1 true))
+    (faith.is (old:find (.. "\27[0m" deleted) 1 true))
+    (faith.is (new:find (theme.style-for state.theme :emphasis-tint-added) 1
+                        true))
+    (faith.= nil
+             (new:find (theme.style-for state.theme :emphasis-added) 1 true))
+    (faith.= nil (new:find "\27[32m" 1 true))))
+
+(fn test-preview-format-ignores-highlighted-lines-that-do-not-match []
+  (let [state (tinted-state)
+        styled {:new {1 "\27[36mctxx\27[0m"}}
+        lines (preview-format.diff-lines state highlight-diff nil styled)
+        plain (preview-format.diff-lines state highlight-diff)]
+    (faith.= plain lines)))
+
+(fn test-preview-format-keeps-moved-lines-unhighlighted []
+  (let [state (tinted-state)
+        styled {:old {1 "\27[35malpha\27[0m first"}
+                :new {20 "\27[35malpha\27[0m first"}}
+        lines (preview-format.diff-lines state moved-diff nil styled)
+        removed (line-with lines "alpha first")]
+    (faith.match "38;5;208" removed)
+    (faith.= nil (removed:find "\27[35m" 1 true))))
+
+(fn test-preview-key-marks-highlighted-previews []
+  (let [entry {:status "M" :path "a.rb"}
+        plain (preview-key.for-entry "HEAD" entry)
+        styled (preview-key.for-entry "HEAD" entry nil nil true)]
+    (faith.not= plain styled)
+    (faith.= (.. plain "\0syntax") styled)
+    (faith.= plain (preview-key.for-entry "HEAD" entry nil nil false))))
+
+(fn test-highlight-on-needs-toggle-bat-and-background []
+  (let [state (tinted-state)]
+    (faith.= false (preview.highlight-on? state))
+    (set state.highlight_available? true)
+    (faith.= false (preview.highlight-on? state))
+    (set state.highlight? true)
+    (faith.= true (preview.highlight-on? state))
+    (set state.theme theme.default)
+    (faith.= false (preview.highlight-on? state))))
+
+(fn test-warm-highlight-passes-settings-and-background []
+  (let [state (tinted-state)]
+    (set state.highlight_available? true)
+    (set state.highlight? true)
+    (set state.bat_theme "ansi")
+    (faith.= {:on? true :bat-theme "ansi" :background {:r 255 :g 255 :b 255}}
+             (preview.warm-highlight state))
+    (set state.theme theme.default)
+    (faith.= false (. (preview.warm-highlight state) :on?))))
+
+{: test-preview-format-uses-highlighted-lines-with-line-tints
+ : test-preview-format-ignores-highlighted-lines-that-do-not-match
+ : test-preview-format-keeps-moved-lines-unhighlighted
+ : test-warm-highlight-passes-settings-and-background
+ : test-preview-key-marks-highlighted-previews
+ : test-highlight-on-needs-toggle-bat-and-background
+ : test-full-context-uses-separate-key-and-wider-diff
  : test-warmed-blame-makes-both-views-ready-without-git
  : test-hide-comments-uses-separate-key-and-filtered-diff
  : test-preview-format-hides-comment-lines-when-enabled

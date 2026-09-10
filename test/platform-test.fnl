@@ -3,6 +3,7 @@
 (local clipboard (require :platform.clipboard))
 (local editor (require :platform.editor))
 (local sys (require :platform.core))
+(local bat (require :platform.bat))
 
 (fn test-background-shell-command-detaches-from-terminal []
   (faith.= "( printf hi ) </dev/null >/dev/null 2>&1 &"
@@ -62,7 +63,27 @@
     (sys.remove-dir path)
     (faith.= false (sys.dir-exists? path))))
 
-{: test-background-shell-command-detaches-from-terminal
+(fn test-bat-command-highlights-a-file-on-disk []
+  (let [command (bat.command {:file "dir/a b.rb"} "dir/a b.rb" 42 nil)]
+    (faith.match "^bat " command)
+    (faith.match "%-%-color=always %-%-style=plain %-%-paging=never %-%-wrap=never %-%-tabs=0"
+                 command)
+    (faith.match "%-%-theme='ansi'" command)
+    (faith.match "%-%-file%-name 'dir/a b%.rb'" command)
+    (faith.match "%-%-line%-range ':42'" command)
+    (faith.match " %-%- 'dir/a b%.rb' 2>/dev/null$" command)))
+
+(fn test-bat-command-pipes-a-producer-and-takes-a-theme []
+  (let [command (bat.command {:command "git show HEAD:x.py"} "x.py" nil
+                             "Monokai Extended")]
+    (faith.match "^git show HEAD:x%.py | bat " command)
+    (faith.match "%-%-theme='Monokai Extended'" command)
+    (faith.= nil (command:find "--line-range" 1 true))
+    (faith.match " 2>/dev/null$" command)))
+
+{: test-bat-command-highlights-a-file-on-disk
+ : test-bat-command-pipes-a-producer-and-takes-a-theme
+ : test-background-shell-command-detaches-from-terminal
  : test-browser-command-quotes-url
  : test-clipboard-prefers-pbcopy-on-macos
  : test-clipboard-uses-wl-copy-on-wayland

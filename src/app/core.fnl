@@ -5,10 +5,17 @@
 (local tui (require :tui.core))
 (local app-update (require :app.update))
 (local app-view (require :app.view))
+(local bat (require :platform.bat))
 
 (local handle-key app-update.handle-key)
 (local new-state app-update.init)
 (local view app-view.view)
+
+(fn highlight-settings [config]
+  (let [available? (bat.available?)]
+    {:available? available?
+     :on? (and available? (not= false config.syntax) true)
+     :bat-theme (or config.bat-theme bat.default-theme)}))
 
 (fn picker [revision
             entries
@@ -19,12 +26,13 @@
             diff-stats
             ?pr-url]
   (let [state (app-update.init revision entries review-store review-scope
-                               src-dir diff-stats ?pr-url)]
-    (app-update.start state)
+                               src-dir diff-stats ?pr-url
+                               (highlight-settings config))]
     (tui.run {: state
               :view app-view.view
               :update #(app-update.handle-key $1 config $2)
-              :coalesce? app-update.coalesce?})))
+              :coalesce? app-update.coalesce?
+              :start app-update.start})))
 
 (fn exit-with-error [message]
   (io.stderr:write message "\n")

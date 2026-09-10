@@ -4,6 +4,9 @@
 (fn copy-finished [ok? path]
   (with-path (if ok? "Copied" "Copy failed") path))
 
+(fn highlight-unavailable []
+  "Syntax highlighting needs bat on PATH")
+
 (fn selecting-lines []
   "Selecting lines (y yank, Y yank fenced, q exit)")
 
@@ -74,6 +77,7 @@
   (or ?error "Could not refresh PR"))
 
 {: copy-finished
+ : highlight-unavailable
  : open-base-finished
  : open-commit-finished
  : open-pr-finished

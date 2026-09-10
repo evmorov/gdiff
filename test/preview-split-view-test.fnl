@@ -3,6 +3,7 @@
 (local preview (require :preview.core))
 (local preview-key (require :preview.key))
 (local tui (require :tui.core))
+(local theme (require :tui.theme))
 
 (fn all-one? [map]
   (accumulate [ok true _ src (ipairs map)]
@@ -226,7 +227,60 @@
       (faith.= nil (string.find (. node.lines 3) "\27[41m" 1 true)
                "blank line outside a whitespace hunk should stay plain"))))
 
-{: test-wrap-rows-keeps-short-rows-as-a-single-visual-row
+(fn test-wrap-rows-keeps-styled-flags-on-visual-rows []
+  (let [(display _) (view.wrap-rows [{:kind :change
+                                      :old "ab"
+                                      :new "abcdefgh"
+                                      :old-styled true
+                                      :new-styled true}]
+                                    3 3 7)]
+    (faith.= true (. display 1 :old-styled))
+    (faith.= true (. display 2 :new-styled))))
+
+(fn test-split-preview-tints-highlighted-rows-and-keeps-token-colors []
+  (let [entry {:status "M" :kind "M" :path "a.py"}
+        rows [{:kind :change
+               :old "old = 1"
+               :new "new = 1"
+               :old-no 1
+               :new-no 1
+               :old-styled "\27[31mold\27[0m = 1"
+               :new-styled "\27[31mnew\27[0m = 1"
+               :emphasize? true}
+              {:kind :context
+               :old "ctx"
+               :new "ctx"
+               :old-no 2
+               :new-no 2
+               :old-styled "\27[36mctx\27[0m"
+               :new-styled "\27[36mctx\27[0m"}]
+        key (.. (preview-key.for-entry "HEAD" entry false) "\0split")
+        t (theme.new {:r 255 :g 255 :b 255})
+        state {:revision "HEAD"
+               :theme t
+               :split_cache {key rows}
+               :preview_wrap? true
+               :show_numbers? false
+               :split_ratio 0.5
+               :preview_scroll 0
+               :preview_x_scroll 0
+               :full_context? false}]
+    (view.prepare state 5 80 {:entry entry})
+    (let [node (view.body state 5 80)
+          change (. node.lines 1)
+          context (. node.lines 2)]
+      (faith.match "old = 1" (tui.strip-ansi change))
+      (faith.is (change:find (theme.style-for t :line-deleted) 1 true))
+      (faith.is (change:find (theme.style-for t :line-added) 1 true))
+      (faith.is (change:find (theme.style-for t :emphasis-tint-added) 1 true))
+      (faith.is (change:find "\27[31m" 1 true))
+      (faith.= nil (change:find "\27[32m" 1 true))
+      (faith.is (context:find "\27[36mctx" 1 true))
+      (faith.= nil (context:find (theme.style-for t :line-added) 1 true)))))
+
+{: test-wrap-rows-keeps-styled-flags-on-visual-rows
+ : test-split-preview-tints-highlighted-rows-and-keeps-token-colors
+ : test-wrap-rows-keeps-short-rows-as-a-single-visual-row
  : test-split-preview-colors-comment-rows-differently
  : test-split-preview-marks-blank-line-changes-in-whitespace-hunks
  : test-split-preview-colors-moved-rows-orange-with-a-note

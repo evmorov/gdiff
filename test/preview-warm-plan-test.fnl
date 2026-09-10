@@ -58,7 +58,16 @@
     (faith.= first-key (. index-key 1))
     (faith.= second-key (. index-key 2))))
 
+(fn test-index-entries-keys-highlighted-previews []
+  (let [first (entry "M" "a.rb")
+        (key-index index-key) (plan.index-entries "HEAD" [first] true)
+        key (preview-key.for-entry "HEAD" first nil nil true)]
+    (faith.= 1 (. key-index key))
+    (faith.= key (. index-key 1))
+    (faith.= nil (. key-index (preview-key.for-entry "HEAD" first)))))
+
 {: test-index-entries-builds-bidirectional-key-maps
+ : test-index-entries-keys-highlighted-previews
  : test-missing-entries-skips-cached-previews
  : test-side-priority-entries-handles-small-lists
  : test-side-priority-entries-warmer-from-edges-to-center}

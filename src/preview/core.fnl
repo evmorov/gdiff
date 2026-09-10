@@ -1,6 +1,9 @@
 (local git (require :git.core))
 (local blame (require :git.blame))
 (local assets (require :preview.assets))
+(local bat (require :platform.bat))
+(local highlight (require :preview.highlight))
+(local theme (require :tui.theme))
 (local file-preview (require :preview.file))
 (local format (require :preview.format))
 (local folder-preview (require :preview.folder))
@@ -15,11 +18,64 @@
 
 (import-macros {: set-fields} :state.macros)
 
-(fn body-lines [state content ?role]
+(fn highlight-on? [state]
+  (if (and state.highlight? state.highlight_available?
+           (theme.line-tints? state.theme))
+      true
+      false))
+
+(fn side-path [entry side]
+  (if (= side :old) (or entry.old_path entry.path) entry.path))
+
+(fn side-source [state entry side]
+  (let [(old-ref new-ref) (git.comparison-ref-targets state.revision)]
+    (if (git.files? state.revision)
+        (case (if (= side :old) entry.old_file entry.new_file)
+          file {: file})
+        (= side :old)
+        (when (and (not= entry.kind "A") (not entry.untracked?))
+          {:command (git.show-file-command old-ref (side-path entry :old))})
+        (not= entry.kind "D")
+        (if new-ref
+            {:command (git.show-file-command new-ref entry.path)}
+            {:file entry.path}))))
+
+(fn highlight-side [state entry side last-line]
+  (when (and (< 0 last-line) (highlight.within-cap? last-line))
+    (case (side-source state entry side)
+      source (highlight.line-map (bat.highlight-lines source
+                                                      (side-path entry side)
+                                                      last-line state.bat_theme)))))
+
+(fn diff-highlight [state entry output]
+  (when (highlight-on? state)
+    (let [needed (highlight.needed-lines output)]
+      {:old (highlight-side state entry :old needed.old)
+       :new (highlight-side state entry :new needed.new)})))
+
+(fn cached-diff-highlight [state entry key output]
+  (let [cache state.preview_highlight_cache]
+    (if (not cache) (diff-highlight state entry output)
+        (not= nil (. cache key)) (or (. cache key) nil)
+        (let [result (diff-highlight state entry output)]
+          (tset cache key (or result false))
+          result))))
+
+(fn file-highlight [state path line-count]
+  (when (and (highlight-on? state) (highlight.within-cap? line-count))
+    (highlight.line-map (bat.highlight-lines {:file path} path nil
+                                             state.bat_theme))))
+
+(fn body-lines [state content ?role ?styled]
   (let [lines (file-preview.split-lines content)]
     (if ?role
-        (icollect [_ line (ipairs lines)]
-          (if (= line "") line (tui.color state.theme ?role line)))
+        (icollect [i line (ipairs lines)]
+          (case (highlight.styled-line ?styled i line)
+            styled (theme.tint state.theme (highlight.tint-role ?role) styled)
+            _ (if (= line "") line (tui.color state.theme ?role line))))
+        ?styled
+        (icollect [i line (ipairs lines)]
+          (or (highlight.styled-line ?styled i line) line))
         lines)))
 
 (fn file-body-numbers [header-count body-count]
@@ -39,7 +95,9 @@
             (file-preview.binary? content)
             (format.binary state entry.path)
             (let [role (when entry.untracked? :status-added)
-                  body (body-lines state content role)
+                  styled (file-highlight state entry.path
+                                         (length (file-preview.split-lines content)))
+                  body (body-lines state content role styled)
                   body-count (length body)
                   body (if (> body-count 0) body (format.empty-preview state))
                   out (format.header state entry.path entry)
@@ -49,15 +107,17 @@
                 (table.insert out line))
               (values out numbers))))))
 
+(fn cache-key [state entry]
+  (preview-key.for-entry state.revision entry state.full_context?
+                         state.hide_comments? (highlight-on? state)))
+
 (fn diff-data [state entry full-context?]
   (let [(output ok) (git.plain-diff-output state.revision entry full-context?)]
     (if ok
-        (format.diff-lines state output entry)
+        (format.diff-lines state output entry
+                           (cached-diff-highlight state entry
+                                                  (cache-key state entry) output))
         (values (format.warning state (sys.trim output)) nil))))
-
-(fn cache-key [state entry]
-  (preview-key.for-entry state.revision entry state.full_context?
-                         state.hide_comments?))
 
 (fn entry-data [state entry]
   (if (assets.asset? entry) (format.asset state entry)
@@ -224,7 +284,11 @@ cache miss returns no labels instead of blocking on git; the import fills them."
                                            state.full_context?)
         rows (if ok
                  (split.parse-rows output state.revision_old_label
-                                   state.revision_new_label state.hide_comments?)
+                                   state.revision_new_label state.hide_comments?
+                                   (cached-diff-highlight state entry
+                                                          (cache-key state
+                                                                     entry)
+                                                          output))
                  [])]
     (tset state.split_cache key rows)
     rows))
@@ -267,6 +331,12 @@ cache miss returns no labels instead of blocking on git; the import fills them."
                  (not= nil (. state.split_cache (split-key state entry))))
              (gutters-ready? state entry key) true))))
 
+(fn warm-highlight [state]
+  "The highlight settings a warm run passes to its workers."
+  {:on? (highlight-on? state)
+   :bat-theme state.bat_theme
+   :background (and state.theme state.theme.background)})
+
 (fn warm-caches [state]
   "The app caches a warm import fills, keyed the same way the worker output is."
   {:lines state.preview_cache
@@ -308,11 +378,12 @@ ask for, so their cache keys are ready when the output is imported."
   (let [(output ok) (git.plain-diff-output state.revision entry
                                            state.full_context?)]
     (if ok
-        (let [(lines numbers refs) (format.diff-lines state output entry)
+        (let [styled (diff-highlight state entry output)
+              (lines numbers refs) (format.diff-lines state output entry styled)
               split-rows (if (= entry.kind "M")
                              (split.parse-rows output state.revision_old_label
                                                state.revision_new_label
-                                               state.hide_comments?)
+                                               state.hide_comments? styled)
                              [])]
           {: lines
            :numbers (or numbers false)
@@ -577,6 +648,8 @@ ask for, so their cache keys are ready when the output is imported."
  : cache-split
  : warm-caches
  : warm-entry
+ : warm-highlight
+ : highlight-on?
  : warm-missing-entries
  : splittable?
  : split?

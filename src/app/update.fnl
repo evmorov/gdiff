@@ -153,9 +153,10 @@
           review-scope
           src-dir
           ?diff-stats
-          ?pr-url]
+          ?pr-url
+          ?highlight]
   (app-state.init revision entries review-store review-scope src-dir
-                  ?diff-stats ?pr-url))
+                  ?diff-stats ?pr-url ?highlight))
 
 (fn update-warm-cache [state]
   (when (preview.prepare-entry state (selection.selected-entry state))

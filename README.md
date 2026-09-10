@@ -15,6 +15,7 @@ That means reading a lot more diffs than before. gdiff is built for that: a diff
 - Vim keys: `j` / `k`, `gg` / `G`, `/` to search, `n` / `N` to jump between matches.
 - Diffs are loaded in the background, so moving between files does not wait for git.
 - Word-level highlighting shows which part of a line changed, similar to delta.
+- Syntax highlighting when [bat](https://github.com/sharkdp/bat) is installed. Added and deleted lines get a background tint instead of a text color, and the code keeps its syntax colors. Press `S` to switch it off and on. Set `:syntax false` in the config to start with it off and `:bat-theme` to pick a bat theme other than `ansi`.
 - Unified or side-by-side view, toggled with one key. In side-by-side mode a changed line sits next to its old version.
 - Moved lines are shown in their own color with a note like `(moved to lines 120-134)` instead of a plain delete plus add.
 - Moved files are detected when Git missed the rename. The file list shows `(moved to new/path, 87%)` on the old file and `(moved from old/path, 87%)` on the new one.

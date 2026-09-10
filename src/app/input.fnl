@@ -33,6 +33,7 @@
     "1" :toggle-show-numbers
     "b" :toggle-blame
     "s" :toggle-split
+    "S" :toggle-highlight
     "c" :toggle-full-context
     "C" :toggle-hide-comments
     "`" :toggle-tree

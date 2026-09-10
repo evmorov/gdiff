@@ -9,6 +9,7 @@
 (local selection (require :app.selection))
 (local sys (require :platform.core))
 (local t (require :test-helper))
+(local theme (require :tui.theme))
 (local tui (require :tui.core))
 (local update (require :app.update))
 
@@ -518,8 +519,8 @@
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
       (faith.= (.. "tree on │ wrap on │ num off │ blame off │ split on │ "
-                   "context off │ hide-reviewed off │ no-comments off")
-               footer-right))))
+                   "syntax off │ context off │ hide-reviewed off │ "
+                   "no-comments off") footer-right))))
 
 (fn test-view-reflects-toggled-status-in-footer-right []
   (let [state (state [(entry "M" "a.rb")])]
@@ -531,11 +532,23 @@
     (set state.full_context? true)
     (set state.hide_reviewed? true)
     (set state.hide_comments? true)
+    (set state.highlight_available? true)
+    (set state.highlight? true)
+    (set state.theme (theme.new {:r 255 :g 255 :b 255}))
     (let [view (app.view state 10 100)
           footer-right (tui.strip-ansi view.footer.right)]
       (faith.= (.. "tree off │ wrap off │ num on │ blame on │ split off │ "
-                   "context on │ hide-reviewed on │ no-comments on")
+                   "syntax on │ context on │ hide-reviewed on │ no-comments on")
                footer-right))))
+
+(fn test-view-shows-syntax-off-when-terminal-background-is-unknown []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.highlight_available? true)
+    (set state.highlight? true)
+    (set state.theme theme.default)
+    (let [view (app.view state 10 100)
+          footer-right (tui.strip-ansi view.footer.right)]
+      (faith.is (footer-right:find "syntax off" 1 true)))))
 
 (fn test-uppercase-h-hides-reviewed-entries-from-list []
   (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb") (entry "M" "c.rb")])]
@@ -1098,6 +1111,7 @@
  : test-view-shows-trimmed-header
  : test-view-shows-toggle-status-in-footer-right
  : test-view-reflects-toggled-status-in-footer-right
+ : test-view-shows-syntax-off-when-terminal-background-is-unknown
  : test-uppercase-h-hides-reviewed-entries-from-list
  : test-hide-reviewed-skips-hidden-entries-in-flat-navigation
  : test-hide-reviewed-keeps-cursor-on-unreviewed-selection

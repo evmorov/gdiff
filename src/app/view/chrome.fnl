@@ -1,5 +1,6 @@
 (local review (require :app.review))
 (local search (require :app.pane-search))
+(local preview (require :preview.core))
 (local sync (require :git.sync))
 (local symbols (require :tui.symbols))
 (local tui (require :tui.core))
@@ -59,6 +60,8 @@
                  (highlighted-toggle state :num state.show_numbers?)
                  (highlighted-toggle state :blame state.show_blame?)
                  (highlighted-toggle state :split state.split_mode?)
+                 (highlighted-toggle state :syntax
+                                     (preview.highlight-on? state))
                  (highlighted-toggle state :context state.full_context?)
                  (highlighted-toggle state :hide-reviewed state.hide_reviewed?
                                      :status-modified)

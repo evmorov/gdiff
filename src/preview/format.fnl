@@ -5,6 +5,8 @@
 (local diff-parse (require :preview.diff-parse))
 (local comments (require :preview.comments))
 (local line-moves (require :preview.line-moves))
+(local highlight (require :preview.highlight))
+(local theme (require :tui.theme))
 
 (fn move-note [state ?entry]
   (let [note (moves.note (or ?entry {}))]
@@ -42,11 +44,21 @@
        {:emphasis-deleted :whitespace-deleted
         :emphasis-added :whitespace-added})
 
-(fn emphasized-change [state raw ?span style-key mark-whitespace?]
+(fn emphasized-change [state raw ?span style-key mark-whitespace? ?styled]
   (if (and mark-whitespace? (word-diff.whitespace-only? raw))
       (word-diff.emphasize-whitespace state.theme raw
                                       (. whitespace-styles style-key))
+      ?styled
+      (highlight.emphasize-styled state.theme ?styled raw ?span style-key)
       (word-diff.emphasize state.theme raw ?span style-key)))
+
+(fn role-line [state role text ?styled]
+  (if ?styled
+      (theme.tint state.theme (highlight.tint-role role) text)
+      (tui.color state.theme role text)))
+
+(fn side-map [?highlight side]
+  (and ?highlight (. ?highlight side)))
 
 (fn moved-line [state raw side mark]
   (tui.color state.theme :moved (.. raw (line-moves.annotation side mark))))
@@ -62,11 +74,13 @@
               (table.insert out (moved-line state old :old ?mark))
               (let [?span (when (and p.new (not p.loose?))
                             (. (word-diff.spans old (. added p.new)) :old))
+                    ?styled (highlight.styled-line (side-map ctx.highlight :old)
+                                                   (+ ctx.old-no p.old -1) old)
                     emph (emphasized-change state old ?span :emphasis-deleted
-                                            ctx.whitespace-hunk?)
+                                            ctx.whitespace-hunk? ?styled)
                     role (if (ctx.comment? old) :comment-deleted
                              :status-deleted)]
-                (table.insert out (tui.color state.theme role emph)))))))
+                (table.insert out (role-line state role emph ?styled)))))))
     (each [_ p (ipairs pairs)]
       (when p.new
         (let [new (. added p.new)
@@ -75,13 +89,15 @@
               (table.insert out (moved-line state new :new ?mark))
               (let [?span (when (and p.old (not p.loose?))
                             (. (word-diff.spans (. removed p.old) new) :new))
+                    ?styled (highlight.styled-line (side-map ctx.highlight :new)
+                                                   (+ ctx.new-no p.new -1) new)
                     emph (emphasized-change state new ?span :emphasis-added
-                                            ctx.whitespace-hunk?)
+                                            ctx.whitespace-hunk? ?styled)
                     role (if (ctx.comment? new) :comment-added :status-added)]
-                (table.insert out (tui.color state.theme role emph)))))))
+                (table.insert out (role-line state role emph ?styled)))))))
     out))
 
-(fn diff-lines [state output ?entry]
+(fn diff-lines [state output ?entry ?highlight]
   (let [ws-hunks (diff-parse.whitespace-only-hunks output)
         moves (line-moves.detect output)
         acc {:out [] :numbers [] :refs [] :old-no 1 :new-no 1 :hunk-no 0}
@@ -96,6 +112,7 @@
                             (let [lines (change-lines state removed added
                                                       {: comment?
                                                        : moves
+                                                       :highlight ?highlight
                                                        :whitespace-hunk? (. ws-hunks
                                                                             acc.hunk-no)
                                                        :old-no acc.old-no
@@ -125,8 +142,11 @@
                             (when new (set acc.new-no new))))
                   :context (fn [text]
                              (when (not (hidden? text))
-                               (push text acc.new-no
-                                     {:side :new :no acc.new-no}))
+                               (push (or (highlight.styled-line (side-map ?highlight
+                                                                          :new)
+                                                                acc.new-no text)
+                                         text)
+                                     acc.new-no {:side :new :no acc.new-no}))
                              (set acc.old-no (+ acc.old-no 1))
                              (set acc.new-no (+ acc.new-no 1)))
                   :meta (fn [line] (push (color-line state line)))

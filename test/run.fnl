@@ -31,6 +31,7 @@
             :preview-split-view-test
             :preview-word-diff-test
             :preview-folder-test
+            :preview-highlight-test
             :preview-warm-test
             :preview-warm-plan-test
             :preview-viewport-test

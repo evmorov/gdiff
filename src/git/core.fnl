@@ -321,6 +321,7 @@ for three-dot ranges, the revision itself otherwise."
 {: blame-commit
  : blame-lines
  : commit-url
+ : comparison-ref-targets
  : comparison-revision
  : comparison-right
  : comparison-sides
@@ -338,6 +339,7 @@ for three-dot ranges, the revision itself otherwise."
  : pr-revision-from-fetched-info
  : pr-revision-from-info
  : resolve-pr-revision
+ :show-file-command commands.show-file-command
  :working-revision commands.working-revision
  :working? commands.working?
  :files-revision commands.files-revision

@@ -40,7 +40,7 @@
                         (preview.warm-missing-entries state
                                                       (preview-warm.side-priority-entries state.entries))
                         state.revision_old_label state.revision_new_label
-                        state.show_blame?)))
+                        state.show_blame? (preview.warm-highlight state))))
 
 (defcommand warm-cleanup
   []

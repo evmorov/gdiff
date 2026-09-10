@@ -33,32 +33,40 @@
    :scan-index 1
    :imported {}
    :key-index {}
-   :index-key {}})
+   :index-key {}
+   :highlight? false})
 
 (fn cleanup [state]
   (when state.dir
     (sys.remove-dir state.dir))
   (set-fields state [:dir nil] [:blame? false] [:count 0] [:remaining 0]
               [:workers 0] [:scan-index 1] [:imported {}] [:key-index {}]
-              [:index-key {}]))
+              [:index-key {}] [:highlight? false]))
 
-(fn write-manifest [path revision entries ?old-label ?new-label ?blame?]
+(fn write-manifest [path
+                    revision
+                    entries
+                    ?old-label
+                    ?new-label
+                    ?blame?
+                    ?highlight]
   (sys.write-file path
                   (fennel.view {: revision
                                 : entries
                                 :old-label ?old-label
                                 :new-label ?new-label
-                                :blame? (and ?blame? true)})))
+                                :blame? (and ?blame? true)
+                                :highlight ?highlight})))
 
 (fn start-workers [src-dir manifest dir count]
   (for [i 1 count]
     (sys.background-command (worker-command src-dir manifest dir i count))))
 
-(fn reset-for-run [state dir entries key-index index-key ?blame?]
+(fn reset-for-run [state dir entries key-index index-key ?blame? ?highlight?]
   (set-fields state [:dir dir] [:blame? (and ?blame? true)]
               [:count (length entries)] [:remaining (length entries)]
               [:workers 0] [:scan-index 1] [:imported {}] [:key-index key-index]
-              [:index-key index-key]))
+              [:index-key index-key] [:highlight? (and ?highlight? true)]))
 
 (fn start-run [state
                src-dir
@@ -67,13 +75,16 @@
                dir
                ?old-label
                ?new-label
-               ?blame?]
+               ?blame?
+               ?highlight]
   (let [manifest (manifest-path dir)]
     (when (write-manifest manifest revision entries ?old-label ?new-label
-                          ?blame?)
-      (let [(key-index index-key) (plan.index-entries revision entries)
+                          ?blame? ?highlight)
+      (let [highlight? (and ?highlight ?highlight.on? true)
+            (key-index index-key) (plan.index-entries revision entries
+                                                      highlight?)
             workers (plan.worker-count entries (sys.cpu-count))]
-        (reset-for-run state dir entries key-index index-key ?blame?)
+        (reset-for-run state dir entries key-index index-key ?blame? highlight?)
         (set state.workers workers)
         (if (< 0 workers)
             (do
@@ -81,15 +92,23 @@
               true)
             (cleanup state))))))
 
-(fn start [state src-dir revision entries ?old-label ?new-label ?blame?]
+(fn start [state
+           src-dir
+           revision
+           entries
+           ?old-label
+           ?new-label
+           ?blame?
+           ?highlight]
   "Start a background run for `entries`. With `?blame?`, workers also blame
-each entry so the blame gutters fill without blocking."
+each entry so the blame gutters fill without blocking. `?highlight` carries the
+syntax highlighting settings and terminal background the workers render with."
   (cleanup state)
   (when (< 0 (length entries))
     (let [dir (make-dir)]
       (when dir
         (when (not (start-run state src-dir revision entries dir ?old-label
-                              ?new-label ?blame?))
+                              ?new-label ?blame? ?highlight))
           (cleanup state))))))
 
 (fn read-output [path]
@@ -143,7 +162,7 @@ have `split`, `numbers`, `refs`, and `blame` tables."
 
 (fn import-entry [state caches revision entry]
   (when (and state.dir entry)
-    (let [key (preview-key.for-entry revision entry)
+    (let [key (preview-key.for-entry revision entry nil nil state.highlight?)
           index (. state.key-index key)]
       (when index
         (let [imported? (import-output state caches index)]

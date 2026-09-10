@@ -23,17 +23,35 @@
                     :whitespace-added "\27[42m"
                     :emphasis-end "\27[49m"})
 
+(local green {:r 0 :g 200 :b 0})
+(local red {:r 255 :g 0 :b 0})
+(local line-tint-amount 0.12)
+(local emphasis-tint-amount 0.3)
+
+(fn derived-styles [background-rgb]
+  {:search-match (.. (colors.background-style background-rgb 0.28) "\27[1m")
+   :search-match-end ansi.reset-style
+   :line-added (colors.tint-style background-rgb green line-tint-amount)
+   :line-deleted (colors.tint-style background-rgb red line-tint-amount)
+   :emphasis-tint-added (colors.tint-style background-rgb green
+                                           emphasis-tint-amount)
+   :emphasis-tint-deleted (colors.tint-style background-rgb red
+                                             emphasis-tint-amount)})
+
+(fn copy [styles]
+  (collect [role style (pairs styles)]
+    (values role style)))
+
 (fn styles [?background-rgb]
-  (let [search-background (colors.background-style ?background-rgb 0.28)]
-    (if search-background
-        (doto (collect [role style (pairs base-styles)]
-                (values role style))
-          (tset :search-match (.. search-background "\27[1m"))
-          (tset :search-match-end ansi.reset-style))
-        base-styles)))
+  (if ?background-rgb
+      (collect [role style (pairs (derived-styles ?background-rgb))
+                &into (copy base-styles)]
+        (values role style))
+      base-styles))
 
 (fn new [?background-rgb]
-  {:styles (styles ?background-rgb)
+  {:background ?background-rgb
+   :styles (styles ?background-rgb)
    :selected-row (.. "\27[1m" (or (colors.background-style ?background-rgb 0.08)
                                   ""))})
 
@@ -46,11 +64,23 @@
   (let [styles (. (ensure theme) :styles)]
     (. styles role)))
 
+(fn line-tints? [theme]
+  (if (and (style-for theme :line-added) (style-for theme :line-deleted))
+      true
+      false))
+
 (fn color [theme role text]
   (ansi.apply-style (style-for theme role) text))
 
+(fn tint [theme role text]
+  (ansi.apply-block-style (style-for theme role) text))
+
+(fn strip-backgrounds [line]
+  (let [(out _) (line:gsub "\27%[4%d[;%d]*m" "")]
+    out))
+
 (fn selected-row [theme line width]
-  (let [line (ansi.pad-right line width)
+  (let [line (ansi.pad-right (strip-backgrounds line) width)
         style (. (ensure theme) :selected-row)]
     (ansi.apply-block-style style line)))
 
@@ -61,6 +91,8 @@
 {: color
  :default default-theme
  : highlight-matches
+ : line-tints?
  : new
  : selected-row
- : style-for}
+ : style-for
+ : tint}

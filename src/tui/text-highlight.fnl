@@ -19,6 +19,9 @@
               (set searching? false)))))
     ranges))
 
+(fn reset-sequence? [sequence]
+  (or (= sequence "\27[0m") (= sequence "\27[m")))
+
 (fn apply [s ranges start-code end-code]
   (let [out []]
     (fn append [part]
@@ -27,18 +30,24 @@
     (var i 1)
     (var visible 1)
     (var range-index 1)
+    (var active? false)
     (while (<= i (length s))
       (let [range (. ranges range-index)]
-        (when (and range (= visible range.first))
-          (append start-code))
         (if (txt.ansi-sequence? s i)
-            (let [last (txt.ansi-sequence-end s i)]
-              (append (s:sub i last))
+            (let [last (txt.ansi-sequence-end s i)
+                  sequence (s:sub i last)]
+              (append sequence)
+              (when (and active? (reset-sequence? sequence))
+                (append start-code))
               (set i (+ last 1)))
             (let [(ch next-i) (txt.next-char s i)]
+              (when (and range (= visible range.first))
+                (append start-code)
+                (set active? true))
               (append ch)
               (when (and range (= visible range.last))
                 (append end-code)
+                (set active? false)
                 (set range-index (+ range-index 1)))
               (set visible (+ visible 1))
               (set i next-i)))))

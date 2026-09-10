@@ -172,7 +172,32 @@
   (faith.is (not (split.splittable? (split.parse-rows "@@ -0,0 +1,2 @@\n+a\n+b"))))
   (faith.is (not (split.splittable? (split.parse-rows "@@ -1,2 +0,0 @@\n-a\n-b")))))
 
-{: test-parse-rows-replaces-headers-with-a-filename-title
+(fn test-parse-rows-attaches-highlighted-text-per-side []
+  (let [styled {:old {1 "\27[1mctx\27[0m" 2 "\27[31mold\27[0m line"}
+                :new {2 "\27[31mnew\27[0m line" 3 "\27[1mtail\27[0m"}}
+        rows (split.parse-rows sample nil nil false styled)
+        ctx (. rows 4)
+        change (. rows 5)
+        tail (. rows 6)]
+    (faith.= "\27[1mctx\27[0m" ctx.old-styled)
+    (faith.= nil ctx.new-styled)
+    (faith.= "ctx" ctx.old)
+    (faith.= "\27[31mold\27[0m line" change.old-styled)
+    (faith.= "\27[31mnew\27[0m line" change.new-styled)
+    (faith.= "old line" change.old)
+    (faith.= (word-diff.spans "old line" "new line") change.spans)
+    (faith.= "\27[1mtail\27[0m" tail.new-styled)
+    (faith.= nil (. rows 1 :old-styled))
+    (faith.= nil (. rows 3 :old-styled))))
+
+(fn test-parse-rows-without-highlight-has-no-styled-fields []
+  (each [_ row (ipairs (split.parse-rows sample))]
+    (faith.= nil row.old-styled)
+    (faith.= nil row.new-styled)))
+
+{: test-parse-rows-attaches-highlighted-text-per-side
+ : test-parse-rows-without-highlight-has-no-styled-fields
+ : test-parse-rows-replaces-headers-with-a-filename-title
  : test-parse-rows-labels-each-column-with-its-ref
  : test-parse-rows-handles-pure-additions
  : test-parse-rows-handles-pure-deletions

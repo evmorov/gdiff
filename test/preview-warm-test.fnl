@@ -122,6 +122,22 @@
     (faith.= nil (. cache first-key))
     (faith.= 1 state.remaining)))
 
+(fn test-import-entry-uses-highlighted-keys-for-highlighted-runs []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (let [first (entry "M" "a.rb")
+        key (preview-key.for-entry "HEAD" first nil nil true)
+        state (warm-state [])
+        cache {}]
+    (set state.highlight? true)
+    (set state.count 1)
+    (set state.remaining 1)
+    (tset state.index-key 1 key)
+    (tset state.key-index key 1)
+    (write-output "warm" 1 ["styled"])
+    (faith.is (preview-warm.import-entry state {:lines cache} "HEAD" first))
+    (faith.= ["styled"] (. cache key))))
+
 (fn test-missing-entries-skips-cached-previews []
   (let [first (entry "M" "a.rb")
         second (entry "M" "b.rb")
@@ -212,6 +228,7 @@
                  command)))
 
 {: test-fennel-command-builds-standard-subprocess-environment
+ : test-import-entry-uses-highlighted-keys-for-highlighted-runs
  : test-import-entry-checks-only-the-requested-ready-preview
  : test-update-imports-numbers-refs-and-blame-caches
  : test-missing-entries-skips-cached-previews

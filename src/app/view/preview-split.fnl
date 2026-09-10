@@ -12,6 +12,7 @@
 (local wrap (require :tui.wrap))
 (local word-diff (require :preview.word-diff))
 (local line-moves (require :preview.line-moves))
+(local highlight (require :preview.highlight))
 
 (fn split-halves [content]
   (let [available (math.max 0 (- content 1))
@@ -87,6 +88,9 @@
 (fn move-key [side]
   (if (= side :old) :old-move :new-move))
 
+(fn styled-key [side]
+  (if (= side :old) :old-styled :new-styled))
+
 (fn change-role [row side]
   (if (= row.kind :hunk) :muted
       (let [value (. row side)]
@@ -115,10 +119,15 @@
       (preview-search.highlight state text)
       text))
 
+(fn role-text [state role raw styled?]
+  (if (not role) raw (and styled? (highlight.tint-role role))
+      (theme.tint state.theme (highlight.tint-role role) raw)
+      (tui.color state.theme role raw)))
+
 (fn half [state row side width x-scroll selected?]
   (let [role (change-role row side)
         raw (or (. row side) "")
-        colored (if role (tui.color state.theme role raw) raw)
+        colored (role-text state role raw (. row (styled-key side)))
         searched (highlighted state (= side state.split_side) colored)
         windowed (pane.window-text searched width x-scroll)]
     (styled state windowed width selected?)))
@@ -176,7 +185,9 @@
        :old-comment? row.old-comment?
        :new-comment? row.new-comment?
        :old-move row.old-move
-       :new-move row.new-move})))
+       :new-move row.new-move
+       :old-styled row.old-styled
+       :new-styled row.new-styled})))
 
 (fn wrap-rows [rows old-w new-w _content]
   (let [display []
@@ -192,36 +203,49 @@
 
 (fn change-side [theme-table row side style-key whitespace-key ?spans]
   (let [raw (. row side)
+        ?styled (. row (styled-key side))
         ?mark (. row (move-key side))]
     (when raw
       (if ?mark (.. raw (line-moves.annotation side ?mark))
           (and row.whitespace-hunk? (word-diff.whitespace-only? raw))
-          (word-diff.emphasize-whitespace theme-table raw whitespace-key) ?spans
-          (word-diff.emphasize theme-table raw (. ?spans side) style-key) raw))))
+          (word-diff.emphasize-whitespace theme-table raw whitespace-key)
+          (and ?spans ?styled)
+          (highlight.emphasize-styled theme-table ?styled raw (. ?spans side)
+                                      style-key) ?spans
+          (word-diff.emphasize theme-table raw (. ?spans side) style-key)
+          (or ?styled raw)))))
+
+(fn with-sides [row old new]
+  (if (and (= old row.old) (= new row.new))
+      row
+      {:kind row.kind
+       : old
+       : new
+       :old-no row.old-no
+       :new-no row.new-no
+       :old-blame row.old-blame
+       :new-blame row.new-blame
+       :old-comment? row.old-comment?
+       :new-comment? row.new-comment?
+       :old-move row.old-move
+       :new-move row.new-move
+       :old-styled (and row.old-styled (not row.old-move) true)
+       :new-styled (and row.new-styled (not row.new-move) true)}))
 
 (fn display-change [theme-table row]
   (let [spans (when (and row.old row.new row.emphasize?)
-                (or row.spans (word-diff.spans row.old row.new)))
-        old (change-side theme-table row :old :emphasis-deleted
-                         :whitespace-deleted spans)
-        new (change-side theme-table row :new :emphasis-added :whitespace-added
-                         spans)]
-    (if (and (= old row.old) (= new row.new))
-        row
-        {:kind :change
-         : old
-         : new
-         :old-no row.old-no
-         :new-no row.new-no
-         :old-blame row.old-blame
-         :new-blame row.new-blame
-         :old-comment? row.old-comment?
-         :new-comment? row.new-comment?
-         :old-move row.old-move
-         :new-move row.new-move})))
+                (or row.spans (word-diff.spans row.old row.new)))]
+    (with-sides row
+      (change-side theme-table row :old :emphasis-deleted :whitespace-deleted
+                   spans)
+      (change-side theme-table row :new :emphasis-added :whitespace-added spans))))
+
+(fn display-context [row]
+  (with-sides row (or row.old-styled row.old) (or row.new-styled row.new)))
 
 (fn display-row [theme-table row]
   (if (= row.kind :change) (display-change theme-table row)
+      (= row.kind :context) (display-context row)
       (= row.kind :rule) {:kind :rule
                           :old (underline row.old)
                           :new (underline row.new)}

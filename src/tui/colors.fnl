@@ -34,12 +34,26 @@
 (fn selected-background [rgb]
   (nearby-background rgb 0.08))
 
+(fn background-code [bg]
+  (.. "\27[48;2;" bg.r ";" bg.g ";" bg.b "m"))
+
 (fn background-style [rgb ?amount]
   (let [bg (nearby-background rgb ?amount)]
     (when bg
-      (.. "\27[48;2;" bg.r ";" bg.g ";" bg.b "m"))))
+      (background-code bg))))
+
+(fn mix-toward [rgb target amount]
+  {:r (mix-channel rgb.r target.r amount)
+   :g (mix-channel rgb.g target.g amount)
+   :b (mix-channel rgb.b target.b amount)})
+
+(fn tint-style [rgb target amount]
+  (when rgb
+    (background-code (mix-toward rgb target amount))))
 
 {: background-style
+ : mix-toward
  : nearby-background
  : parse-background-response
- : selected-background}
+ : selected-background
+ : tint-style}

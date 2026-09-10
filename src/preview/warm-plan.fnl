@@ -30,11 +30,11 @@
         (set back-count (+ back-count 1))))
     out))
 
-(fn index-entries [revision entries]
+(fn index-entries [revision entries ?highlight?]
   (let [indexes {}
         keys {}]
     (each [i entry (ipairs entries)]
-      (let [entry-key (preview-key.for-entry revision entry)]
+      (let [entry-key (preview-key.for-entry revision entry nil nil ?highlight?)]
         (tset indexes entry-key i)
         (tset keys i entry-key)))
     (values indexes keys)))

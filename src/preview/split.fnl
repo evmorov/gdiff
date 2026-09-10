@@ -2,6 +2,7 @@
 (local diff-parse (require :preview.diff-parse))
 (local comments (require :preview.comments))
 (local line-moves (require :preview.line-moves))
+(local highlight (require :preview.highlight))
 
 (fn ordered-pairs [pairs]
   (let [out []]
@@ -25,7 +26,19 @@
     (drain)
     out))
 
-(fn change-rows [removed added old-no new-no moves]
+(fn side-map [?highlight side]
+  (and ?highlight (. ?highlight side)))
+
+(fn attach-styled [row ?highlight]
+  (let [?old (highlight.styled-line (side-map ?highlight :old) row.old-no
+                                    row.old)
+        ?new (highlight.styled-line (side-map ?highlight :new) row.new-no
+                                    row.new)]
+    (when ?old (set row.old-styled ?old))
+    (when ?new (set row.new-styled ?new))
+    row))
+
+(fn change-rows [removed added old-no new-no moves ?highlight]
   (icollect [_ p (ipairs (ordered-pairs (word-diff.align removed added)))]
     (let [old (and p.old (. removed p.old))
           new (and p.new (. added p.new))
@@ -38,6 +51,7 @@
                :new-no (and p.new (+ new-no p.new -1))}]
       (when ?old-move (set row.old-move ?old-move))
       (when ?new-move (set row.new-move ?new-move))
+      (attach-styled row ?highlight)
       (when (and p.old p.new (not p.loose?) (not ?old-move) (not ?new-move))
         (set row.emphasize? true)
         (set row.spans (word-diff.spans old new)))
@@ -64,7 +78,7 @@
         (table.insert acc.rows 1
                       {:kind :filename :old old-title :new new-title})))))
 
-(fn parse-rows [text ?old-ref ?new-ref ?hide-comments?]
+(fn parse-rows [text ?old-ref ?new-ref ?hide-comments? ?highlight]
   (let [ws-hunks (diff-parse.whitespace-only-hunks text)
         moves (line-moves.detect text)
         acc {:rows [] :old-no 1 :new-no 1 :hunk-no 0}
@@ -82,7 +96,8 @@
         handlers {:change (fn [removed added]
                             (each [_ row (ipairs (change-rows removed added
                                                               acc.old-no
-                                                              acc.new-no moves))]
+                                                              acc.new-no moves
+                                                              ?highlight))]
                               (tag-comments row)
                               (when (not (hidden? row))
                                 (when (. ws-hunks acc.hunk-no)
@@ -97,11 +112,12 @@
                             (when old (set acc.old-no old))
                             (when new (set acc.new-no new))))
                   :context (fn [text]
-                             (let [row {:kind :context
-                                        :old text
-                                        :new text
-                                        :old-no acc.old-no
-                                        :new-no acc.new-no}]
+                             (let [row (attach-styled {:kind :context
+                                                       :old text
+                                                       :new text
+                                                       :old-no acc.old-no
+                                                       :new-no acc.new-no}
+                                                      ?highlight)]
                                (tag-comments row)
                                (when (not (hidden? row))
                                  (table.insert acc.rows row)))

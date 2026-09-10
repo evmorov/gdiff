@@ -295,6 +295,17 @@
     (preview.reset-scroll state)
     (set state.preview_anchor anchor)))
 
+(fn toggle-highlight [state]
+  (if (not state.highlight_available?)
+      (set state.notice (notice.highlight-unavailable))
+      (let [entry (selection.selected-entry state)
+            anchor (preview-anchor.capture state entry)]
+        (exit-line-selection state)
+        (set state.highlight? (not state.highlight?))
+        (preview.reset-scroll state)
+        (set state.preview_anchor anchor)
+        (commands.warm-preview-cache))))
+
 (fn toggle-tree [state]
   (selection.toggle-mode state)
   (when (search.has-query? state)
@@ -417,6 +428,7 @@ some are not cached yet, return a command that loads them and replays `then`."
                  : toggle-split
                  : toggle-full-context
                  : toggle-hide-comments
+                 : toggle-highlight
                  : toggle-tree
                  : toggle-hide-reviewed
                  : toggle-expand

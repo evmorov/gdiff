@@ -991,6 +991,57 @@
     (app.handle-key state {} "\25")
     (faith.= 0 state.preview_scroll)))
 
+(fn test-ctrl-e-and-ctrl-y-pull-the-cursor-into-view-when-preview-focused []
+  (let [state (anchored-preview-state)]
+    (set state.focus :right)
+    (app.view state 10 100)
+    ;; The view shows rows 1-6; the cursor starts on row 1.
+    (faith.= 6 state.preview_rows)
+    (app.handle-key state {} "\5")
+    (faith.= 1 state.preview_scroll)
+    (faith.= 2 state.preview_cursor)
+    (set state.preview_cursor 5)
+    (app.handle-key state {} "\5")
+    (faith.= 2 state.preview_scroll)
+    (faith.= 5 state.preview_cursor)
+    (set state.preview_cursor 8)
+    (app.handle-key state {} "\25")
+    (faith.= 1 state.preview_scroll)
+    (faith.= 7 state.preview_cursor)
+    (app.handle-key state {} "\25")
+    (faith.= 0 state.preview_scroll)
+    (faith.= 6 state.preview_cursor)
+    (app.handle-key state {} "\25")
+    (faith.= 0 state.preview_scroll)
+    (faith.= 6 state.preview_cursor)))
+
+(fn test-ctrl-d-and-ctrl-u-pull-the-cursor-into-view-when-preview-focused []
+  (let [state (anchored-preview-state)]
+    (set state.focus :right)
+    (app.view state 10 100)
+    ;; The view shows 6 rows, so a page step is 3 rows.
+    (app.handle-key state {} "\4")
+    (faith.= 3 state.preview_scroll)
+    (faith.= 4 state.preview_cursor)
+    (set state.preview_cursor 9)
+    (app.handle-key state {} "\4")
+    (faith.= 6 state.preview_scroll)
+    (faith.= 9 state.preview_cursor)
+    (app.handle-key state {} "\21")
+    (faith.= 3 state.preview_scroll)
+    (faith.= 9 state.preview_cursor)
+    (app.handle-key state {} "\21")
+    (faith.= 0 state.preview_scroll)
+    (faith.= 6 state.preview_cursor)))
+
+(fn test-ctrl-e-leaves-the-cursor-alone-when-file-list-focused []
+  (let [state (anchored-preview-state)]
+    (app.view state 10 100)
+    (set state.preview_cursor 1)
+    (app.handle-key state {} "\5")
+    (faith.= 1 state.preview_scroll)
+    (faith.= 1 state.preview_cursor)))
+
 (fn test-split-toggle-keeps-top-line-anchored []
   (let [state (anchored-preview-state)]
     (app.view state 10 100)
@@ -1068,6 +1119,9 @@
 
 {: test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing
  : test-ctrl-e-and-ctrl-y-scroll-preview-one-line
+ : test-ctrl-e-and-ctrl-y-pull-the-cursor-into-view-when-preview-focused
+ : test-ctrl-d-and-ctrl-u-pull-the-cursor-into-view-when-preview-focused
+ : test-ctrl-e-leaves-the-cursor-alone-when-file-list-focused
  : test-search-next-is-relative-to-current-cursor
  : test-split-toggle-keeps-cursor-on-same-diff-line
  : test-split-toggle-keeps-top-line-anchored

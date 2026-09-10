@@ -673,6 +673,17 @@ ask for, so their cache keys are ready when the output is imported."
 (fn scroll [state entry delta]
   (set-scroll state entry (+ (or state.preview_scroll 0) delta)))
 
+(fn follow-scroll [state]
+  "Pull the cursor onto the nearest visible row after the view scrolled."
+  (let [before (or state.preview_cursor 1)
+        scroll (or state.preview_scroll 0)
+        last (math.max 1 (or state.preview_total 0))
+        cursor (math-util.clamp before (+ scroll 1)
+                                (+ scroll (row-count state)))
+        cursor (math-util.clamp cursor 1 last)]
+    (set state.preview_cursor cursor)
+    (not (= before cursor))))
+
 (fn scroll-page-down [state entry]
   (scroll state entry (page-step state)))
 
@@ -748,6 +759,7 @@ ask for, so their cache keys are ready when the output is imported."
  : line-refs
  : visible-display-gutters
  : focus-cursor
+ : follow-scroll
  : restore-cursor
  : restore-scroll
  : move-cursor

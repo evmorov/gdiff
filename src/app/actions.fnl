@@ -241,24 +241,23 @@
     (set state.skip_next_draw? (not changed?))
     changed?))
 
-(fn scroll-preview [state entry delta]
-  (let [changed? (preview.scroll state entry delta)]
-    (set state.skip_next_draw? (not changed?))
-    changed?))
+(fn scroll-preview [state delta]
+  (let [scrolled? (preview.scroll state (selection.selected-entry state) delta)
+        moved? (and (= state.focus :right) (preview.follow-scroll state))]
+    (set state.skip_next_draw? (not (or scrolled? moved?)))
+    (or scrolled? moved?)))
 
 (fn scroll-preview-page-down [state]
-  (scroll-preview state (selection.selected-entry state)
-                  (preview.page-step state)))
+  (scroll-preview state (preview.page-step state)))
 
 (fn scroll-preview-page-up [state]
-  (scroll-preview state (selection.selected-entry state)
-                  (- (preview.page-step state))))
+  (scroll-preview state (- (preview.page-step state))))
 
 (fn scroll-preview-line-down [state]
-  (scroll-preview state (selection.selected-entry state) 1))
+  (scroll-preview state 1))
 
 (fn scroll-preview-line-up [state]
-  (scroll-preview state (selection.selected-entry state) -1))
+  (scroll-preview state -1))
 
 (fn toggle-wrap [state]
   (exit-line-selection state)

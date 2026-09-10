@@ -33,8 +33,8 @@
                {:title "Preview"
                 :items [["← / h" "Scroll preview left"]
                         ["→ / l" "Scroll preview right"]
-                        ["C-d / C-u" "Page preview down / up"]
-                        ["C-e / C-y" "Scroll preview down / up"]
+                        ["C-d / C-u" "Page preview down / up, cursor follows"]
+                        ["C-e / C-y" "Scroll preview one line, cursor follows"]
                         ["w" "Toggle wrap"]
                         ["1" "Toggle line numbers"]
                         ["b" "Toggle blame"]

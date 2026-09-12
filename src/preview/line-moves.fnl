@@ -5,7 +5,7 @@
 (local max-lines 20000)
 
 (fn entry [line no group index]
-  {: no :key (str.trim line) : group : index})
+  {: no :raw line :key (str.trim line) : group : index})
 
 (fn collect-lines [text]
   (var group 0)
@@ -36,6 +36,11 @@
 (fn in-place? [o n]
   (and (= o.group n.group) (= o.index n.index)))
 
+;; A moved line must be byte-identical. A line that only shifted left or
+;; right (re-indentation) is a plain change, not a move.
+(fn same-text? [o n]
+  (= o.raw n.raw))
+
 (fn matched-pairs [olds news]
   (let [old-at (occurrences olds)
         new-at (occurrences news)
@@ -45,7 +50,8 @@
         (when (and news-with (= (length olds-with) (length news-with)))
           (each [k i (ipairs olds-with)]
             (let [j (. news-with k)]
-              (when (not (in-place? (. olds i) (. news j)))
+              (when (and (same-text? (. olds i) (. news j))
+                         (not (in-place? (. olds i) (. news j))))
                 (table.insert out {:old i :new j})))))))
     (table.sort out #(< $1.old $2.old))
     out))
@@ -54,7 +60,8 @@
   (let [o (. olds i)
         n (. news j)]
     (and o n (not (. used.old i)) (not (. used.new j))
-         (= o.group base.old-group) (= n.group base.new-group) (= o.key n.key))))
+         (= o.group base.old-group) (= n.group base.new-group) (= o.key n.key)
+         (= o.raw n.raw))))
 
 (fn extend-block [olds news used pair]
   (let [base {:old-group (. olds pair.old :group)

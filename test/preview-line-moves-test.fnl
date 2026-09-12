@@ -24,10 +24,21 @@
               21 {:start 1 :stop 3}
               22 {:start 1 :stop 3}} moves.new)))
 
-(fn test-detect-ignores-indentation-across-hunks []
+(fn test-detect-treats-reindentation-as-a-plain-change []
   (let [moves (line-moves.detect (diff "@@ -1,1 +0,0 @@" "-  indented line"
                                        "@@ -0,0 +30,1 @@" "+      indented line"))]
-    (faith.= {1 {:start 30 :stop 30 :first? true}} moves.old)))
+    (faith.= {} moves.old)
+    (faith.= {} moves.new)))
+
+(fn test-detect-treats-reindentation-with-a-shift-as-a-plain-change []
+  (let [moves (line-moves.detect (diff "@@ -1,4 +1,2 @@" "-(defn f []"
+                                       "-  (let [xs []]"
+                                       "-    (each [i x (ipairs xs)]"
+                                       "-      (table.insert ys x)))"
+                                       "+(each [i x (ipairs xs)]"
+                                       "+  (table.insert ys x)))"))]
+    (faith.= {} moves.old)
+    (faith.= {} moves.new)))
 
 (fn test-detect-skips-in-place-reindentation []
   (let [moves (line-moves.detect (diff "@@ -1,2 +1,2 @@" "-  first line"
@@ -121,7 +132,8 @@
 
 {: test-detect-marks-a-single-line-moved-to-another-hunk
  : test-detect-marks-a-block-with-first-only-on-its-head
- : test-detect-ignores-indentation-across-hunks
+ : test-detect-treats-reindentation-as-a-plain-change
+ : test-detect-treats-reindentation-with-a-shift-as-a-plain-change
  : test-detect-skips-in-place-reindentation
  : test-detect-never-matches-short-lines-alone
  : test-detect-absorbs-short-neighbours-into-a-block

@@ -737,20 +737,16 @@
 
 (fn test-view-clamps-file-horizontal-scroll-when-file-rows-fit []
   (let [state (state [(entry "M" "a.rb")])]
-    (set state.files_x_scroll 8)
     (let [view (app.view state 10 80)]
       (faith.= 0 view.body.left.x-scroll)
-      (faith.= 0 state.files_x_max_scroll))))
+      (faith.= 0 view.body.left.x-max-scroll))))
 
 (fn test-view-keeps-file-list-horizontal-scroll-disabled []
   (let [state (state [(entry "M"
                              "really/long/path/that/does/not/fit/in/the/list.rb")])]
-    (set state.files_x_scroll 100)
     (let [view (app.view state 10 30)]
       (faith.= 0 view.body.left.x-scroll)
-      (faith.= 0 view.body.left.x-max-scroll)
-      (faith.= 0 state.files_x_scroll)
-      (faith.= 0 state.files_x_max_scroll))))
+      (faith.= 0 view.body.left.x-max-scroll))))
 
 (fn test-view-adds-left-scroll-info-for-overflowing-file-list []
   (let [state (state [(entry "M" "1.rb")

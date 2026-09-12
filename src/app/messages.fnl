@@ -46,7 +46,7 @@
 (fn refresh-loaded [entries reviewed diff-stats ?revision]
   (build :refresh-loaded {: entries
                           : reviewed
-                          :diff_stats diff-stats
+                          :diff-stats diff-stats
                           :revision ?revision}))
 
 (fn folder-listings-loaded [records then]

@@ -1,3 +1,4 @@
+(local ansi (require :tui.ansi))
 (local tui (require :tui.core))
 
 (local gap 3)
@@ -47,10 +48,6 @@
                         ["y" "Yank line or selection"]
                         ["Y" "Yank with path, fenced"]]}])
 
-(fn pad [text width]
-  (let [missing (- width (tui.visible-length text))]
-    (if (< 0 missing) (.. text (string.rep " " missing)) text)))
-
 (fn group-key-width [group]
   (accumulate [width 0 _ [keys] (ipairs group.items)]
     (math.max width (tui.visible-length keys))))
@@ -60,8 +57,8 @@
   (let [key-width (group-key-width group)]
     (icollect [_ [keys label] (ipairs group.items)
                &into [(tui.color state.theme :search-match group.title)]]
-      (.. (tui.color state.theme :selected-marker (pad keys key-width)) "  "
-          label))))
+      (.. (tui.color state.theme :selected-marker
+                     (ansi.pad-right keys key-width)) "  " label))))
 
 (fn block-total [blocks]
   (+ (accumulate [sum 0 _ block (ipairs blocks)] (+ sum (length block)))
@@ -121,7 +118,7 @@
     (fcollect [row 1 height]
       (table.concat (icollect [index col (ipairs columns)]
                       (let [line (or (. col.lines row) "")]
-                        (if (= index last) line (pad line col.width))))
+                        (if (= index last) line (ansi.pad-right line col.width))))
                     sep))))
 
 (fn lines [state]

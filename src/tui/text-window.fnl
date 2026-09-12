@@ -6,53 +6,32 @@
     (if (<= (txt.visible-length s) width)
         s
         (let [suffix (if (< 3 width) "..." "")
-              limit (- width (length suffix))]
+              limit (- width (length suffix))
+              out []]
           (var i 1)
           (var visible 0)
-          (let [out []]
-            (while (and (< visible limit) (<= i (length s)))
-              (let [byte (string.byte s i)]
-                (if (txt.ansi-sequence? s i)
-                    (let [last (txt.ansi-sequence-end s i)]
-                      (table.insert out (s:sub i last))
-                      (set i (+ last 1)))
-                    (txt.ascii-byte? byte)
-                    (do
-                      (table.insert out (s:sub i i))
-                      (set visible (+ visible 1))
-                      (set i (+ i 1)))
-                    (let [(ch next-i) (txt.next-char s i)]
-                      (table.insert out ch)
-                      (set visible (+ visible 1))
-                      (set i next-i)))))
-            (.. (table.concat out) suffix reset))))))
+          (while (and (< visible limit) (<= i (length s)))
+            (let [(text next-i cell-width) (txt.next-cell s i)]
+              (table.insert out text)
+              (set visible (+ visible cell-width))
+              (set i next-i)))
+          (.. (table.concat out) suffix reset)))))
 
 (fn slice [s offset width]
   (let [s (tostring (or s ""))
         offset (math.max 0 (or offset 0))
         width (math.max 0 (or width 0))
-        limit (+ offset width)]
+        limit (+ offset width)
+        out []]
     (var i 1)
     (var visible 0)
-    (let [out []]
-      (while (and (< visible limit) (<= i (length s)))
-        (let [byte (string.byte s i)]
-          (if (txt.ansi-sequence? s i)
-              (let [last (txt.ansi-sequence-end s i)]
-                (table.insert out (s:sub i last))
-                (set i (+ last 1)))
-              (txt.ascii-byte? byte)
-              (do
-                (when (>= visible offset)
-                  (table.insert out (s:sub i i)))
-                (set visible (+ visible 1))
-                (set i (+ i 1)))
-              (let [(ch next-i) (txt.next-char s i)]
-                (when (>= visible offset)
-                  (table.insert out ch))
-                (set visible (+ visible 1))
-                (set i next-i)))))
-      (table.concat out))))
+    (while (and (< visible limit) (<= i (length s)))
+      (let [(text next-i cell-width) (txt.next-cell s i)]
+        (when (or (= cell-width 0) (>= visible offset))
+          (table.insert out text))
+        (set visible (+ visible cell-width))
+        (set i next-i)))
+    (table.concat out)))
 
 (fn crop [s offset width ?reset]
   (let [offset (math.max 0 (or offset 0))

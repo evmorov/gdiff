@@ -93,12 +93,4 @@
         (fcollect [i first last]
           (. lines i)))))
 
-{: content-width
- : display-lines
- : display-gutters
- : gutter-strings
- : lines-for-width
- : scroll-state
- : scroll?
- : source-map
- : visible-lines}
+{: content-width : lines-for-width : scroll-state : source-map : visible-lines}

@@ -39,21 +39,26 @@
           (values (s:sub i last) (+ last 1)))
         (values nil (+ i 1)))))
 
+(fn next-cell [s i]
+  "The next display cell of `s` from byte offset `i`: (text next-i width).
+ANSI escape sequences are zero-width; any other char takes one column."
+  (if (ansi-sequence? s i)
+      (let [last (ansi-sequence-end s i)]
+        (values (s:sub i last) (+ last 1) 0))
+      (let [byte (string.byte s i)]
+        (if (not byte)
+            (values nil i 0)
+            (let [(ch next-i) (next-char s i)]
+              (values ch next-i 1))))))
+
 (fn visible-length [s]
   (let [s (tostring (or s ""))]
     (var i 1)
     (var len 0)
     (while (<= i (length s))
-      (let [byte (string.byte s i)]
-        (if (ansi-sequence? s i)
-            (set i (+ (ansi-sequence-end s i) 1))
-            (ascii-byte? byte)
-            (do
-              (set len (+ len 1))
-              (set i (+ i 1)))
-            (let [next-i (+ (utf8-char-end s i) 1)]
-              (set len (+ len 1))
-              (set i next-i)))))
+      (let [(_ next-i width) (next-cell s i)]
+        (set len (+ len width))
+        (set i next-i)))
     len))
 
 (fn pad-right [s width]
@@ -63,21 +68,15 @@
         s)))
 
 (fn strip-ansi [s]
-  (let [s (tostring (or s ""))]
+  (let [s (tostring (or s ""))
+        out []]
     (var i 1)
-    (let [out []]
-      (while (<= i (length s))
-        (let [byte (string.byte s i)]
-          (if (ansi-sequence? s i)
-              (set i (+ (ansi-sequence-end s i) 1))
-              (ascii-byte? byte)
-              (do
-                (table.insert out (s:sub i i))
-                (set i (+ i 1)))
-              (let [(ch next-i) (next-char s i)]
-                (table.insert out ch)
-                (set i next-i)))))
-      (table.concat out))))
+    (while (<= i (length s))
+      (let [(text next-i width) (next-cell s i)]
+        (when (= width 1)
+          (table.insert out text))
+        (set i next-i)))
+    (table.concat out)))
 
 {: ansi-sequence-end
  : ansi-sequence?
@@ -86,6 +85,7 @@
  : esc
  : esc-byte
  : left-bracket-byte
+ : next-cell
  : next-char
  : pad-right
  : pattern-quote

@@ -2,6 +2,7 @@
 (local symbols (require :tui.symbols))
 (local tui (require :tui.core))
 (local word-diff (require :preview.word-diff))
+(local diff-walk (require :preview.diff-walk))
 (local diff-parse (require :preview.diff-parse))
 (local comments (require :preview.comments))
 (local line-moves (require :preview.line-moves))
@@ -58,8 +59,7 @@
       (theme.tint state.theme (highlight.tint-role role) text)
       (tui.color state.theme role text)))
 
-(fn side-map [?highlight side]
-  (and ?highlight (. ?highlight side)))
+(local side-map highlight.side-map)
 
 (fn moved-line [state raw side mark]
   (tui.color state.theme :moved (.. raw (line-moves.annotation side mark))))
@@ -101,74 +101,72 @@
 (fn diff-lines [state output ?entry ?highlight]
   (let [ws-hunks (diff-parse.whitespace-only-hunks output)
         moves (line-moves.detect output)
-        acc {:out [] :numbers [] :refs [] :old-no 1 :new-no 1 :hunk-no 0}
-        comment? (fn [text]
-                   (comments.comment-line? (or acc.new-path acc.old-path) text))
-        hidden? (fn [text] (and state.hide_comments? (comment? text)))
+        out []
+        numbers []
+        refs []
         push (fn [line ?number ?ref]
-               (table.insert acc.out line)
-               (table.insert acc.numbers (or ?number false))
-               (table.insert acc.refs (or ?ref false)))
-        handlers {:change (fn [removed added]
-                            (let [lines (change-lines state removed added
-                                                      {: comment?
-                                                       : moves
-                                                       :highlight ?highlight
-                                                       :whitespace-hunk? (. ws-hunks
-                                                                            acc.hunk-no)
-                                                       :old-no acc.old-no
-                                                       :new-no acc.new-no})
-                                  removed-count (length removed)]
-                              (each [i line (ipairs lines)]
-                                (if (<= i removed-count)
-                                    (when (not (hidden? (. removed i)))
-                                      (push line (+ acc.old-no i -1)
-                                            {:side :old
-                                             :no (+ acc.old-no i -1)}))
-                                    (when (not (hidden? (. added
-                                                           (- i removed-count))))
-                                      (push line
-                                            (+ acc.new-no (- i removed-count)
-                                               -1)
-                                            {:side :new
-                                             :no (+ acc.new-no
-                                                    (- i removed-count) -1)}))))
-                              (set acc.old-no (+ acc.old-no removed-count))
-                              (set acc.new-no (+ acc.new-no (length added)))))
-                  :hunk (fn [line]
-                          (set acc.hunk-no (+ acc.hunk-no 1))
-                          (push (tui.color state.theme :muted line))
-                          (let [(old new) (diff-parse.hunk-start line)]
-                            (when old (set acc.old-no old))
-                            (when new (set acc.new-no new))))
-                  :context (fn [text]
-                             (when (not (hidden? text))
-                               (push (or (highlight.styled-line (side-map ?highlight
-                                                                          :new)
-                                                                acc.new-no text)
-                                         text)
-                                     acc.new-no {:side :new :no acc.new-no}))
-                             (set acc.old-no (+ acc.old-no 1))
-                             (set acc.new-no (+ acc.new-no 1)))
-                  :meta (fn [line] (push (color-line state line)))
-                  :old-path (fn [path] (set acc.old-path path))
-                  :new-path (fn [path] (set acc.new-path path))}]
-    (diff-parse.parse output handlers)
-    (if (= 0 (length acc.out))
+               (table.insert out line)
+               (table.insert numbers (or ?number false))
+               (table.insert refs (or ?ref false)))
+        comment? (fn [acc text]
+                   (comments.comment-line? (or acc.new-path acc.old-path) text))
+        hidden? (fn [acc text]
+                  (and state.hide_comments? (comment? acc text)))
+        acc (diff-walk.walk output
+                            {:change (fn [acc removed added]
+                                       (let [lines (change-lines state removed
+                                                                 added
+                                                                 {:comment? (fn [text]
+                                                                              (comment? acc
+                                                                                        text))
+                                                                  : moves
+                                                                  :highlight ?highlight
+                                                                  :whitespace-hunk? (. ws-hunks
+                                                                                       acc.hunk-no)
+                                                                  :old-no acc.old-no
+                                                                  :new-no acc.new-no})
+                                             removed-count (length removed)]
+                                         (each [i line (ipairs lines)]
+                                           (if (<= i removed-count)
+                                               (when (not (hidden? acc
+                                                                   (. removed i)))
+                                                 (push line (+ acc.old-no i -1)
+                                                       {:side :old
+                                                        :no (+ acc.old-no i -1)}))
+                                               (when (not (hidden? acc
+                                                                   (. added
+                                                                      (- i
+                                                                         removed-count))))
+                                                 (push line
+                                                       (+ acc.new-no
+                                                          (- i removed-count) -1)
+                                                       {:side :new
+                                                        :no (+ acc.new-no
+                                                               (- i
+                                                                  removed-count)
+                                                               -1)}))))))
+                             :hunk (fn [_acc line]
+                                     (push (tui.color state.theme :muted line)))
+                             :context (fn [acc text]
+                                        (when (not (hidden? acc text))
+                                          (push (or (highlight.styled-line (side-map ?highlight
+                                                                                     :new)
+                                                                           acc.new-no
+                                                                           text)
+                                                    text)
+                                                acc.new-no
+                                                {:side :new :no acc.new-no})))
+                             :meta (fn [_acc line]
+                                     (push (color-line state line)))})]
+    (let [header-path (or acc.new-path acc.old-path)]
+      (when (and header-path (< 0 (length out)))
+        (each [i line (ipairs (header state header-path ?entry))]
+          (table.insert out i line)
+          (table.insert numbers i false)
+          (table.insert refs i false))))
+    (if (= 0 (length out))
         (values (empty-preview state) nil)
-        (let [path (or acc.new-path acc.old-path)
-              out []
-              numbers []
-              refs []]
-          (each [_ line (ipairs (if path (header state path ?entry) []))]
-            (table.insert out line)
-            (table.insert numbers false)
-            (table.insert refs false))
-          (each [i line (ipairs acc.out)]
-            (table.insert out line)
-            (table.insert numbers (. acc.numbers i))
-            (table.insert refs (. acc.refs i)))
-          (values out numbers refs)))))
+        (values out numbers refs))))
 
 (fn no-selection [state]
   [(tui.color state.theme :muted "No file selected.")])

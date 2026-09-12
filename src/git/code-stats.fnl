@@ -90,8 +90,8 @@
     (and extension (extension:lower))))
 
 (fn file-name [path]
-  (let [name (path:match "([^/]+)$")]
-    (and name (name:lower))))
+  (let [name (str.basename path)]
+    (name:lower)))
 
 (fn markdown-path? [path]
   (let [extension (file-extension path)]

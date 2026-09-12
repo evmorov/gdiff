@@ -1,13 +1,13 @@
 (local math-util (require :util.math))
+(local str (require :util.string))
+
+(local basename str.basename)
 
 (fn path-parts [path]
   (let [parts []]
     (each [part (string.gmatch (or path "") "[^/]+")]
       (table.insert parts part))
     parts))
-
-(fn basename [path]
-  (or (string.match (or path "") "([^/]+)$") path))
 
 (fn new-node []
   {:dirs {} :dir-order [] :entries [] :files []})

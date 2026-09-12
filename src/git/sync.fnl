@@ -1,4 +1,5 @@
 (local git (require :git.core))
+(local background (require :git.background))
 (local commands (require :git.sync-commands))
 (local status (require :git.sync-status))
 (local sys (require :platform.core))
@@ -41,33 +42,23 @@
   (sys.background-command (branch-status-command path targets)))
 
 (fn new-state [?revision]
-  {:path (sys.temp-path)
-   :running? false
-   :notice nil
-   :warning nil
-   :targets (targets-for-revision (or ?revision "HEAD"))})
+  (background.new-state {:notice nil
+                         :warning nil
+                         :targets (targets-for-revision (or ?revision "HEAD"))}))
+
+(fn can-start? [state]
+  (< 0 (length state.targets)))
 
 (fn start [state ?spawn]
-  (when (and (not state.running?) (< 0 (length state.targets)))
-    (let [spawn (or ?spawn spawn-branch-status)]
-      (set state.running? true)
-      (spawn state.path state.targets)
-      true)))
+  (background.start state can-start? (or ?spawn spawn-branch-status)
+                    state.targets))
 
 (fn finish [state output]
   (set state.notice (status.notice-from-output output))
-  (set state.warning (status.warning-from-output output))
-  (set state.running? false)
-  (sys.remove-file state.path))
-
-(fn poll [state]
-  (when state.running?
-    (let [output (sys.read-file state.path)]
-      (when output
-        (finish state output)))))
+  (set state.warning (status.warning-from-output output)))
 
 (fn update [state]
-  (poll state))
+  (background.poll state finish))
 
 (fn warning [state]
   state.warning)

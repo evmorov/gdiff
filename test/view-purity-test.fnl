@@ -13,22 +13,6 @@
     (set state.sync.next_at (+ (os.time) 999))
     state))
 
-(fn test-left-body-does-not-mutate-horizontal-scroll []
-  (let [s (state [(entry "M" "a.rb")])]
-    (set s.files_x_scroll 7)
-    (set s.files_x_max_scroll 12)
-    (left-view.body s 6)
-    (faith.= 7 s.files_x_scroll)
-    (faith.= 12 s.files_x_max_scroll)))
-
-(fn test-left-prepare-resets-horizontal-scroll []
-  (let [s (state [(entry "M" "a.rb")])]
-    (set s.files_x_scroll 7)
-    (set s.files_x_max_scroll 12)
-    (left-view.prepare s)
-    (faith.= 0 s.files_x_scroll)
-    (faith.= 0 s.files_x_max_scroll)))
-
 (fn test-preview-body-does-not-mutate-scroll-state []
   (let [s (state [(entry "M" "a.rb")])]
     (app.view s 10 80)
@@ -61,7 +45,5 @@
       (faith.= false row.selected?)
       (faith.is (row.text:find "> " 1 true)))))
 
-{: test-left-body-does-not-mutate-horizontal-scroll
- : test-left-prepare-resets-horizontal-scroll
- : test-files-selection-has-background-only-when-pane-focused
+{: test-files-selection-has-background-only-when-pane-focused
  : test-preview-body-does-not-mutate-scroll-state}

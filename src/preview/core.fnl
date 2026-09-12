@@ -1,4 +1,5 @@
 (local git (require :git.core))
+(local ansi (require :tui.ansi))
 (local blame (require :git.blame))
 (local blame-colors (require :preview.blame-colors))
 (local assets (require :preview.assets))
@@ -8,6 +9,7 @@
 (local file-preview (require :preview.file))
 (local format (require :preview.format))
 (local folder-preview (require :preview.folder))
+(local gutter (require :preview.gutter))
 (local preview-key (require :preview.key))
 (local split (require :preview.split))
 (local preview-warm (require :preview.warm))
@@ -272,22 +274,21 @@ git; the import fills the cache."
   (and entry (not entry.untracked?) (not (assets.asset? entry)) true))
 
 (fn number-width [numbers]
-  (accumulate [width 0 _ number (ipairs (or numbers []))]
-    (math.max width (if number (length (tostring number)) 0))))
+  (gutter.max-text-width numbers))
 
 (fn blame-width [refs old-blame new-blame]
-  (accumulate [width 0 _ ref (ipairs (or refs []))]
-    (let [line (and ref ref.no)
-          label (and line (. (if (= ref.side :old) old-blame new-blame) line))]
-      (math.max width (if label (tui.visible-length label) 0)))))
+  (gutter.max-text-width (icollect [_ ref (ipairs (or refs []))]
+                           (let [line (and ref ref.no)]
+                             (and line
+                                  (. (if (= ref.side :old) old-blame new-blame)
+                                     line))))))
 
 (fn padded [text width]
   (let [text (or text "")]
     (.. (string.rep " " (math.max 0 (- width (tui.visible-length text)))) text)))
 
 (fn padded-right [text width]
-  (let [text (or text "")]
-    (.. text (string.rep " " (math.max 0 (- width (tui.visible-length text)))))))
+  (ansi.pad-right (or text "") width))
 
 (fn gutters-with-blame [state numbers refs old-blame new-blame]
   (when (or (and state.show_numbers? numbers) (and state.show_blame? refs))

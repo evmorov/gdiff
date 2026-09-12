@@ -42,9 +42,4 @@
                 (table.insert matches found))))))
     matches))
 
-{: collect-matches
- : contains?
- : path-match
- : tree-label
- : tree-match
- : tree-path}
+{: collect-matches : path-match : tree-label : tree-match : tree-path}

@@ -3,7 +3,6 @@
 (local context (require :tui.context))
 (local frame (require :tui.frame))
 (local renderer (require :tui.renderer))
-(local split (require :tui.components.split))
 (local terminal (require :tui.terminal))
 
 (fn current-size [state]
@@ -30,4 +29,4 @@
                         (renderer.draw ctx view)))
     (io.flush)))
 
-{: draw : refresh-size :split-widths split.widths}
+{: draw : refresh-size}

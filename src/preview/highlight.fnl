@@ -17,6 +17,9 @@
     (when (and styled (= raw (txt.strip-ansi styled)))
       styled)))
 
+(fn side-map [?highlight side]
+  (and ?highlight (. ?highlight side)))
+
 (local tint-roles {:status-added :line-added
                    :status-deleted :line-deleted
                    :comment-added :line-added
@@ -71,6 +74,7 @@
  : line-map
  : max-lines
  : needed-lines
+ : side-map
  : styled-line
  : tint-role
  : within-cap?}

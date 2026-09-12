@@ -75,7 +75,7 @@
   commands.none)
 
 (fn handle-refresh-loaded [state _config msg]
-  (actions.apply-refresh state msg.entries msg.reviewed msg.diff_stats
+  (actions.apply-refresh state msg.entries msg.reviewed msg.diff-stats
                          msg.revision))
 
 (fn handle-folder-listings-loaded [state config msg]

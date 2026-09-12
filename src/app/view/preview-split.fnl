@@ -1,9 +1,11 @@
+(local ansi (require :tui.ansi))
 (local preview (require :preview.core))
 (local preview-anchor (require :preview.anchor))
 (local preview-search (require :app.preview-search))
 (local selection (require :app.selection))
 (local line-selection (require :app.line-selection))
 (local viewport (require :preview.viewport))
+(local gutter (require :preview.gutter))
 (local pane (require :tui.components.pane))
 (local scroll-util (require :util.scroll))
 (local symbols (require :tui.symbols))
@@ -20,22 +22,20 @@
         old-w (math.floor (/ available 2))]
     (values old-w (- available old-w))))
 
-(fn number-width [rows key]
-  (accumulate [w 0 _ row (ipairs (or rows []))]
-    (math.max w (if (. row key) (length (tostring (. row key))) 0))))
-
 (fn number-widths [state rows]
   (if state.show_numbers?
-      (values (number-width rows :old-no) (number-width rows :new-no))
+      (values (gutter.max-text-width (icollect [_ row (ipairs rows)]
+                                       (. row :old-no)))
+              (gutter.max-text-width (icollect [_ row (ipairs rows)]
+                                       (. row :new-no))))
       (values 0 0)))
-
-(fn blame-width [rows key]
-  (accumulate [w 0 _ row (ipairs (or rows []))]
-    (math.max w (if (. row key) (tui.visible-length (. row key)) 0))))
 
 (fn blame-widths [state rows]
   (if state.show_blame?
-      (values (blame-width rows :old-blame) (blame-width rows :new-blame))
+      (values (gutter.max-text-width (icollect [_ row (ipairs rows)]
+                                       (. row :old-blame)))
+              (gutter.max-text-width (icollect [_ row (ipairs rows)]
+                                       (. row :new-blame))))
       (values 0 0)))
 
 (fn gutter-width [number-w blame-w]
@@ -48,9 +48,7 @@
   (let [text (if ?no (tostring ?no) "")]
     (.. (string.rep " " (math.max 0 (- width (length text)))) text)))
 
-(fn padded-right [text width]
-  (let [text (or text "")]
-    (.. text (string.rep " " (math.max 0 (- width (tui.visible-length text)))))))
+(local padded-right ansi.pad-right)
 
 (fn side-gutter [state number-w blame-w ?no ?blame]
   (let [number-w (or number-w 0)
@@ -60,7 +58,8 @@
         (tui.color state.theme :faint
                    (.. (if (> number-w 0) (number-text ?no number-w) "")
                        (if (and (> number-w 0) (> blame-w 0)) " " "")
-                       (if (> blame-w 0) (padded-right ?blame blame-w) "") " "))
+                       (if (> blame-w 0) (padded-right (or ?blame "") blame-w)
+                           "") " "))
         "")))
 
 (fn layout-widths [state content rows]
@@ -164,12 +163,6 @@
 (fn entry-rows [state ?selected]
   (let [selected (or ?selected (selection.selected-context state))]
     (preview.split-rows state selected.entry)))
-
-(fn sync-search [state rows]
-  (when (and (= state.focus :right) (preview-search.has-query? state)
-             (not (= state.preview_search.matches_source rows)))
-    (set state.preview_search.matches_source rows)
-    (preview-search.rebuild state true)))
 
 (fn visual-rows-for [row old-w new-w]
   (let [olds (and row.old (wrap.line row.old old-w))
@@ -371,7 +364,7 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
                        computed))]
       (apply-layout state layout visible)
       (preview-anchor.restore-split state)
-      (sync-search state state.split_rows))))
+      (preview-search.sync-search state state.split_rows))))
 
 (fn blank-divider [state widths]
   (.. (side-gutter state widths.old-no-w widths.old-blame-w nil nil)

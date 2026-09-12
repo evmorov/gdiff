@@ -308,6 +308,15 @@ for three-dot ranges, the revision itself otherwise."
 (fn parent-dir [path]
   (or (path:match "^(.*)/[^/]*$") "."))
 
+(fn status-role [kind]
+  (case kind
+    "A" :status-added
+    "M" :status-modified
+    "D" :status-deleted
+    "R" :status-renamed
+    "C" :status-copied
+    _ nil))
+
 (fn materialize-base [ref path]
   (let [(content ok) (sys.read-command (commands.show-file-command ref path))]
     (if ok
@@ -339,11 +348,10 @@ for three-dot ranges, the revision itself otherwise."
  : pr-revision-from-fetched-info
  : pr-revision-from-info
  : resolve-pr-revision
+ : status-role
  :show-file-command commands.show-file-command
  :working-revision commands.working-revision
- :working? commands.working?
  :files-revision commands.files-revision
- :files-paths commands.files-paths
  :files? commands.files?
  : plain-diff-output
  : repo-root}

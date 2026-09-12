@@ -24,22 +24,19 @@
   (and state.quick_frame? (= state.focus :left) state.last_right_pane
        (not (preview.ready? state selected.entry)) true))
 
-(fn right-pane [state visible cols selected]
-  (if (defer-preview? state selected)
-      state.last_right_pane
-      (let [node (build-right-pane state visible cols selected)]
-        (set state.last_right_pane node)
-        node)))
+(fn prepare [state rows cols]
+  (let [visible (body-row-count rows)
+        selected (selection.selected-context state)]
+    (when (not (defer-preview? state selected))
+      (preview.prepare-entry state selected.entry)
+      (set state.last_right_pane (build-right-pane state visible cols selected)))))
 
 (fn view [state rows cols]
+  (prepare state rows cols)
   (let [count (length state.entries)
         visible (body-row-count rows)
-        selected (selection.selected-context state)
-        _ (when (not (defer-preview? state selected))
-            (preview.prepare-entry state selected.entry))
-        _ (left-view.prepare state)
         left (left-view.body state visible)
-        right (right-pane state visible cols selected)
+        right state.last_right_pane
         body (tui.split left right state.split_ratio)
         overlay (when state.show_help? (help-view.modal state))]
     (tui.screen (chrome.header state count) body (chrome.footer state) overlay)))

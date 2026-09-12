@@ -1,14 +1,15 @@
 ;; Fuzzy pairing of deleted/added entries that git's own rename detection
 ;; left unpaired. Pure: `contents` maps entry tables to file contents.
 
+(local str (require :util.string))
+
 (local max-pairs 400)
 (local max-bytes (* 512 1024))
 (local min-total 0.35)
 (local runner-up-margin 0.1)
 (local weights {:content 0.4 :identifiers 0.3 :name 0.2 :path 0.1})
 
-(fn basename [path]
-  (or (string.match (or path "") "([^/]+)$") path))
+(local basename str.basename)
 
 (fn extension [path]
   (or (string.match (basename path) "%.([^.]+)$") ""))
@@ -167,4 +168,4 @@
         (set pair.to.moved_score pair.score))))
   entries)
 
-{: annotate : basename : candidates : note : pair-moves}
+{: annotate : candidates : note : pair-moves}

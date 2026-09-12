@@ -3,6 +3,7 @@
 (local selection (require :app.selection))
 (local tui (require :tui.core))
 (local math-util (require :util.math))
+(local git (require :git.core))
 (local scroll-util (require :util.scroll))
 
 (fn viewport [selected count visible]
@@ -15,13 +16,7 @@
   (scroll-util.info (- top 1) count visible))
 
 (fn status-color [entry]
-  (case entry.kind
-    "A" :status-added
-    "M" :status-modified
-    "D" :status-deleted
-    "R" :status-renamed
-    "C" :status-copied
-    _ :reset))
+  (or (git.status-role entry.kind) :reset))
 
 (fn status-text [state entry]
   (if entry.unstaged?
@@ -81,10 +76,6 @@
   (fcollect [i first-row last-row]
     (display-row state (. rows i) i)))
 
-(fn prepare [state]
-  (set state.files_x_scroll 0)
-  (set state.files_x_max_scroll 0))
-
 (fn body [state visible]
   (let [rows (selection.rows state)
         count (length rows)
@@ -94,4 +85,4 @@
         scroll (scroll-info first-row count visible)]
     (tui.list visible-rows scroll 0 0)))
 
-{: body : prepare}
+{: body}

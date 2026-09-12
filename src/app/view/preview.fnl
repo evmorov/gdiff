@@ -50,17 +50,11 @@
         (preview-search.highlight state line))
       lines))
 
-(fn sync-search [state display]
-  (when (and (= state.focus :right) (preview-search.has-query? state)
-             (not (= state.preview_search.matches_source display)))
-    (set state.preview_search.matches_source display)
-    (preview-search.rebuild state true)))
-
 (fn prepare [state visible cols ?selected]
   (let [selected (or ?selected (selection.selected-context state))
         (raw numbers) (raw-lines state selected.entry selected.row)
         display (lines-for-width state raw numbers visible cols)]
-    (sync-search state display)
+    (preview-search.sync-search state display)
     (set-scroll state display visible)
     (preview-anchor.restore-unified state selected.entry)
     (update-horizontal-scroll state raw cols)))

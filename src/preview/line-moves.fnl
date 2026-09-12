@@ -1,4 +1,4 @@
-(local diff-parse (require :preview.diff-parse))
+(local diff-walk (require :preview.diff-walk))
 (local str (require :util.string))
 
 (local min-key-length 4)
@@ -8,32 +8,20 @@
   {: no :key (str.trim line) : group : index})
 
 (fn collect-lines [text]
+  (var group 0)
   (let [olds []
-        news []
-        acc {:old-no 1 :new-no 1 :group 0}]
-    (diff-parse.parse text
-                      {:hunk (fn [line]
-                               (let [(old new) (diff-parse.hunk-start line)]
-                                 (when old (set acc.old-no old))
-                                 (when new (set acc.new-no new))))
-                       :context (fn [_]
-                                  (set acc.old-no (+ acc.old-no 1))
-                                  (set acc.new-no (+ acc.new-no 1)))
-                       :change (fn [removed added]
-                                 (set acc.group (+ acc.group 1))
-                                 (each [i line (ipairs removed)]
-                                   (table.insert olds
-                                                 (entry line
-                                                        (+ acc.old-no i -1)
-                                                        acc.group i)))
-                                 (each [i line (ipairs added)]
-                                   (table.insert news
-                                                 (entry line
-                                                        (+ acc.new-no i -1)
-                                                        acc.group i)))
-                                 (set acc.old-no
-                                      (+ acc.old-no (length removed)))
-                                 (set acc.new-no (+ acc.new-no (length added))))})
+        news []]
+    (diff-walk.walk text
+                    {:change (fn [acc removed added]
+                               (set group (+ group 1))
+                               (each [i line (ipairs removed)]
+                                 (table.insert olds
+                                               (entry line (+ acc.old-no i -1)
+                                                      group i)))
+                               (each [i line (ipairs added)]
+                                 (table.insert news
+                                               (entry line (+ acc.new-no i -1)
+                                                      group i))))})
     (values olds news)))
 
 (fn occurrences [entries]

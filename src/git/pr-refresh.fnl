@@ -1,3 +1,4 @@
+(local background (require :git.background))
 (local commands (require :git.commands))
 (local sys (require :platform.core))
 
@@ -50,28 +51,20 @@ lines for the app to pick up by polling `path`."
   (sys.background-command (refresh-command path pr)))
 
 (fn new-state [?pr]
-  {:path (sys.temp-path) :running? false :info nil :error nil :pr ?pr})
+  (background.new-state {:info nil :error nil :pr ?pr}))
 
 (fn start [state ?spawn]
   (when (and state.pr (not state.running?))
-    (let [spawn (or ?spawn spawn-refresh)]
-      (set state.info nil)
-      (set state.error nil)
-      (set state.running? true)
-      (spawn state.path state.pr)
-      true)))
+    (set state.info nil)
+    (set state.error nil))
+  (background.start state #(. $ :pr) (or ?spawn spawn-refresh) state.pr))
 
 (fn finish [state output]
   (let [result (parse-output output)]
     (set state.info result.info)
-    (set state.error result.error))
-  (set state.running? false)
-  (sys.remove-file state.path))
+    (set state.error result.error)))
 
 (fn update [state]
-  (when state.running?
-    (let [output (sys.read-file state.path)]
-      (when output
-        (finish state output)))))
+  (background.poll state finish))
 
 {: new-state : parse-output : refresh-command : start : update}

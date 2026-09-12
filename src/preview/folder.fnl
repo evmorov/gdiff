@@ -1,3 +1,4 @@
+(local git (require :git.core))
 (local sys (require :platform.core))
 (local symbols (require :tui.symbols))
 (local tui (require :tui.core))
@@ -90,14 +91,9 @@
                                         child.entry))}))
 
 (fn status-color [kind]
-  (case kind
-    "A" :status-added
-    "M" :status-modified
-    "D" :status-deleted
-    "R" :status-renamed
-    "C" :status-copied
-    "?" :status-untracked
-    _ nil))
+  (if (= kind "?")
+      :status-untracked
+      (git.status-role kind)))
 
 (fn marker [state kind]
   (if kind

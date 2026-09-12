@@ -2,7 +2,7 @@
 (require :tui.components.register)
 
 (local context (require :tui.context))
-(local draw (require :tui.draw))
+(require :tui.draw)
 (local chrome (require :tui.components.chrome))
 (local footer-view (require :tui.components.footer))
 (local footer-layout (require :tui.components.footer-layout))
@@ -16,7 +16,7 @@
 (local nodes (require :tui.nodes))
 (local pane (require :tui.components.pane))
 (local renderer (require :tui.renderer))
-(local rule-view (require :tui.components.rule))
+(require :tui.components.rule)
 (local row-view (require :tui.components.row))
 (local runtime (require :tui.runtime))
 (local scrollbar (require :tui.components.scrollbar))
@@ -38,7 +38,6 @@
               :list list-view
               :modal modal-view
               : pane
-              :rule rule-view
               :row row-view
               : scrollbar
               :screen screen-view
@@ -46,8 +45,6 @@
               :split split-view}
  :context context.new
  :context-body-rows context.body-rows
- :default-theme theme.default
- :draw draw.draw
  :footer nodes.footer
  : frame
  :highlight-matches theme.highlight-matches
@@ -55,18 +52,14 @@
  :lines nodes.lines
  :list nodes.list
  :modal nodes.modal
- :read-key terminal.read-key
  : renderer
  :row nodes.row
  :run runtime.run
- :run-loop runtime.run-loop
  :screen nodes.screen
  :split nodes.split
  :strip-ansi ansi.strip-ansi
  : surface
  :suspend terminal.suspend
- :terminal-size terminal.terminal-size
  :theme theme.new
- :truncate ansi.truncate
  :visible-length ansi.visible-length
  : wrap}

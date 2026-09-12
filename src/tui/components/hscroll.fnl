@@ -15,14 +15,17 @@
           (var i 1)
           (var col 1)
           (while (<= i (length line))
-            (let [(ch next-i) (ansi.next-char line i)
-                  relative-col (+ (- col start-col) 1)
-                  mark (and (>= col start-col) (<= col last-col)
-                            (scrollbar.marker scroll width relative-col
-                                              symbols.line.horizontal-scroll-thumb))]
-              (table.insert out (or mark ch))
+            (let [(text next-i cell-width) (ansi.next-cell line i)]
+              (table.insert out (if (and (= cell-width 1) (>= col start-col)
+                                         (<= col last-col))
+                                    (or (scrollbar.marker scroll width
+                                                          (+ (- col start-col)
+                                                             1)
+                                                          symbols.line.horizontal-scroll-thumb)
+                                        text)
+                                    text))
               (set i next-i)
-              (set col (+ col 1))))
+              (set col (+ col cell-width))))
           (table.concat out ""))
         line)))
 

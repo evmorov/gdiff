@@ -7,6 +7,7 @@
 
 (local reset-style "\27[0m")
 (local next-char txt.next-char)
+(local next-cell txt.next-cell)
 (local pad-right txt.pad-right)
 (local strip-ansi txt.strip-ansi)
 (local visible-length txt.visible-length)
@@ -58,6 +59,7 @@
  : esc
  : highlight-matches
  : nl
+ : next-cell
  : next-char
  : pad-right
  : reset-code

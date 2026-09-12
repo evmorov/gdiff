@@ -93,6 +93,5 @@
  : reviewed-folder
  : selecting-lines
  : syncing-remote
- : with-path
  : yank-finished
  : yank-fenced-finished}

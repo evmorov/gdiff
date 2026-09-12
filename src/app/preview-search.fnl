@@ -9,4 +9,14 @@
         :collect (fn [state query] (matcher.collect-matches state query))
         :apply (fn [state found] (preview.cursor-jump state found.line))})
 
-(facade.build context)
+(local preview-search (facade.build context))
+
+(fn sync-search [state display]
+  (when (and (= state.focus :right) (preview-search.has-query? state)
+             (not (= state.preview_search.matches-source display)))
+    (set state.preview_search.matches-source display)
+    (preview-search.rebuild state true)))
+
+(set preview-search.sync-search sync-search)
+
+preview-search

@@ -1,4 +1,5 @@
 (local word-diff (require :preview.word-diff))
+(local diff-walk (require :preview.diff-walk))
 (local diff-parse (require :preview.diff-parse))
 (local comments (require :preview.comments))
 (local line-moves (require :preview.line-moves))
@@ -27,8 +28,7 @@
     (drain)
     out))
 
-(fn side-map [?highlight side]
-  (and ?highlight (. ?highlight side)))
+(local side-map highlight.side-map)
 
 (fn attach-styled [row ?highlight]
   (let [?old (highlight.styled-line (side-map ?highlight :old) row.old-no
@@ -70,66 +70,57 @@
   (let [name (str.basename path)]
     (if (and ?ref (< 0 (length ?ref))) (.. name " (" ?ref ")") name)))
 
-(fn prepend-header [acc ?old-ref ?new-ref]
+(fn prepend-header [acc rows ?old-ref ?new-ref]
   (let [old-path (header-path acc.old-path acc.new-path)
         new-path (header-path acc.new-path acc.old-path)]
-    (when (and old-path (has-content? acc.rows))
+    (when (and old-path (has-content? rows))
       (let [old-title (header-title old-path ?old-ref)
             new-title (header-title new-path ?new-ref)]
-        (table.insert acc.rows 1 {:kind :rule :old old-title :new new-title})
-        (table.insert acc.rows 1
-                      {:kind :filename :old old-title :new new-title})))))
+        (table.insert rows 1 {:kind :rule :old old-title :new new-title})
+        (table.insert rows 1 {:kind :filename :old old-title :new new-title})))))
 
 (fn parse-rows [text ?old-ref ?new-ref ?hide-comments? ?highlight]
   (let [ws-hunks (diff-parse.whitespace-only-hunks text)
         moves (line-moves.detect text)
-        acc {:rows [] :old-no 1 :new-no 1 :hunk-no 0}
-        comment? (fn [?line]
+        rows []
+        comment? (fn [acc ?line]
                    (comments.comment-line? (or acc.new-path acc.old-path) ?line))
-        tag-comments (fn [row]
-                       (when (comment? row.old)
+        tag-comments (fn [acc row]
+                       (when (comment? acc row.old)
                          (set row.old-comment? true))
-                       (when (comment? row.new)
+                       (when (comment? acc row.new)
                          (set row.new-comment? true)))
         hidden? (fn [row]
                   (and ?hide-comments? (or (= nil row.old) row.old-comment?)
                        (or (= nil row.new) row.new-comment?)
                        (or row.old-comment? row.new-comment? false)))
-        handlers {:change (fn [removed added]
-                            (each [_ row (ipairs (change-rows removed added
-                                                              acc.old-no
-                                                              acc.new-no moves
-                                                              ?highlight))]
-                              (tag-comments row)
-                              (when (not (hidden? row))
-                                (when (. ws-hunks acc.hunk-no)
-                                  (set row.whitespace-hunk? true))
-                                (table.insert acc.rows row)))
-                            (set acc.old-no (+ acc.old-no (length removed)))
-                            (set acc.new-no (+ acc.new-no (length added))))
-                  :hunk (fn [line]
-                          (set acc.hunk-no (+ acc.hunk-no 1))
-                          (table.insert acc.rows {:kind :hunk :old line})
-                          (let [(old new) (diff-parse.hunk-start line)]
-                            (when old (set acc.old-no old))
-                            (when new (set acc.new-no new))))
-                  :context (fn [text]
-                             (let [row (attach-styled {:kind :context
-                                                       :old text
-                                                       :new text
-                                                       :old-no acc.old-no
-                                                       :new-no acc.new-no}
-                                                      ?highlight)]
-                               (tag-comments row)
-                               (when (not (hidden? row))
-                                 (table.insert acc.rows row)))
-                             (set acc.old-no (+ acc.old-no 1))
-                             (set acc.new-no (+ acc.new-no 1)))
-                  :old-path (fn [path] (set acc.old-path path))
-                  :new-path (fn [path] (set acc.new-path path))}]
-    (diff-parse.parse text handlers)
-    (prepend-header acc ?old-ref ?new-ref)
-    acc.rows))
+        acc (diff-walk.walk text
+                            {:change (fn [acc removed added]
+                                       (each [_ row (ipairs (change-rows removed
+                                                                         added
+                                                                         acc.old-no
+                                                                         acc.new-no
+                                                                         moves
+                                                                         ?highlight))]
+                                         (tag-comments acc row)
+                                         (when (not (hidden? row))
+                                           (when (. ws-hunks acc.hunk-no)
+                                             (set row.whitespace-hunk? true))
+                                           (table.insert rows row))))
+                             :hunk (fn [_acc line]
+                                     (table.insert rows {:kind :hunk :old line}))
+                             :context (fn [acc text]
+                                        (let [row (attach-styled {:kind :context
+                                                                  :old text
+                                                                  :new text
+                                                                  :old-no acc.old-no
+                                                                  :new-no acc.new-no}
+                                                                 ?highlight)]
+                                          (tag-comments acc row)
+                                          (when (not (hidden? row))
+                                            (table.insert rows row))))})]
+    (prepend-header acc rows ?old-ref ?new-ref)
+    rows))
 
 (fn splittable? [rows]
   (var has-old false)

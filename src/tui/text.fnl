@@ -2,6 +2,7 @@
 (local esc-byte 27)
 (local left-bracket-byte 91)
 (local ascii-limit 128)
+(local csi-pattern "\27%[[^@-~]*[@-~]")
 
 (fn pattern-quote [s]
   (s:gsub "([^%w])" "%%%1"))
@@ -56,9 +57,16 @@ ANSI escape sequences are zero-width; any other char takes one column."
     (var i 1)
     (var len 0)
     (while (<= i (length s))
-      (let [(_ next-i width) (next-cell s i)]
-        (set len (+ len width))
-        (set i next-i)))
+      (let [byte (string.byte s i)]
+        (if (ansi-sequence? s i)
+            (set i (+ (ansi-sequence-end s i) 1))
+            (ascii-byte? byte)
+            (do
+              (set len (+ len 1))
+              (set i (+ i 1)))
+            (let [next-i (+ (utf8-char-end s i) 1)]
+              (set len (+ len 1))
+              (set i next-i)))))
     len))
 
 (fn pad-right [s width]
@@ -68,15 +76,9 @@ ANSI escape sequences are zero-width; any other char takes one column."
         s)))
 
 (fn strip-ansi [s]
-  (let [s (tostring (or s ""))
-        out []]
-    (var i 1)
-    (while (<= i (length s))
-      (let [(text next-i width) (next-cell s i)]
-        (when (= width 1)
-          (table.insert out text))
-        (set i next-i)))
-    (table.concat out)))
+  "Drop CSI escape sequences, keeping everything else."
+  (local (out _) (string.gsub (tostring (or s "")) csi-pattern ""))
+  out)
 
 {: ansi-sequence-end
  : ansi-sequence?

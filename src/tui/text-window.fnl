@@ -1,22 +1,5 @@
 (local txt (require :tui.text))
 
-(fn truncate [s width ?reset]
-  (let [s (tostring (or s ""))
-        reset (or ?reset "")]
-    (if (<= (txt.visible-length s) width)
-        s
-        (let [suffix (if (< 3 width) "..." "")
-              limit (- width (length suffix))
-              out []]
-          (var i 1)
-          (var visible 0)
-          (while (and (< visible limit) (<= i (length s)))
-            (let [(text next-i cell-width) (txt.next-cell s i)]
-              (table.insert out text)
-              (set visible (+ visible cell-width))
-              (set i next-i)))
-          (.. (table.concat out) suffix reset)))))
-
 (fn slice [s offset width]
   (let [s (tostring (or s ""))
         offset (math.max 0 (or offset 0))
@@ -26,12 +9,25 @@
     (var i 1)
     (var visible 0)
     (while (and (< visible limit) (<= i (length s)))
-      (let [(text next-i cell-width) (txt.next-cell s i)]
-        (when (or (= cell-width 0) (>= visible offset))
-          (table.insert out text))
-        (set visible (+ visible cell-width))
-        (set i next-i)))
+      (if (txt.ansi-sequence? s i)
+          (let [last (txt.ansi-sequence-end s i)]
+            (table.insert out (s:sub i last))
+            (set i (+ last 1)))
+          (let [last (txt.utf8-char-end s i)]
+            (when (>= visible offset)
+              (table.insert out (s:sub i last)))
+            (set visible (+ visible 1))
+            (set i (+ last 1)))))
     (table.concat out)))
+
+(fn truncate [s width ?reset]
+  (let [s (tostring (or s ""))
+        reset (or ?reset "")]
+    (if (<= (txt.visible-length s) width)
+        s
+        (let [suffix (if (< 3 width) "..." "")
+              limit (- width (length suffix))]
+          (.. (slice s 0 limit) suffix reset)))))
 
 (fn crop [s offset width ?reset]
   (let [offset (math.max 0 (or offset 0))

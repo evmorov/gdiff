@@ -132,7 +132,8 @@
                                                                    (. removed i)))
                                                  (push line (+ acc.old-no i -1)
                                                        {:side :old
-                                                        :no (+ acc.old-no i -1)}))
+                                                        :no (+ acc.old-no i -1)
+                                                        :changed? true}))
                                                (when (not (hidden? acc
                                                                    (. added
                                                                       (- i
@@ -144,7 +145,8 @@
                                                         :no (+ acc.new-no
                                                                (- i
                                                                   removed-count)
-                                                               -1)}))))))
+                                                               -1)
+                                                        :changed? true}))))))
                              :hunk (fn [_acc line]
                                      (push (tui.color state.theme :muted line)))
                              :context (fn [acc text]

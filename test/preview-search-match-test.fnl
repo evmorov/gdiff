@@ -4,34 +4,51 @@
 
 (local entry {:status "M" :kind "M" :path "a.rb" :reviewed false})
 
-(fn state [lines ?split-rows ?numbers]
+(fn changed-refs [lines]
+  (icollect [no (ipairs lines)]
+    {:side :new : no :changed? true}))
+
+(fn state [lines ?split-rows ?refs]
+  "A state whose cached preview for `entry` is `lines`. Every line counts as
+changed unless `?refs` says otherwise."
   (let [key (preview-key.for-entry "HEAD" entry)]
     {:revision "HEAD"
      :highlight? false
      :split_mode? (not= nil ?split-rows)
      :preview_cache {key lines}
-     :preview_numbers_cache {key ?numbers}
+     :preview_line_refs_cache {key (if (= nil ?refs) (changed-refs lines) ?refs)}
      :split_cache {(.. key "\0split") ?split-rows}}))
 
-(fn test-unnumbered-header-and-meta-lines-are-skipped []
+(fn test-context-header-and-meta-lines-are-skipped []
   (let [state (state ["apple.rb"
                       "────────"
                       "@@ apple @@"
                       " apple pie"
-                      "+apple"] nil
-                     [false false false 3 4])
+                      "-apple"
+                      "+apple tart"] nil
+                     [false
+                      false
+                      false
+                      {:side :new :no 3}
+                      {:side :old :no 4 :changed? true}
+                      {:side :new :no 4 :changed? true}])
         matches (matcher.collect-matches state entry "apple")]
-    (faith.= [{:line 4} {:line 5}] matches)))
+    (faith.= [{:line 5} {:line 6}] matches)))
 
-(fn test-split-header-and-hunk-rows-are-skipped []
+(fn test-lines-without-refs-yield-no-matches []
+  (let [state (state ["apple"] nil false)]
+    (faith.= [] (matcher.collect-matches state entry "apple"))))
+
+(fn test-split-header-hunk-and-context-rows-are-skipped []
   (let [state (state ["-apple"]
                      [{:kind :filename :old "apple.rb" :new "apple.rb"}
                       {:kind :rule :old "────" :new "────"}
                       {:kind :hunk :old "@@ apple @@"}
                       {:kind :change :old "apple" :new "pear"}
-                      {:kind :context :old "apple" :new "apple"}])
+                      {:kind :context :old "apple" :new "apple"}
+                      {:kind :change :old "apple" :new "apple"}])
         matches (matcher.collect-matches state entry "apple")]
-    (faith.= [{:line 4 :side :old} {:line 5}] matches)))
+    (faith.= [{:line 4 :side :old} {:line 6}] matches)))
 
 (fn test-collects-matching-cached-line-indices []
   (let [state (state ["alpha" "beta apple" "gamma" "apple pie"])
@@ -70,8 +87,9 @@
     (faith.= ["apple"] (. state.search_text_cache lines))))
 
 {: test-collects-matching-cached-line-indices
- : test-unnumbered-header-and-meta-lines-are-skipped
- : test-split-header-and-hunk-rows-are-skipped
+ : test-context-header-and-meta-lines-are-skipped
+ : test-lines-without-refs-yield-no-matches
+ : test-split-header-hunk-and-context-rows-are-skipped
  : test-ignores-ansi-styling-when-matching
  : test-empty-query-yields-no-matches
  : test-uncached-preview-yields-no-matches

@@ -25,8 +25,8 @@
                            (tset cache source texts)
                            texts))))
 
-(fn content-row? [row]
-  (or (= row.kind :change) (= row.kind :context)))
+(fn changed-row? [row]
+  (= row.kind :change))
 
 (fn split-match [index row query]
   (let [old? (and row.old (contains? row.old query))
@@ -37,30 +37,31 @@
 
 (fn split-matches [state rows query]
   (icollect [index plain (ipairs (plain-texts state rows plain-rows))]
-    (when (content-row? (. rows index))
+    (when (changed-row? (. rows index))
       (split-match index plain query))))
 
-(fn numbered? [?numbers index]
-  "Header, divider, and git meta lines carry no line number. Previews
-without number data count every line."
-  (or (not= (type ?numbers) :table) (not= false (. ?numbers index))))
+(fn changed-line? [?refs index]
+  "Only added and removed lines carry a ref marked as changed. Context lines,
+headers, dividers, and hunk lines do not."
+  (let [ref (and (= (type ?refs) :table) (. ?refs index))]
+    (and (= (type ref) :table) ref.changed? true)))
 
-(fn unified-matches [state lines ?numbers query]
+(fn unified-matches [state lines ?refs query]
   (icollect [index line (ipairs (plain-texts state lines plain-lines))]
-    (when (and (numbered? ?numbers index) (contains? line query))
+    (when (and (changed-line? ?refs index) (contains? line query))
       {:line index})))
 
 (fn collect-matches [state entry query]
-  "Matching content lines of `entry`'s cached preview, as `{:line index}`
-records where `index` counts cached lines or split rows. File headers and
-hunk headers are skipped. Split matches carry the side that matched unless
-both sides do."
+  "Matching added and removed lines of `entry`'s cached preview, as
+`{:line index}` records where `index` counts cached lines or split rows.
+Context lines, file headers, and hunk headers are skipped. Split matches
+carry the side that matched unless both sides do."
   (if (= 0 (length query)) [] (case (preview.cached-preview state entry)
                                 (:split rows) (split-matches state rows query)
-                                (:unified lines ?numbers) (unified-matches state
-                                                                           lines
-                                                                           ?numbers
-                                                                           query)
+                                (:unified lines ?refs) (unified-matches state
+                                                                        lines
+                                                                        ?refs
+                                                                        query)
                                 _ [])))
 
 {: collect-matches : contains?}

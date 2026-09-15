@@ -9,6 +9,7 @@
   (let [state {:view_mode :flat
                :revision "HEAD"
                :preview_cache {}
+               :preview_line_refs_cache {}
                :entries [(entry "M" "src/app.fnl")
                          (entry "M" "test/app-test.fnl")]}]
     (faith.= [{:entry 1} {:entry 2}] (matcher.collect-matches state "app"))
@@ -18,6 +19,7 @@
   (let [state {:view_mode :tree
                :revision "HEAD"
                :preview_cache {}
+               :preview_line_refs_cache {}
                :entries [(entry "M" "src/app.fnl")
                          (entry "M" "test/app-test.fnl")]
                :selected 1
@@ -36,6 +38,7 @@
   (let [state {:view_mode :tree
                :revision "HEAD"
                :preview_cache {}
+               :preview_line_refs_cache {}
                :entries [(entry "M" "src/app/view.fnl")
                          (entry "M" "test/app-test.fnl")]
                :selected 1
@@ -49,6 +52,7 @@
   (let [state {:view_mode :tree
                :revision "HEAD"
                :preview_cache {}
+               :preview_line_refs_cache {}
                :entries [(entry "M" "src/app/view.fnl")
                          (entry "M" "src/lib/util.fnl")]
                :selected 1
@@ -60,6 +64,7 @@
   (let [state {:view_mode :tree
                :revision "HEAD"
                :preview_cache {}
+               :preview_line_refs_cache {}
                :entries [(entry "M" "src/app/view.fnl")
                          (entry "M" "test/app-test.fnl")]
                :selected 1
@@ -68,8 +73,11 @@
              (matcher.collect-matches state "app"))))
 
 (fn cached [state index lines]
-  (tset state.preview_cache
-        (preview-key.for-entry "HEAD" (. state.entries index)) lines))
+  (let [key (preview-key.for-entry "HEAD" (. state.entries index))]
+    (tset state.preview_cache key lines)
+    (tset state.preview_line_refs_cache key
+          (icollect [no (ipairs lines)]
+            {:side :new : no :changed? true}))))
 
 (fn test-every-cached-file-contributes-its-lines []
   (let [state {:view_mode :flat
@@ -77,7 +85,8 @@
                :entries [(entry "M" "a-roll.rb")
                          (entry "M" "b-other.rb")
                          (entry "M" "c-roll.rb")]
-               :preview_cache {}}]
+               :preview_cache {}
+               :preview_line_refs_cache {}}]
     (cached state 1 ["roll one" "x" "roll two"])
     (cached state 2 ["b has roll"])
     (faith.= [{:entry 1}
@@ -95,7 +104,8 @@
                          (entry "M" "test/app-test.fnl")]
                :selected 1
                :tree_selected_row 2
-               :preview_cache {}}]
+               :preview_cache {}
+               :preview_line_refs_cache {}}]
     (cached state 2 ["app line"])
     (faith.= [{:entry 1 :tree-row 2} {:entry 2 :tree-row 4} {:row 4 :line 1}]
              (matcher.collect-matches state "app"))))

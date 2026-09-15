@@ -11,7 +11,7 @@
                         ["tab" "Switch focus: files / old / new"]
                         ["shift-tab" "Switch focus in reverse"]
                         ["[ / ]" "Resize split"]
-                        ["/" "Search files and diff"]
+                        ["/" "Search files and changed lines"]
                         ["n / N" "Next / previous match"]
                         ["esc" "Exit selection / back to files"]
                         ["q" "Clear search / exit selection"]

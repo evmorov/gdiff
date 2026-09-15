@@ -404,9 +404,12 @@
 
 (fn diff-state []
   (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])
-        lines ["alpha" "beta apple" "gamma" "apple pie"]]
-    (tset state.preview_cache
-          (preview-key.for-entry "HEAD" (. state.entries 1)) lines)
+        lines ["alpha" "beta apple" "gamma" "apple pie"]
+        key (preview-key.for-entry "HEAD" (. state.entries 1))]
+    (tset state.preview_cache key lines)
+    (tset state.preview_line_refs_cache key
+          (icollect [no (ipairs lines)]
+            {:side :new : no :changed? true}))
     (set state.preview_display_cache {:display lines :source-map [1 2 3 4]})
     (set state.preview_total 4)
     (set state.preview_rows 4)

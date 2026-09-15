@@ -669,7 +669,7 @@ ask for, so their cache keys are ready when the output is imported."
 (fn cached-preview [state entry]
   "Return the cached preview of `entry` without loading anything: `:split`
 with its rows when side-by-side view would show them, else `:unified` with
-its lines and their line numbers when known. Nothing when the preview is not
+its lines and their line refs when known. Nothing when the preview is not
 cached yet."
   (when (and entry (not entry.untracked?) (not (assets.asset? entry)))
     (let [key (cache-key state entry)
@@ -679,7 +679,7 @@ cached yet."
           (values :split rows)
           (case (. state.preview_cache key)
             lines (values :unified lines
-                          (. (or state.preview_numbers_cache {}) key)))))))
+                          (. (or state.preview_line_refs_cache {}) key)))))))
 
 (fn display-gutters [state]
   (and state.preview_display_cache state.preview_display_cache.gutters))

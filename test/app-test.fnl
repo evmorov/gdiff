@@ -714,13 +714,20 @@
       (faith.= "three" (t.text [highlighted]))
       (faith.is (not (string.find (. view.body.right.lines 3) ">"))))))
 
+(fn cache-changed-lines [state key lines]
+  "Cache `lines` as the preview under `key`, every line counting as changed."
+  (tset state.preview_cache key lines)
+  (tset state.preview_line_refs_cache key
+        (icollect [no (ipairs lines)]
+          {:side :new : no :changed? true})))
+
 (fn test-toggling-full-context-rebuilds-the-preview-search []
   (let [selected (entry "M" "a.rb")
         state (state [selected])
         normal (preview-key.for-entry "HEAD" selected false)
         full (preview-key.for-entry "HEAD" selected true)]
-    (tset state.preview_cache normal ["alpha" "beta apple" "gamma"])
-    (tset state.preview_cache full ["apple one" "two" "three" "four apple"])
+    (cache-changed-lines state normal ["alpha" "beta apple" "gamma"])
+    (cache-changed-lines state full ["apple one" "two" "three" "four apple"])
     (set state.focus :right)
     (update.update state {} (update.read-msg state "/"))
     (each [_ ch (ipairs ["a" "p" "p" "l" "e"])]
@@ -742,8 +749,8 @@
         state (flat-state entries)
         lines {1 ["roll one" "plain" "roll two"] 2 ["plain"] 3 ["a roll"]}]
     (each [index entry (ipairs entries)]
-      (tset state.preview_cache (preview-key.for-entry "HEAD" entry false)
-            (. lines index)))
+      (cache-changed-lines state (preview-key.for-entry "HEAD" entry false)
+                           (. lines index)))
     (app.view state 10 80)
     state))
 
@@ -813,8 +820,8 @@
 (fn test-n-visits-lines-of-a-file-whose-name-does-not-match []
   (let [state (roll-state)
         b-entry (. state.entries 2)]
-    (tset state.preview_cache (preview-key.for-entry "HEAD" b-entry false)
-          ["plain" "b has roll"])
+    (cache-changed-lines state (preview-key.for-entry "HEAD" b-entry false)
+                         ["plain" "b has roll"])
     (search-roll state)
     (faith.= 6 (length state.search.matches))
     (faith.is (string.find state.notice "1/6 roll" 1 true))
@@ -905,7 +912,8 @@
                                    "─────────"
                                    "roll one"
                                    "plain"])
-    (tset state.preview_numbers_cache key [false false 1 2])
+    (tset state.preview_line_refs_cache key
+          [false false {:side :new :no 1 :changed? true} {:side :new :no 2}])
     (search-roll state)
     (faith.= [{:entry 1} {:row 1 :line 3} {:entry 3} {:row 3 :line 1}]
              state.search.matches)
@@ -918,6 +926,47 @@
         (faith.is (content:find "\27[1;4mroll" 1 true))))
     (press state "n")
     (faith.= [:right 1 3] (cursor state))))
+
+(fn test-context-lines-do-not-match []
+  (let [state (roll-state)
+        a-entry (. state.entries 1)
+        key (preview-key.for-entry "HEAD" a-entry false)]
+    (tset state.preview_cache key
+          ["a-roll.rb"
+           "─────────"
+           "@@ -1,3 +1,3 @@"
+           " roll context"
+           "-roll gone"
+           "+roll here"
+           " roll again"])
+    (tset state.preview_line_refs_cache key
+          [false
+           false
+           false
+           {:side :new :no 1}
+           {:side :old :no 2 :changed? true}
+           {:side :new :no 2 :changed? true}
+           {:side :new :no 3}])
+    (search-roll state)
+    (faith.= [{:entry 1}
+              {:row 1 :line 5}
+              {:row 1 :line 6}
+              {:entry 3}
+              {:row 3 :line 1}] state.search.matches)
+    (faith.is (string.find state.notice "1/5 roll" 1 true))
+    (let [view (app.view state 10 80)
+          context (. view.body.right.lines 4)
+          removed (. view.body.right.lines 5)]
+      (faith.= " roll context" (tui.strip-ansi context))
+      (faith.= nil (context:find "\27[1;4m" 1 true))
+      (when (removed:find "\27" 1 true)
+        (faith.is (removed:find "\27[1;4mroll" 1 true))))
+    (press state "n")
+    (faith.= [:right 1 5] (cursor state))
+    (press state "n")
+    (faith.= [:right 1 6] (cursor state))
+    (press state "n")
+    (faith.= [:left 3] [state.focus state.selected])))
 
 (fn test-q-clears-the-search-in-both-panes []
   (let [state (roll-state)]
@@ -943,7 +992,7 @@
               2 [{:kind :change :old "x" :new "roll y"}]}]
     (each [index entry (ipairs entries)]
       (let [key (preview-key.for-entry "HEAD" entry false)]
-        (tset state.preview_cache key (. lines index))
+        (cache-changed-lines state key (. lines index))
         (tset state.split_cache (.. key "\0split") (. rows index))))
     (set state.split_mode? true)
     (app.view state 10 80)
@@ -1427,6 +1476,7 @@
  : test-line-only-query-jumps-between-files
  : test-toggling-tree-mode-mid-walk-keeps-the-search-position
  : test-file-header-lines-do-not-match
+ : test-context-lines-do-not-match
  : test-q-clears-the-search-in-both-panes
  : test-split-walk-switches-sides-per-match
  : test-view-clamps-file-horizontal-scroll-when-file-rows-fit

@@ -68,7 +68,6 @@
                :review_store review-store
                :review_scope review-scope
                :search (search.new-state)
-               :preview_search (search.new-state)
                :sync (sync.new-state revision)
                :pr_refresh (pr-refresh.new-state (and ?pr-url
                                                       (args.pr-from-arg ?pr-url)))

@@ -240,6 +240,15 @@
       (faith.is (row:find "\27[48;2;" 1 true))
       (faith.is (row:find "\27[0m\27[1m\27[48;2;" 1 true)))))
 
+(fn test-selected-row-keeps-the-search-match-background []
+  (let [t (theme.new {:r 16 :g 24 :b 32})
+        search-bg t.search-background
+        row (theme.selected-row t (theme.highlight-matches t "hello" "ell") 8)]
+    (faith.= "hello   " (ansi.strip-ansi row))
+    (when (row:find ansi.esc 1 true)
+      (faith.is (row:find (.. "h" search-bg "\27[1mell\27[0m" t.selected-row
+                              "o") 1 true)))))
+
 (fn test-selected-row-does-not-guess-without-background []
   (let [t (theme.new nil)
         row (theme.selected-row t (.. (theme.color t :selected-marker "> ")
@@ -357,6 +366,7 @@
  : test-search-match-does-not-guess-background
  : test-search-match-uses-derived-background
  : test-selected-row-does-not-guess-without-background
+ : test-selected-row-keeps-the-search-match-background
  : test-selected-row-uses-derived-background
  : test-truncate-preserves-whole-utf8-glyphs
  : test-visible-length-counts-utf8-glyph-as-one-cell}

@@ -7,7 +7,7 @@
 (local folder-preview (require :preview.folder))
 (local preview (require :preview.core))
 (local preview-warm (require :preview.warm))
-(local search (require :app.pane-search))
+(local search (require :app.search))
 (local selection (require :app.selection))
 (local app-state (require :app.state))
 (local pr-refresh (require :git.pr-refresh))
@@ -161,7 +161,11 @@
 (fn update-warm-cache [state]
   (when (preview.prepare-entry state (selection.selected-entry state))
     (set state.force_next_draw? true))
-  (preview-warm.update state.preview_warm (preview.warm-caches state)))
+  (when (and (preview-warm.update state.preview_warm
+                                  (preview.warm-caches state))
+             (search.has-query? state))
+    (search.rebuild state true)
+    (set state.force_next_draw? true)))
 
 (fn handle-key [state config raw-key]
   (set state.force_next_draw? false)

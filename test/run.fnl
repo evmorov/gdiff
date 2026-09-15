@@ -15,8 +15,7 @@
             :notice-test
             :platform-test
             :review-test
-            :search-engine-test
-            :search-facade-test
+            :search-test
             :search-match-test
             :preview-search-match-test
             :search-nav-test

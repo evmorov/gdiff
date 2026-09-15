@@ -8,8 +8,6 @@
 (local review (require :app.review))
 (local reviews (require :storage.reviews))
 (local search (require :app.search))
-(local pane-search (require :app.pane-search))
-(local preview-search (require :app.preview-search))
 (local preview-selection (require :app.preview-selection))
 (local line-selection (require :app.line-selection))
 (local selection (require :app.selection))
@@ -190,33 +188,22 @@
 
 (fn exit-selection-or-clear-search [state]
   (if (line-selection.active? state) (exit-line-selection state)
-      (pane-search.clear state)))
+      (search.clear state)))
 
 (fn back-to-files [state]
   (if (line-selection.active? state) (exit-line-selection state)
       (= state.focus :right) (focus-left state)
-      (pane-search.clear state)))
-
-(fn resync-split-search [state]
-  (when (preview-search.has-query? state)
-    (preview-search.rebuild state true)))
+      (search.clear state)))
 
 (fn cycle-split-focus [state first second]
-  (if (not= state.focus :right)
-      (do
-        (focus-right state first)
-        (resync-split-search state))
-      (= state.split_side first)
-      (do
-        (set state.split_side second)
-        (resync-split-search state))
+  (if (not= state.focus :right) (focus-right state first)
+      (= state.split_side first) (set state.split_side second)
       (focus-left state)))
 
 (fn focus-step [state first second]
   (if (split-active? state) (cycle-split-focus state first second)
       (= state.focus :right) (focus-left state)
-      (focus-right state state.split_side))
-  (pane-search.refresh-status state))
+      (focus-right state state.split_side)))
 
 (fn toggle-focus [state]
   (focus-step state :old :new))
@@ -413,9 +400,9 @@ some are not cached yet, return a command that loads them and replays `then`."
                  :preview-line-up scroll-preview-line-up
                  :preview-left #(scroll-horizontal $1 -8)
                  :preview-right #(scroll-horizontal $1 8)
-                 :search pane-search.start
-                 :search-next pane-search.next
-                 :search-previous pane-search.previous
+                 :search search.start
+                 :search-next search.next
+                 :search-previous search.previous
                  :clear-search exit-selection-or-clear-search
                  :back back-to-files
                  :toggle-line-selection toggle-line-selection

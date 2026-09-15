@@ -1,5 +1,5 @@
 (local review (require :app.review))
-(local search (require :app.pane-search))
+(local search (require :app.search))
 (local preview (require :preview.core))
 (local sync (require :git.sync))
 (local symbols (require :tui.symbols))

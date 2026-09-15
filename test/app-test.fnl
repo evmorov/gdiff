@@ -727,13 +727,253 @@
       (update.update state {} (update.read-msg state ch)))
     (update.update state {} (update.read-msg state :enter))
     (app.view state 10 80)
-    (faith.= 1 (length state.preview_search.matches))
-    (faith.= 2 (. state.preview_search.matches 1 :line))
+    (faith.= 1 (length state.search.matches))
+    (faith.= 2 (. state.search.matches 1 :line))
     (update.update state {} (update.read-msg state "c"))
     (app.view state 10 80)
-    (faith.= 2 (length state.preview_search.matches))
-    (faith.= 1 (. state.preview_search.matches 1 :line))
-    (faith.= 4 (. state.preview_search.matches 2 :line))))
+    (faith.= 2 (length state.search.matches))
+    (faith.= 1 (. state.search.matches 1 :line))
+    (faith.= 4 (. state.search.matches 2 :line))))
+
+(fn roll-state []
+  (let [entries [(entry "M" "a-roll.rb")
+                 (entry "M" "b-other.rb")
+                 (entry "M" "c-roll.rb")]
+        state (flat-state entries)
+        lines {1 ["roll one" "plain" "roll two"] 2 ["plain"] 3 ["a roll"]}]
+    (each [index entry (ipairs entries)]
+      (tset state.preview_cache (preview-key.for-entry "HEAD" entry false)
+            (. lines index)))
+    (app.view state 10 80)
+    state))
+
+(fn press [state key]
+  (app.handle-key state {} key)
+  (app.view state 10 80))
+
+(fn test-n-walks-file-names-and-diff-lines-in-order []
+  (let [state (roll-state)]
+    (each [_ key (ipairs ["/" "r" "o" "l" "l" :enter])]
+      (press state key))
+    (faith.= :left state.focus)
+    (faith.= 1 state.selected)
+    (press state "n")
+    (faith.= [:right 1 1] [state.focus state.selected state.preview_cursor])
+    (press state "n")
+    (faith.= [:right 1 3] [state.focus state.selected state.preview_cursor])
+    (press state "n")
+    (faith.= [:left 3] [state.focus state.selected])
+    (faith.= [{:entry 1}
+              {:row 1 :line 1}
+              {:row 1 :line 3}
+              {:entry 3}
+              {:row 3 :line 1}] state.search.matches)
+    (faith.is (string.find state.notice "4/5 roll" 1 true))
+    (press state "n")
+    (faith.= [:right 3 1] [state.focus state.selected state.preview_cursor])
+    (press state "n")
+    (faith.= [:left 1] [state.focus state.selected])))
+
+(fn test-shift-n-walks-the-same-sequence-backwards []
+  (let [state (roll-state)]
+    (each [_ key (ipairs ["/" "r" "o" "l" "l" :enter])]
+      (press state key))
+    (press state "N")
+    (faith.= [:right 3 1] [state.focus state.selected state.preview_cursor])
+    (faith.= nil state.search.pending)
+    (press state "N")
+    (faith.= [:left 3] [state.focus state.selected])
+    (press state "N")
+    (faith.= [:right 1 3] [state.focus state.selected state.preview_cursor])
+    (press state "N")
+    (faith.= [:right 1 1] [state.focus state.selected state.preview_cursor])
+    (press state "N")
+    (faith.= [:left 1] [state.focus state.selected])))
+
+(fn test-search-highlights-both-panes []
+  (let [state (roll-state)]
+    (each [_ key (ipairs ["/" "r" "o" "l" "l" :enter])]
+      (press state key))
+    (let [view (app.view state 10 80)
+          left-text (. view.body.left.rows 1 :text)
+          right-text (. view.body.right.lines 1)]
+      (faith.is (string.find (tui.strip-ansi left-text) "a-roll.rb" 1 true))
+      (faith.is (string.find (tui.strip-ansi right-text) "roll one" 1 true))
+      (when (left-text:find "\27" 1 true)
+        (faith.is (left-text:find "\27[1;4mroll" 1 true))
+        (faith.is (right-text:find "\27[1;4mroll" 1 true))))))
+
+(fn search-roll [state]
+  (each [_ key (ipairs ["/" "r" "o" "l" "l" :enter])]
+    (press state key)))
+
+(fn cursor [state]
+  [state.focus state.selected state.preview_cursor])
+
+(fn test-n-visits-lines-of-a-file-whose-name-does-not-match []
+  (let [state (roll-state)
+        b-entry (. state.entries 2)]
+    (tset state.preview_cache (preview-key.for-entry "HEAD" b-entry false)
+          ["plain" "b has roll"])
+    (search-roll state)
+    (faith.= 6 (length state.search.matches))
+    (faith.is (string.find state.notice "1/6 roll" 1 true))
+    (press state "n")
+    (press state "n")
+    (faith.= [:right 1 3] (cursor state))
+    (press state "n")
+    (faith.= [:right 2 2] (cursor state))
+    (faith.is (string.find state.notice "4/6 roll" 1 true))
+    (press state "n")
+    (faith.= [:left 3 1] (cursor state))
+    (press state "N")
+    (faith.= [:right 2 2] (cursor state))
+    (press state "N")
+    (faith.= [:right 1 3] (cursor state))
+    (press state :escape)
+    (press state "j")
+    (faith.= [:left 2 1] (cursor state))
+    (faith.is (string.find state.notice "4/6 roll" 1 true))))
+
+(fn test-typing-crosses-panes-and-backspace-keeps-the-cursor []
+  (let [state (roll-state)]
+    (press state "/")
+    (press state "r")
+    (press state "o")
+    (faith.= [:left 1 1] (cursor state))
+    (press state "l")
+    (press state "l")
+    (press state " ")
+    (faith.= [:right 1 1] (cursor state))
+    (faith.= [{:row 1 :line 1} {:row 1 :line 3}] state.search.matches)
+    (press state "t")
+    (faith.= [:right 1 3] (cursor state))
+    (press state "\127")
+    (press state "\127")
+    (faith.= "roll" state.search.query)
+    (faith.= [:right 1 3] (cursor state))
+    (faith.= 3 state.search.index)
+    (press state :enter)
+    (faith.is (string.find state.notice "3/5 roll" 1 true))))
+
+(fn test-line-only-query-jumps-between-files []
+  (let [state (roll-state)]
+    (each [_ key (ipairs ["/" "p" "l" "a" "i" "n" :enter])]
+      (press state key))
+    (faith.= [:right 1 2] (cursor state))
+    (faith.= [{:row 1 :line 2} {:row 2 :line 1}] state.search.matches)
+    (faith.is (string.find state.notice "1/2 plain" 1 true))
+    (press state "n")
+    (faith.= [:right 2 1] (cursor state))
+    (faith.is (string.find state.notice "2/2 plain" 1 true))
+    (press state "n")
+    (faith.= [:right 1 2] (cursor state))
+    (press state :escape)
+    (faith.= :left state.focus)
+    (faith.= "plain" state.search.query)
+    (press state "j")
+    (press state "j")
+    (faith.= [:left 3 1] (cursor state))
+    (press state "N")
+    (faith.= [:right 2 1] (cursor state))))
+
+(fn test-toggling-tree-mode-mid-walk-keeps-the-search-position []
+  (let [state (roll-state)]
+    (search-roll state)
+    (press state "n")
+    (press state "n")
+    (faith.= [:right 1 3] (cursor state))
+    (press state "`")
+    (faith.= :tree state.view_mode)
+    (faith.= [{:entry 1 :tree-row 1}
+              {:row 1 :line 1}
+              {:row 1 :line 3}
+              {:entry 3 :tree-row 3}
+              {:row 3 :line 1}] state.search.matches)
+    (faith.= 3 state.search.index)
+    (press state "n")
+    (faith.= [:left 3 1] (cursor state))
+    (faith.= 3 state.tree_selected_row)
+    (press state "n")
+    (faith.= [:right 3 1] (cursor state))))
+
+(fn test-file-header-lines-do-not-match []
+  (let [state (roll-state)
+        a-entry (. state.entries 1)
+        key (preview-key.for-entry "HEAD" a-entry false)]
+    (tset state.preview_cache key ["a-roll.rb"
+                                   "─────────"
+                                   "roll one"
+                                   "plain"])
+    (tset state.preview_numbers_cache key [false false 1 2])
+    (search-roll state)
+    (faith.= [{:entry 1} {:row 1 :line 3} {:entry 3} {:row 3 :line 1}]
+             state.search.matches)
+    (let [view (app.view state 10 80)
+          header (. view.body.right.lines 1)
+          content (. view.body.right.lines 3)]
+      (faith.= "a-roll.rb" (tui.strip-ansi header))
+      (faith.= nil (header:find "\27[1;4m" 1 true))
+      (when (content:find "\27" 1 true)
+        (faith.is (content:find "\27[1;4mroll" 1 true))))
+    (press state "n")
+    (faith.= [:right 1 3] (cursor state))))
+
+(fn test-q-clears-the-search-in-both-panes []
+  (let [state (roll-state)]
+    (search-roll state)
+    (press state "n")
+    (faith.= :right state.focus)
+    (press state "q")
+    (faith.= "" state.search.query)
+    (faith.= [] state.search.matches)
+    (faith.= nil state.notice)
+    (let [view (app.view state 10 80)
+          left-text (. view.body.left.rows 1 :text)
+          right-text (. view.body.right.lines 1)]
+      (faith.is (not (left-text:find "\27[1;4m" 1 true)))
+      (faith.is (not (right-text:find "\27[1;4m" 1 true))))))
+
+(fn split-roll-state []
+  (let [entries [(entry "M" "a-roll.rb") (entry "M" "c-roll.rb")]
+        state (flat-state entries)
+        lines {1 ["-old roll" "+new1" "-old2" "+roll new"] 2 ["-x" "+roll y"]}
+        rows {1 [{:kind :change :old "old roll" :new "new1"}
+                 {:kind :change :old "old2" :new "roll new"}]
+              2 [{:kind :change :old "x" :new "roll y"}]}]
+    (each [index entry (ipairs entries)]
+      (let [key (preview-key.for-entry "HEAD" entry false)]
+        (tset state.preview_cache key (. lines index))
+        (tset state.split_cache (.. key "\0split") (. rows index))))
+    (set state.split_mode? true)
+    (app.view state 10 80)
+    state))
+
+(fn test-split-walk-switches-sides-per-match []
+  (let [state (split-roll-state)]
+    (faith.is (. state.split_rows 1))
+    (search-roll state)
+    (faith.= [{:entry 1}
+              {:row 1 :line 1 :side :old}
+              {:row 1 :line 2 :side :new}
+              {:entry 2}
+              {:row 2 :line 1 :side :new}] state.search.matches)
+    (press state "n")
+    (faith.= [:right 1 1] (cursor state))
+    (faith.= :old state.split_side)
+    (press state "n")
+    (faith.= [:right 1 2] (cursor state))
+    (faith.= :new state.split_side)
+    (press state "n")
+    (faith.= [:left 2 1] (cursor state))
+    (press state "n")
+    (faith.= [:right 2 1] (cursor state))
+    (faith.= :new state.split_side)
+    (press state "N")
+    (faith.= [:left 2 1] (cursor state))
+    (press state "N")
+    (faith.= [:right 1 2] (cursor state))
+    (faith.= :new state.split_side)))
 
 (fn test-view-clamps-file-horizontal-scroll-when-file-rows-fit []
   (let [state (state [(entry "M" "a.rb")])]
@@ -1179,6 +1419,16 @@
  : test-view-clamps-preview-horizontal-scroll-when-content-fits
  : test-view-highlights-preview-cursor-only-when-diff-focused
  : test-toggling-full-context-rebuilds-the-preview-search
+ : test-n-walks-file-names-and-diff-lines-in-order
+ : test-shift-n-walks-the-same-sequence-backwards
+ : test-search-highlights-both-panes
+ : test-n-visits-lines-of-a-file-whose-name-does-not-match
+ : test-typing-crosses-panes-and-backspace-keeps-the-cursor
+ : test-line-only-query-jumps-between-files
+ : test-toggling-tree-mode-mid-walk-keeps-the-search-position
+ : test-file-header-lines-do-not-match
+ : test-q-clears-the-search-in-both-panes
+ : test-split-walk-switches-sides-per-match
  : test-view-clamps-file-horizontal-scroll-when-file-rows-fit
  : test-view-keeps-file-list-horizontal-scroll-disabled
  : test-view-folder-preview-for-real-deleted-folders

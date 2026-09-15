@@ -1,6 +1,6 @@
 (local preview (require :preview.core))
 (local preview-anchor (require :preview.anchor))
-(local preview-search (require :app.preview-search))
+(local search (require :app.search))
 (local selection (require :app.selection))
 (local line-selection (require :app.line-selection))
 (local tui (require :tui.core))
@@ -45,18 +45,22 @@
               row))))))
 
 (fn search-highlight [state lines]
-  (if (preview-search.has-query? state)
-      (icollect [_ line (ipairs lines)]
-        (preview-search.highlight state line))
+  (if (search.has-query? state)
+      (let [matched (search.matched-lines state)
+            scroll (or state.preview_scroll 0)]
+        (icollect [i line (ipairs lines)]
+          (if (search.matched-display? state matched (+ scroll i))
+              (search.highlight state line)
+              line)))
       lines))
 
 (fn prepare [state visible cols ?selected]
   (let [selected (or ?selected (selection.selected-context state))
         (raw numbers) (raw-lines state selected.entry selected.row)
         display (lines-for-width state raw numbers visible cols)]
-    (preview-search.sync-search state display)
     (set-scroll state display visible)
     (preview-anchor.restore-unified state selected.entry)
+    (search.sync state display)
     (update-horizontal-scroll state raw cols)))
 
 (fn body [state visible]

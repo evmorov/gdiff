@@ -648,6 +648,39 @@ ask for, so their cache keys are ready when the output is imported."
 (fn display-source-map [state]
   (and state.preview_display_cache state.preview_display_cache.source-map))
 
+(fn active-source-map [state]
+  (if (split-active? state)
+      state.split_source_map
+      (display-source-map state)))
+
+(fn source-index-for-display [state display-index]
+  "Map a prepared display row back to the cached line or split row it shows."
+  (let [map (active-source-map state)]
+    (if map (or (. map display-index) display-index) display-index)))
+
+(fn display-index-for-source [state source-index]
+  "Map a cached line or split row to the first display row that shows it."
+  (let [map (active-source-map state)]
+    (if map
+        (accumulate [found nil index source (ipairs map) &until found]
+          (when (= source source-index) index))
+        source-index)))
+
+(fn cached-preview [state entry]
+  "Return the cached preview of `entry` without loading anything: `:split`
+with its rows when side-by-side view would show them, else `:unified` with
+its lines and their line numbers when known. Nothing when the preview is not
+cached yet."
+  (when (and entry (not entry.untracked?) (not (assets.asset? entry)))
+    (let [key (cache-key state entry)
+          rows (and state.split_mode? (= entry.kind "M")
+                    (. state.split_cache (split-key state entry)))]
+      (if (and rows (split.splittable? rows))
+          (values :split rows)
+          (case (. state.preview_cache key)
+            lines (values :unified lines
+                          (. (or state.preview_numbers_cache {}) key)))))))
+
 (fn display-gutters [state]
   (and state.preview_display_cache state.preview_display_cache.gutters))
 
@@ -755,6 +788,9 @@ ask for, so their cache keys are ready when the output is imported."
  : display-gutters
  : display-source
  : display-source-map
+ : display-index-for-source
+ : cached-preview
+ : source-index-for-display
  : line-gutters
  : line-numbers
  : line-refs

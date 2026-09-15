@@ -403,9 +403,11 @@
     (update.update state {} (update.read-msg state ch))))
 
 (fn diff-state []
-  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])]
-    (set state.preview_display_cache
-         {:display ["alpha" "beta apple" "gamma" "apple pie"]})
+  (let [state (state [(entry "M" "a.rb") (entry "M" "b.rb")])
+        lines ["alpha" "beta apple" "gamma" "apple pie"]]
+    (tset state.preview_cache
+          (preview-key.for-entry "HEAD" (. state.entries 1)) lines)
+    (set state.preview_display_cache {:display lines :source-map [1 2 3 4]})
     (set state.preview_total 4)
     (set state.preview_rows 4)
     state))
@@ -415,51 +417,53 @@
     (update.update state {} (update.read-msg state "\t"))
     (update.update state {} (update.read-msg state "/"))
     (type-keys state ["a" "p" "p" "l" "e"])
-    (faith.= "apple" state.preview_search.query)
-    (faith.= 2 (length state.preview_search.matches))
+    (faith.= "apple" state.search.query)
+    (faith.= 2 (length state.search.matches))
     (faith.= 2 state.preview_cursor)
-    (faith.= "" state.search.query)
     (faith.= 1 state.selected)
     (update.update state {} (update.read-msg state :enter))
     (update.update state {} (update.read-msg state "n"))
     (faith.= 4 state.preview_cursor)))
 
-(fn test-left-pane-search-leaves-the-preview-search-untouched []
+(fn test-left-pane-search-also-finds-diff-lines []
   (let [state (diff-state)]
     (update.update state {} (update.read-msg state "/"))
-    (type-keys state ["b" "." "r" "b"])
-    (faith.= "b.rb" state.search.query)
-    (faith.= 1 (length state.search.matches))
-    (faith.= "" state.preview_search.query)
-    (faith.= 1 state.preview_cursor)))
+    (type-keys state ["a" "p" "p" "l" "e"])
+    (faith.= 2 (length state.search.matches))
+    (faith.= :right state.focus)
+    (faith.= 2 state.preview_cursor)
+    (faith.= 1 state.selected)))
 
-(fn test-each-pane-keeps-its-own-search-across-focus-switches []
+(fn test-search-matches-file-names-and-diff-lines-together []
+  (let [state (diff-state)]
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["b"])
+    (faith.= [{:entry 1 :tree-row 1} {:row 1 :line 2} {:entry 2 :tree-row 2}]
+             state.search.matches)
+    (faith.= :left state.focus)
+    (faith.= 1 state.selected)
+    (update.update state {} (update.read-msg state :enter))
+    (faith.is (string.find state.notice "1/3 b" 1 true))
+    (update.update state {} (update.read-msg state "n"))
+    (faith.= :right state.focus)
+    (faith.= 2 state.preview_cursor)
+    (update.update state {} (update.read-msg state "n"))
+    (faith.= :left state.focus)
+    (faith.= 2 state.selected)
+    (update.update state {} (update.read-msg state "N"))
+    (faith.= [:right 1] [state.focus state.selected])
+    (faith.= {:row 1 :line 2} state.search.pending)))
+
+(fn test-search-query-survives-focus-switches []
   (let [state (diff-state)]
     (update.update state {} (update.read-msg state "/"))
     (type-keys state ["a" "." "r" "b"])
-    (update.update state {} (update.read-msg state :enter))
-    (update.update state {} (update.read-msg state "\t"))
-    (update.update state {} (update.read-msg state "/"))
-    (type-keys state ["a" "p" "p" "l" "e"])
     (update.update state {} (update.read-msg state :enter))
     (update.update state {} (update.read-msg state "\t"))
     (faith.= "a.rb" state.search.query)
-    (faith.= "apple" state.preview_search.query)))
-
-(fn test-tab-shows-the-focused-panes-search-status []
-  (let [state (diff-state)]
-    (update.update state {} (update.read-msg state "/"))
-    (type-keys state ["a" "." "r" "b"])
-    (update.update state {} (update.read-msg state :enter))
-    (update.update state {} (update.read-msg state "\t"))
-    (update.update state {} (update.read-msg state "/"))
-    (type-keys state ["a" "p" "p" "l" "e"])
-    (update.update state {} (update.read-msg state :enter))
-    (faith.is (string.find state.notice "apple" 1 true))
-    (update.update state {} (update.read-msg state "\t"))
     (faith.is (string.find state.notice "a.rb" 1 true))
     (update.update state {} (update.read-msg state "\t"))
-    (faith.is (string.find state.notice "apple" 1 true))))
+    (faith.= "a.rb" state.search.query)))
 
 (fn test-command-dispatches-back-through-update []
   (let [state (state [(entry "M" "a.rb")])
@@ -705,20 +709,26 @@
     (set clipboard.copy old-copy)
     (faith.= ["old1\nold2"] copied)))
 
-(fn test-split-search-is-scoped-to-the-focused-side []
+(fn test-split-search-covers-both-sides []
   (let [state (split-state)]
     (update.update state {} (update.read-msg state "\t"))
     (update.update state {} (update.read-msg state "/"))
     (type-keys state ["o" "l" "d"])
-    (faith.= 2 (length state.preview_search.matches))
+    (faith.= 2 (length state.search.matches))
+    (faith.= :old state.split_side)
     (update.update state {} (update.read-msg state :enter))
     (update.update state {} (update.read-msg state "\t"))
     (faith.= :new state.split_side)
-    (faith.= 0 (length state.preview_search.matches))
+    (faith.= 2 (length state.search.matches))
     (update.update state {} (update.read-msg state "/"))
     (type-keys state ["n" "e" "w" "2"])
-    (faith.= 1 (length state.preview_search.matches))
-    (faith.= 2 state.preview_cursor)))
+    (faith.= [{:row 1 :line 2 :side :new}] state.search.matches)
+    (faith.= 2 state.preview_cursor)
+    (update.update state {} (update.read-msg state :enter))
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["o" "l" "d" "1"])
+    (faith.= :old state.split_side)
+    (faith.= 1 state.preview_cursor)))
 
 (fn test-yank-finished-updates-notice []
   (let [state (state [(entry "M" "a.rb")])]
@@ -910,9 +920,9 @@
  : test-gg-and-G-move-preview-cursor-when-diff-is-focused
  : test-jk-still-move-file-selection-when-files-are-focused
  : test-right-pane-search-matches-diff-lines-and-moves-the-cursor
- : test-left-pane-search-leaves-the-preview-search-untouched
- : test-each-pane-keeps-its-own-search-across-focus-switches
- : test-tab-shows-the-focused-panes-search-status
+ : test-left-pane-search-also-finds-diff-lines
+ : test-search-matches-file-names-and-diff-lines-together
+ : test-search-query-survives-focus-switches
  : test-command-dispatches-back-through-update
  : test-copy-path-copies-selected-tree-folder-path
  : test-h-l-scroll-preview-horizontally
@@ -942,7 +952,7 @@
  : test-shift-tab-cycles-left-new-old-left-in-split
  : test-yank-copies-the-focused-split-column
  : test-yank-collapses-wrapped-split-rows
- : test-split-search-is-scoped-to-the-focused-side
+ : test-split-search-covers-both-sides
  : test-yank-finished-updates-notice
  : test-init-stores-pr-url
  : test-open-pr-finished-updates-notice

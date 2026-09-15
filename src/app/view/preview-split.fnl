@@ -1,7 +1,7 @@
 (local ansi (require :tui.ansi))
 (local preview (require :preview.core))
 (local preview-anchor (require :preview.anchor))
-(local preview-search (require :app.preview-search))
+(local search (require :app.search))
 (local selection (require :app.selection))
 (local line-selection (require :app.line-selection))
 (local viewport (require :preview.viewport))
@@ -115,8 +115,8 @@
   (if selected? (theme.selected-row state.theme text width) text))
 
 (fn highlighted [state highlight? text]
-  (if (and highlight? (preview-search.has-query? state))
-      (preview-search.highlight state text)
+  (if (and highlight? (search.has-query? state))
+      (search.highlight state text)
       text))
 
 (fn role-text [state role raw styled?]
@@ -124,11 +124,11 @@
       (theme.tint state.theme (highlight.tint-role role) raw)
       (tui.color state.theme role raw)))
 
-(fn half [state row side width x-scroll selected?]
+(fn half [state row side width x-scroll selected? highlight?]
   (let [role (change-role row side)
         raw (or (. row side) "")
         colored (role-text state role raw (. row (styled-key side)))
-        searched (highlighted state (= side state.split_side) colored)
+        searched (highlighted state highlight? colored)
         windowed (pane.window-text searched width x-scroll)]
     (styled state windowed width selected?)))
 
@@ -140,10 +140,11 @@
         windowed (pane.window-text colored width 0)]
     (styled state windowed width selected?)))
 
-(fn compose-row [state row index widths x-scroll]
+(fn compose-row [state row index widths x-scroll matched]
   (let [old-w widths.old
         new-w widths.new
         selected? (highlight-row? state index)
+        match? (search.matched-display? state matched index)
         old-sel? (and selected? (= state.split_side :old))
         new-sel? (and selected? (= state.split_side :new))
         old-gutter (side-gutter state widths.old-no-w widths.old-blame-w
@@ -156,9 +157,9 @@
                                       ?color)
               (divider state) new-gutter
               (header-half state (or row.new "") new-w new-sel? ?color)))
-        (.. old-gutter (half state row :old old-w x-scroll old-sel?)
+        (.. old-gutter (half state row :old old-w x-scroll old-sel? match?)
             (divider state) new-gutter
-            (half state row :new new-w x-scroll new-sel?)))))
+            (half state row :new new-w x-scroll new-sel? match?)))))
 
 (fn entry-rows [state ?selected]
   (let [selected (or ?selected (selection.selected-context state))]
@@ -364,7 +365,7 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
                        computed))]
       (apply-layout state layout visible)
       (preview-anchor.restore-split state)
-      (preview-search.sync-search state state.split_rows))))
+      (search.sync state state.split_rows))))
 
 (fn blank-divider [state widths]
   (.. (side-gutter state widths.old-no-w widths.old-blame-w nil nil)
@@ -380,8 +381,9 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
         x-scroll (or state.preview_x_scroll 0)
         offset (or state.preview_scroll 0)
         visible-rows (preview.visible-display-lines state rows visible)
+        matched (search.matched-lines state)
         lines (icollect [i row (ipairs visible-rows)]
-                (compose-row state row (+ offset i) widths x-scroll))]
+                (compose-row state row (+ offset i) widths x-scroll matched))]
     (for [_ (+ (length lines) 1) (math.max 1 (or visible 1))]
       (table.insert lines (blank-divider state widths)))
     (tui.lines lines (preview.scroll-info state) 0 0 nil [(+ old-gc old-w 1)])))

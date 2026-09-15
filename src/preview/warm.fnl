@@ -170,9 +170,11 @@ have `split`, `numbers`, `refs`, and `blame` tables."
           imported?)))))
 
 (fn update [state caches]
+  "Import finished worker output into the caches. Returns true when at least
+one entry was imported."
+  (var imports 0)
   (when state.dir
     (var checks 0)
-    (var imports 0)
     (let [max-checks (math.min state.count max-checks-per-update)]
       (while (and (< checks max-checks) (< imports max-imports-per-update)
                   (< 0 (remaining state)))
@@ -182,7 +184,8 @@ have `split`, `numbers`, `refs`, and `blame` tables."
               (set imports (+ imports 1))))
           (advance-scan-index state)
           (set checks (+ checks 1))))))
-  (finish-if-complete state))
+  (finish-if-complete state)
+  (< 0 imports))
 
 {: cleanup
  : import-entry

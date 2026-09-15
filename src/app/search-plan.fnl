@@ -8,7 +8,8 @@
   {:active? false
    :query (or search.query "")
    :matches (or search.matches [])
-   :index (or search.index 0)})
+   :index (or search.index 0)
+   :matches-source search.matches-source})
 
 (fn clear []
   (new-state))

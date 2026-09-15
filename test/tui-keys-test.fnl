@@ -28,15 +28,14 @@
 (fn test-decode-returns-printable-key []
   (faith.= "j" (keys.decode {} "j")))
 
-(fn test-search-active-covers-both-panes []
+(fn test-search-active-follows-the-search-state []
   (faith.is (not (keys.search-active? {})))
   (faith.is (not (keys.search-active? {:search {:active? false}})))
-  (faith.is (keys.search-active? {:search {:active? true}}))
-  (faith.is (keys.search-active? {:preview_search {:active? true}})))
+  (faith.is (keys.search-active? {:search {:active? true}})))
 
 {: test-decode-maps-control-keys
  : test-decode-maps-escape-sequences
  : test-decode-returns-printable-key
  : test-decode-treats-escape-as-escape-during-search
  : test-decode-detects-paste-start-during-search
- : test-search-active-covers-both-panes}
+ : test-search-active-follows-the-search-state}

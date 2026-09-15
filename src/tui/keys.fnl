@@ -4,9 +4,7 @@
   (and state state.search state.search.active?))
 
 (fn search-active? [state]
-  (and state
-       (or (and state.search state.search.active?)
-           (and state.preview_search state.preview_search.active?)) true))
+  (and state state.search state.search.active? true))
 
 (fn escape-key [sequence ?b]
   (let [sequence (if ?b (.. (or sequence "") (or ?b "")) (or sequence ""))]

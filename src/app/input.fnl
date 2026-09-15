@@ -1,4 +1,4 @@
-(local search (require :app.pane-search))
+(local search (require :app.search))
 (local messages (require :app.messages))
 
 (fn event-key [key]

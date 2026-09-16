@@ -50,7 +50,7 @@
                :split_mode? true
                :split_side :old
                :split_cache {}
-               :split_ratio 0.25
+               :split_ratio 0.2
                :view_mode :tree
                :tree_selected_row nil
                :expanded_folders {}

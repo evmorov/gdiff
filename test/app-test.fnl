@@ -1063,7 +1063,7 @@
     (set state.sync.next_at 0)
     (faith.is (app.handle-key state {} "]"))
     (faith.= false state.sync.running?)
-    (faith.almost= 0.3 state.split_ratio 0.0001)))
+    (faith.almost= 0.25 state.split_ratio 0.0001)))
 
 (fn test-quit-cleans-preview-warmer []
   (t.reset-workdir)

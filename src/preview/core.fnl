@@ -634,10 +634,17 @@ ask for, so their cache keys are ready when the output is imported."
        (math-util.clamp (or scroll 0) 0 (max-scroll state nil)))
   (focus-cursor state))
 
+(fn center-cursor [state]
+  (let [visible (row-count state)
+        cursor (or state.preview_cursor 1)
+        scroll (- cursor 1 (math.floor (/ (- visible 1) 2)))]
+    (set state.preview_scroll (math-util.clamp scroll 0 (max-scroll state nil)))))
+
 (fn cursor-jump [state line]
+  "Put the cursor on a line and scroll so it sits mid-screen when possible."
   (set state.preview_cursor
        (math-util.clamp (or line 1) 1 (math.max 1 (or state.preview_total 0))))
-  (keep-cursor-visible state))
+  (center-cursor state))
 
 (fn display-lines [state]
   (or (and state.preview_display_cache state.preview_display_cache.display) []))

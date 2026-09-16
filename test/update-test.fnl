@@ -428,6 +428,23 @@
     (update.update state {} (update.read-msg state "n"))
     (faith.= 4 state.preview_cursor)))
 
+(fn test-search-jump-centers-the-match-line []
+  (let [state (diff-state)
+        lines (fcollect [no 1 20] (if (= no 12) "apple" (.. "line " no)))
+        key (preview-key.for-entry "HEAD" (. state.entries 1))]
+    (tset state.preview_cache key lines)
+    (tset state.preview_line_refs_cache key
+          (icollect [no (ipairs lines)]
+            {:side :new : no :changed? true}))
+    (set state.preview_display_cache
+         {:display lines :source-map (fcollect [no 1 20] no)})
+    (set state.preview_total 20)
+    (set state.preview_rows 5)
+    (update.update state {} (update.read-msg state "/"))
+    (type-keys state ["a" "p" "p" "l" "e"])
+    (faith.= 12 state.preview_cursor)
+    (faith.= 9 state.preview_scroll)))
+
 (fn test-left-pane-search-also-finds-diff-lines []
   (let [state (diff-state)]
     (update.update state {} (update.read-msg state "/"))
@@ -923,6 +940,7 @@
  : test-gg-and-G-move-preview-cursor-when-diff-is-focused
  : test-jk-still-move-file-selection-when-files-are-focused
  : test-right-pane-search-matches-diff-lines-and-moves-the-cursor
+ : test-search-jump-centers-the-match-line
  : test-left-pane-search-also-finds-diff-lines
  : test-search-matches-file-names-and-diff-lines-together
  : test-search-query-survives-focus-switches

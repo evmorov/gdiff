@@ -165,7 +165,7 @@
   (let [selected (or ?selected (selection.selected-context state))]
     (preview.split-rows state selected.entry)))
 
-(fn visual-rows-for [row old-w new-w]
+(fn visual-rows-wrapped [row old-w new-w]
   (let [olds (and row.old (wrap.line row.old old-w))
         news (and row.new (wrap.line row.new new-w))
         n (math.max 1 (length (or olds [])) (length (or news [])))]
@@ -183,6 +183,14 @@
        :new-move row.new-move
        :old-styled row.old-styled
        :new-styled row.new-styled})))
+
+(fn fits? [?text width]
+  (or (not ?text) (<= (tui.visible-length ?text) width)))
+
+(fn visual-rows-for [row old-w new-w]
+  (if (and (fits? row.old old-w) (fits? row.new new-w))
+      [row]
+      (visual-rows-wrapped row old-w new-w)))
 
 (fn wrap-rows [rows old-w new-w _content]
   (let [display []
@@ -305,14 +313,18 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
         x-max (scroll-util.max-offset (max-raw-width display) widths.old)]
     {: display :source-map nil : widths :x-max-scroll x-max :wrap? false}))
 
+(fn wrapped-scrolls? [state emphasized rows visible cols]
+  (let [visible (math.max 1 (or visible 1))]
+    (or (scroll-util.scrolls? (length rows) visible)
+        (let [wide (viewport.content-width state.split_ratio cols false)
+              wide-widths (layout-widths state wide rows)
+              (display-wide _) (wrap-rows emphasized wide-widths.old
+                                          wide-widths.new wide)]
+          (scroll-util.scrolls? (length display-wide) visible)))))
+
 (fn prepare-wrapped [state rows visible cols]
   (let [emphasized (emphasize-rows state.theme rows)
-        wide (viewport.content-width state.split_ratio cols false)
-        wide-widths (layout-widths state wide rows)
-        (display-wide _) (wrap-rows emphasized wide-widths.old wide-widths.new
-                                    wide)
-        scroll? (scroll-util.scrolls? (length display-wide)
-                                      (math.max 1 (or visible 1)))
+        scroll? (wrapped-scrolls? state emphasized rows visible cols)
         content (viewport.content-width state.split_ratio cols scroll?)
         widths (layout-widths state content rows)
         (display source-map) (wrap-rows emphasized widths.old widths.new

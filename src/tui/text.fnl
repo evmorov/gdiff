@@ -52,33 +52,41 @@ ANSI escape sequences are zero-width; any other char takes one column."
             (let [(ch next-i) (next-char s i)]
               (values ch next-i 1))))))
 
+(fn strip-ansi [s]
+  "Drop CSI escape sequences, keeping everything else."
+  (local (out _) (string.gsub (tostring (or s "")) csi-pattern ""))
+  out)
+
+(fn scan-length [s]
+  (var i 1)
+  (var len 0)
+  (while (<= i (length s))
+    (let [byte (string.byte s i)]
+      (if (ansi-sequence? s i)
+          (set i (+ (ansi-sequence-end s i) 1))
+          (ascii-byte? byte)
+          (do
+            (set len (+ len 1))
+            (set i (+ i 1)))
+          (let [next-i (+ (utf8-char-end s i) 1)]
+            (set len (+ len 1))
+            (set i next-i)))))
+  len)
+
+(local ?utf8-len (and utf8 utf8.len))
+
 (fn visible-length [s]
   (let [s (tostring (or s ""))]
-    (var i 1)
-    (var len 0)
-    (while (<= i (length s))
-      (let [byte (string.byte s i)]
-        (if (ansi-sequence? s i)
-            (set i (+ (ansi-sequence-end s i) 1))
-            (ascii-byte? byte)
-            (do
-              (set len (+ len 1))
-              (set i (+ i 1)))
-            (let [next-i (+ (utf8-char-end s i) 1)]
-              (set len (+ len 1))
-              (set i next-i)))))
-    len))
+    (if (not (s:find "[\27\128-\255]")) (length s)
+        (let [plain (strip-ansi s)]
+          (if (not (plain:find "[\128-\255]")) (length plain)
+              (or (and ?utf8-len (?utf8-len plain)) (scan-length plain)))))))
 
 (fn pad-right [s width]
   (let [missing (- width (visible-length s))]
     (if (< 0 missing)
         (.. s (string.rep " " missing))
         s)))
-
-(fn strip-ansi [s]
-  "Drop CSI escape sequences, keeping everything else."
-  (local (out _) (string.gsub (tostring (or s "")) csi-pattern ""))
-  out)
 
 {: ansi-sequence-end
  : ansi-sequence?

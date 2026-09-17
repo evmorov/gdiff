@@ -6,22 +6,18 @@
   (let [(_left-cols right-cols) (tui.components.split.widths cols split-ratio)]
     (math.max 0 (if scroll? (- right-cols 1) right-cols))))
 
+(fn identity-map [lines]
+  (fcollect [i 1 (length (or lines []))]
+    i))
+
 (fn display-lines [wrap? lines width]
   (if wrap?
       (wrap.lines lines width)
-      lines))
+      (values lines (identity-map lines))))
 
-;; Maps each display row back to the source (logical) line it came from, so a
-;; wrapped line resolves to a single logical line when yanking.
 (fn source-map [wrap? lines width]
-  (if wrap?
-      (let [out []]
-        (each [source-index text (ipairs (or lines []))]
-          (for [_ 1 (length (wrap.line text width))]
-            (table.insert out source-index)))
-        out)
-      (fcollect [i 1 (length (or lines []))]
-        i)))
+  (let [(_ map) (display-lines wrap? lines width)]
+    map))
 
 (fn scroll? [lines visible]
   (scroll-util.scrolls? (length lines) visible))
@@ -60,6 +56,10 @@
               (tset seen src true)
               (or (. gutters src) blank)))))))
 
+(fn wide-layout [state lines visible wide-width]
+  (when (not (scroll? lines visible))
+    (display-lines state.preview_wrap? lines wide-width)))
+
 (fn lines-for-width [state lines gutter-labels visible cols]
   (let [(gutters gutter-width) (if gutter-labels
                                    (gutter-strings gutter-labels)
@@ -69,14 +69,13 @@
                                (- (content-width state.split_ratio cols scroll?)
                                   gutter-width)))
         wide-width (text-width false)
-        wide-lines (display-lines state.preview_wrap? lines wide-width)
-        scroll? (scroll? wide-lines visible)
-        width (text-width scroll?)
-        narrow? (and state.preview_wrap? scroll? (not (= width wide-width)))
-        final-width (if narrow? width wide-width)
-        display (if narrow? (display-lines state.preview_wrap? lines width)
-                    wide-lines)
-        source-map (source-map state.preview_wrap? lines final-width)]
+        (wide-lines wide-map) (wide-layout state lines visible wide-width)
+        scrolls? (or (not wide-lines) (scroll? wide-lines visible))
+        width (text-width scrolls?)
+        wide-final? (and wide-lines (or (not scrolls?) (= width wide-width)))
+        (display source-map) (if wide-final?
+                                 (values wide-lines wide-map)
+                                 (display-lines state.preview_wrap? lines width))]
     (values display source-map
             (display-gutters gutters gutter-width source-map))))
 

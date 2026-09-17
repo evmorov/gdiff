@@ -208,6 +208,12 @@
   (faith.= ["abcdefghij↪" "klmnopqrst↪" "uvwxyz"]
            (tui.wrap.lines ["abcdefghijklmnopqrstuvwxyz"] 11)))
 
+(fn test-wrap-maps-visual-lines-back-to-their-source-line []
+  (let [(display map) (tui.wrap.lines ["ab" "abcdefghijklmnopqrstuvwxyz" "c"]
+                                      11)]
+    (faith.= 5 (length display))
+    (faith.= [1 2 2 2 3] map)))
+
 (fn test-scrollbar-only-visible-for-overflow []
   (faith.is (tui.components.scrollbar.visible? {:offset 0 :total 10 :visible 5}
                                                5))
@@ -369,4 +375,5 @@
  : test-selected-row-keeps-the-search-match-background
  : test-selected-row-uses-derived-background
  : test-truncate-preserves-whole-utf8-glyphs
- : test-visible-length-counts-utf8-glyph-as-one-cell}
+ : test-visible-length-counts-utf8-glyph-as-one-cell
+ : test-wrap-maps-visual-lines-back-to-their-source-line}

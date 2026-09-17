@@ -21,10 +21,12 @@
           out))))
 
 (fn lines [source width]
-  (let [out []]
-    (each [_ text (ipairs (or source []))]
+  (let [out []
+        source-map []]
+    (each [index text (ipairs (or source []))]
       (each [_ part (ipairs (line text width))]
-        (table.insert out part)))
-    out))
+        (table.insert out part)
+        (table.insert source-map index)))
+    (values out source-map)))
 
 {: line : lines}

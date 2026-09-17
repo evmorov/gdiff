@@ -27,21 +27,33 @@
       true
       false))
 
-(fn side-path [entry side]
-  (if (= side :old) (or entry.old_path entry.path) entry.path))
+(local side-path git.side-path)
+(local move-pair? git.move-pair?)
+
+(fn whole-file? [entry]
+  (and entry.untracked? (not (move-pair? entry)) true))
+
+(fn two-sided? [entry]
+  (and entry (or (= entry.kind "M") (= entry.kind "R") (move-pair? entry)) true))
+
+(fn side-exists? [entry side]
+  (if (move-pair? entry) true
+      (= side :old) (and (not= entry.kind "A") (not entry.untracked?))
+      (not= entry.kind "D")))
 
 (fn side-source [state entry side]
-  (let [(old-ref new-ref) (git.comparison-ref-targets state.revision)]
+  (let [(old-ref new-ref) (git.comparison-ref-targets state.revision)
+        path (side-path entry side)]
     (if (git.files? state.revision)
         (case (if (= side :old) entry.old_file entry.new_file)
           file {: file})
+        (not (side-exists? entry side))
+        nil
         (= side :old)
-        (when (and (not= entry.kind "A") (not entry.untracked?))
-          {:command (git.show-file-command old-ref (side-path entry :old))})
-        (not= entry.kind "D")
-        (if new-ref
-            {:command (git.show-file-command new-ref entry.path)}
-            {:file entry.path}))))
+        {:command (git.show-file-command old-ref path)}
+        new-ref
+        {:command (git.show-file-command new-ref path)}
+        {:file path})))
 
 (fn highlight-side [state entry side last-line]
   (when (and (< 0 last-line) (highlight.within-cap? last-line))
@@ -124,7 +136,7 @@
 
 (fn entry-data [state entry]
   (if (assets.asset? entry) (format.asset state entry)
-      entry.untracked? (file-lines state entry)
+      (whole-file? entry) (file-lines state entry)
       (diff-data state entry state.full_context?)))
 
 (fn store-entry-data [state key lines ?numbers ?refs]
@@ -156,7 +168,7 @@ return (lines numbers refs)."
             numbers)))))
 
 (fn line-refs [state entry]
-  (when (and entry (not entry.untracked?) (not (assets.asset? entry)))
+  (when (and entry (not (whole-file? entry)) (not (assets.asset? entry)))
     (let [cached (. (or state.preview_line_refs_cache {})
                     (cache-key state entry))]
       (if (not= nil cached)
@@ -271,7 +283,7 @@ git; the import fills the cache."
                                    :key)))))
 
 (fn blame-candidate? [entry]
-  (and entry (not entry.untracked?) (not (assets.asset? entry)) true))
+  (and entry (not (whole-file? entry)) (not (assets.asset? entry)) true))
 
 (fn number-width [numbers]
   (gutter.max-text-width numbers))
@@ -369,13 +381,14 @@ blame labels, and toggles they were built from are unchanged."
                                    (cached-diff-highlight state entry
                                                           (cache-key state
                                                                      entry)
-                                                          output))
+                                                          output)
+                                   entry)
                  [])]
     (tset state.split_cache key rows)
     rows))
 
 (fn split-rows [state entry]
-  (if (or (not entry) entry.untracked? (assets.asset? entry))
+  (if (or (not entry) (whole-file? entry) (assets.asset? entry))
       []
       (let [key (split-key state entry)
             cached (. state.split_cache key)]
@@ -384,7 +397,7 @@ blame labels, and toggles they were built from are unchanged."
             (compute-split-rows state entry key)))))
 
 (fn split-blame-needed? [state entry]
-  (and state.split_mode? (= entry.kind "M")))
+  (and state.split_mode? (two-sided? entry)))
 
 (fn split-blame-ready? [state entry]
   (let [rows (. state.split_cache (split-key state entry))]
@@ -405,10 +418,10 @@ blame labels, and toggles they were built from are unchanged."
       true))
 
 (fn ready? [state entry]
-  (or (not entry) entry.untracked? (assets.asset? entry)
+  (or (not entry) (whole-file? entry) (assets.asset? entry)
       (let [key (cache-key state entry)]
         (and (not= nil (. state.preview_cache key))
-             (or (not state.split_mode?) (not= entry.kind "M")
+             (or (not (split-blame-needed? state entry))
                  (not= nil (. state.split_cache (split-key state entry))))
              (gutters-ready? state entry key) true))))
 
@@ -461,10 +474,10 @@ ask for, so their cache keys are ready when the output is imported."
     (if ok
         (let [styled (diff-highlight state entry output)
               (lines numbers refs) (format.diff-lines state output entry styled)
-              split-rows (if (= entry.kind "M")
+              split-rows (if (two-sided? entry)
                              (split.parse-rows output state.revision_old_label
                                                state.revision_new_label
-                                               state.hide_comments? styled)
+                                               state.hide_comments? styled entry)
                              [])]
           {: lines
            :numbers (or numbers false)
@@ -479,19 +492,18 @@ ask for, so their cache keys are ready when the output is imported."
 (fn warm-entry [state entry]
   (if (not entry) {:lines (format.no-selection state) :split []}
       (assets.asset? entry) {:lines (format.asset state entry) :split []}
-      entry.untracked? (let [(lines numbers) (file-lines state entry)]
-                         {: lines :numbers (or numbers false) :split []})
+      (whole-file? entry) (let [(lines numbers) (file-lines state entry)]
+                            {: lines :numbers (or numbers false) :split []})
       (warm-diff-entry state entry)))
 
 (fn cache-split [state entry]
-  (when (and entry (= entry.kind "M") (not entry.untracked?)
-             (not (assets.asset? entry)))
+  (when (and (two-sided? entry) (not (assets.asset? entry)))
     (let [key (split-key state entry)]
       (when (not (. state.split_cache key))
         (compute-split-rows state entry key)))))
 
 (fn splittable? [state entry]
-  (and entry (= entry.kind "M") (split.splittable? (split-rows state entry))))
+  (and (two-sided? entry) (split.splittable? (split-rows state entry))))
 
 (fn split? [state entry]
   (and state.split_mode? (splittable? state entry)))
@@ -678,9 +690,9 @@ ask for, so their cache keys are ready when the output is imported."
 with its rows when side-by-side view would show them, else `:unified` with
 its lines and their line refs when known. Nothing when the preview is not
 cached yet."
-  (when (and entry (not entry.untracked?) (not (assets.asset? entry)))
+  (when (and entry (not (whole-file? entry)) (not (assets.asset? entry)))
     (let [key (cache-key state entry)
-          rows (and state.split_mode? (= entry.kind "M")
+          rows (and (split-blame-needed? state entry)
                     (. state.split_cache (split-key state entry)))]
       (if (and rows (split.splittable? rows))
           (values :split rows)

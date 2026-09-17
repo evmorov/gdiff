@@ -11,7 +11,7 @@
 (local str (require :util.string))
 
 (fn move-note [state ?entry]
-  (let [note (moves.note (or ?entry {}))]
+  (let [note (moves.title-note (or ?entry {}))]
     (if (= note "") "" (tui.color state.theme :status-renamed note))))
 
 (fn header [state path ?entry]
@@ -160,8 +160,9 @@
                                                 {:side :new :no acc.new-no})))
                              :meta (fn [_acc line]
                                      (push (color-line state line)))})]
-    (let [header-path (or acc.new-path acc.old-path)]
-      (when (and header-path (< 0 (length out)))
+    (let [diff-path (or acc.new-path acc.old-path)
+          header-path (or (and ?entry ?entry.path) diff-path)]
+      (when (and diff-path (< 0 (length out)))
         (each [i line (ipairs (header state header-path ?entry))]
           (table.insert out i line)
           (table.insert numbers i false)

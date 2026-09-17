@@ -152,11 +152,24 @@
                                                           (line-weights all))))]
       {:from pair.from.entry :to pair.to.entry :score pair.score})))
 
+(fn percent [entry]
+  (.. (math.floor (* 100 (or entry.moved_score 0))) "%"))
+
 (fn note [entry]
-  (let [percent (.. (math.floor (* 100 (or entry.moved_score 0))) "%")]
-    (if entry.moved_to (.. " (moved to " entry.moved_to ", " percent ")")
-        entry.moved_from (.. " (moved from " entry.moved_from ", " percent ")")
-        "")))
+  (if entry.moved_to (.. " (moved to " entry.moved_to ", " (percent entry) ")")
+      entry.moved_from (.. " (moved from " entry.moved_from ", "
+                           (percent entry) ")")
+      ""))
+
+(fn title-note [entry]
+  (if entry.moved_to (.. " (moved to, " (percent entry) ")")
+      entry.moved_from (.. " (moved from, " (percent entry) ")")
+      ""))
+
+(fn side-title-notes [?entry]
+  (when (and ?entry (or ?entry.moved_to ?entry.moved_from))
+    {:old (.. " (moved, old, " (percent ?entry) ")")
+     :new (.. " (moved, new, " (percent ?entry) ")")}))
 
 (fn annotate [entries contents]
   (let [cands (candidates entries)]
@@ -168,4 +181,4 @@
         (set pair.to.moved_score pair.score))))
   entries)
 
-{: annotate : candidates : note : pair-moves}
+{: annotate : candidates : note : pair-moves : side-title-notes : title-note}

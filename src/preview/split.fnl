@@ -4,6 +4,7 @@
 (local comments (require :preview.comments))
 (local line-moves (require :preview.line-moves))
 (local highlight (require :preview.highlight))
+(local file-moves (require :git.moves))
 (local str (require :util.string))
 
 (fn ordered-pairs [pairs]
@@ -70,16 +71,22 @@
   (let [name (str.basename path)]
     (if (and ?ref (< 0 (length ?ref))) (.. name " (" ?ref ")") name)))
 
-(fn prepend-header [acc rows ?old-ref ?new-ref]
+(fn move-title [path note]
+  (.. (str.basename path) note))
+
+(fn prepend-header [acc rows ?old-ref ?new-ref ?entry]
   (let [old-path (header-path acc.old-path acc.new-path)
-        new-path (header-path acc.new-path acc.old-path)]
+        new-path (header-path acc.new-path acc.old-path)
+        ?notes (file-moves.side-title-notes ?entry)]
     (when (and old-path (has-content? rows))
-      (let [old-title (header-title old-path ?old-ref)
-            new-title (header-title new-path ?new-ref)]
+      (let [old-title (if ?notes (move-title old-path ?notes.old)
+                          (header-title old-path ?old-ref))
+            new-title (if ?notes (move-title new-path ?notes.new)
+                          (header-title new-path ?new-ref))]
         (table.insert rows 1 {:kind :rule :old old-title :new new-title})
         (table.insert rows 1 {:kind :filename :old old-title :new new-title})))))
 
-(fn parse-rows [text ?old-ref ?new-ref ?hide-comments? ?highlight]
+(fn parse-rows [text ?old-ref ?new-ref ?hide-comments? ?highlight ?entry]
   (let [ws-hunks (diff-parse.whitespace-only-hunks text)
         moves (line-moves.detect text)
         rows []
@@ -119,7 +126,7 @@
                                           (tag-comments acc row)
                                           (when (not (hidden? row))
                                             (table.insert rows row))))})]
-    (prepend-header acc rows ?old-ref ?new-ref)
+    (prepend-header acc rows ?old-ref ?new-ref ?entry)
     rows))
 
 (fn splittable? [rows]

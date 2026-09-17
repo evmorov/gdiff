@@ -111,23 +111,81 @@
                             "-old code"] "\n")
         lines (preview-format.diff-lines state diff entry)]
     (faith.= (.. "progress.rb"
-                 (tui.color state.theme :status-renamed
-                            " (moved to lib/steps/progress.rb, 60%)"))
+                 (tui.color state.theme :status-renamed " (moved to, 60%)"))
              (. lines 1))))
 
-(fn test-untracked-preview-header-shows-move-note []
+(local progress-lines ["class Progress"
+                       "  def run"
+                       "    step_one"
+                       "    step_two"
+                       "  end"
+                       "end"])
+
+(fn progress-source [replacement]
+  (.. (table.concat (icollect [_ line (ipairs progress-lines)]
+                      (if (= line "    step_one") replacement line))
+                    "\n") "\n"))
+
+(fn setup-moved-pair []
   (t.init-repo)
-  (t.write-file "progress.rb" "puts 1\n")
-  (let [state (state)
-        entry {:kind "A"
+  (t.mkdir "lib")
+  (t.write-file "lib/progress.rb" (progress-source "    step_one"))
+  (t.commit-all "initial")
+  (t.sh "rm lib/progress.rb")
+  (t.mkdir "lib/steps")
+  (t.write-file "lib/steps/progress.rb" (progress-source "    step_first"))
+  (let [(entries err) (git.diff-entries git.working-revision)
+        by-path (collect [_ entry (ipairs entries)] (values entry.path entry))
+        deleted (. by-path "lib/progress.rb")
+        added (. by-path "lib/steps/progress.rb")]
+    (faith.= nil err)
+    (faith.= "lib/steps/progress.rb" deleted.moved_to)
+    (faith.= "lib/progress.rb" added.moved_from)
+    (faith.= true added.untracked?)
+    (values deleted added)))
+
+(fn moved-pair-state []
+  (doto (state)
+    (tset :revision git.working-revision)
+    (tset :split_cache {})))
+
+(fn test-moved-pair-previews-diff-from-old-file-to-new-file []
+  (let [(deleted added) (setup-moved-pair)
+        state (moved-pair-state)
+        deleted-text (t.text (preview.lines state deleted))
+        added-text (t.text (preview.lines state added))]
+    (faith.match "^progress%.rb %(moved to, %d+%%%)\n" deleted-text)
+    (faith.match "^progress%.rb %(moved from, %d+%%%)\n" added-text)
+    (each [_ text (ipairs [deleted-text added-text])]
+      (faith.match "\n@@ %-1,6 %+1,6 @@\n" text
+                   "both sides must come from a file, not /dev/null")
+      (faith.match "\n    step_one\n" text)
+      (faith.match "\n    step_first\n" text))))
+
+(fn test-moved-pair-splits-old-file-left-and-new-file-right []
+  (let [(deleted added) (setup-moved-pair)
+        state (doto (moved-pair-state)
+                (tset :revision_old_label "HEAD")
+                (tset :revision_new_label "working tree"))]
+    (each [_ entry (ipairs [deleted added])]
+      (let [rows (preview.split-rows state entry)
+            change (accumulate [found nil _ row (ipairs rows) &until found]
+                     (when (= row.kind :change) row))]
+        (faith.= true (preview.splittable? state entry))
+        (faith.= :filename (. rows 1 :kind))
+        (faith.match "^progress%.rb %(moved, old, %d+%%%)$" (. rows 1 :old))
+        (faith.match "^progress%.rb %(moved, new, %d+%%%)$" (. rows 1 :new))
+        (faith.= "    step_one" change.old)
+        (faith.= "    step_first" change.new)))))
+
+(fn test-moved-pair-has-its-own-preview-key []
+  (let [plain {:kind "A" :path "lib/steps/progress.rb" :status "A"}
+        moved {:kind "A"
                :moved_from "lib/progress.rb"
-               :moved_score 0.41
-               :path "progress.rb"
-               :status "A"
-               :untracked? true}
-        lines (preview.lines state entry)]
-    (faith.= "progress.rb (moved from lib/progress.rb, 41%)"
-             (tui.strip-ansi (. lines 1)))))
+               :path "lib/steps/progress.rb"
+               :status "A"}]
+    (faith.not= (preview-key.for-entry "HEAD" plain)
+                (preview-key.for-entry "HEAD" moved))))
 
 (fn test-preview-format-keeps-comments-by-default []
   (let [lines (preview-format.diff-lines (state) commented-diff)]
@@ -1029,7 +1087,9 @@
  : test-scroll-info-only-appears-when-preview-overflows
  : test-startup-can-cache-selected-preview-before-rendering
  : test-preview-format-appends-move-note-to-diff-header
- : test-untracked-preview-header-shows-move-note
+ : test-moved-pair-previews-diff-from-old-file-to-new-file
+ : test-moved-pair-splits-old-file-left-and-new-file-right
+ : test-moved-pair-has-its-own-preview-key
  : test-untracked-file-preview-shows-added-content-and-caches
  : test-untracked-file-preview-shows-line-numbers
  : test-selection-lines-previews-expanded-listing-file

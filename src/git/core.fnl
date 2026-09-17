@@ -261,15 +261,21 @@ for three-dot ranges, the revision itself otherwise."
                     (set stats.no_tests_deletions ?code.no_tests_deletions))
                   (values stats nil)))))
 
+(fn move-preview-command [revision entry ?full-context?]
+  (let [(old-ref new-ref) (comparison-ref-targets revision)]
+    (when old-ref
+      (commands.move-preview-command old-ref new-ref entry ?full-context?))))
+
 (fn plain-diff-output [revision entry ?full-context?]
-  (sys.read-command (commands.plain-preview-command revision entry
-                                                    ?full-context?)))
+  (sys.read-command (or (and (commands.move-pair? entry)
+                             (move-preview-command revision entry
+                                                   ?full-context?))
+                        (commands.plain-preview-command revision entry
+                                                        ?full-context?))))
 
 (fn blame-target [revision entry side]
   (let [(old-ref new-ref) (comparison-ref-targets revision)]
-    (if (= side :old)
-        (values old-ref (or entry.old_path entry.path))
-        (values new-ref entry.path))))
+    (values (if (= side :old) old-ref new-ref) (commands.side-path entry side))))
 
 (fn blame-lines [revision entry side ?ranges]
   (let [(?ref path) (blame-target revision entry side)]
@@ -350,6 +356,8 @@ for three-dot ranges, the revision itself otherwise."
  : resolve-pr-revision
  : status-role
  :show-file-command commands.show-file-command
+ :move-pair? commands.move-pair?
+ :side-path commands.side-path
  :working-revision commands.working-revision
  :files-revision commands.files-revision
  :files? commands.files?

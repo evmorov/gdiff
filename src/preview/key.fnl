@@ -1,5 +1,6 @@
 (fn for-entry [revision entry ?full-context? ?hide-comments? ?highlight?]
   (.. revision "\0" entry.status "\0" (or entry.old_path "") "\0" entry.path
+      "\0" (or entry.moved_from entry.moved_to "")
       (if ?full-context? "\0full" "") (if ?hide-comments? "\0nocomments" "")
       (if ?highlight? "\0syntax" "")))
 

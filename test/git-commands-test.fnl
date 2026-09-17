@@ -25,6 +25,45 @@
            (commands.preview-command "main...feature" {:path "src/a b.rb"}
                                      "never" true)))
 
+(fn test-preview-command-includes-both-paths-of-a-rename []
+  (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies HEAD -- 'old/a b.rb' 'new/a b.rb'"
+           (commands.preview-command commands.working-revision
+                                     {:path "new/a b.rb"
+                                      :old_path "old/a b.rb"
+                                      :status "R"}
+                                     "never")))
+
+(fn test-move-preview-command-diffs-old-blob-against-new-blob-or-file []
+  (faith.= "git diff --no-ext-diff --color=never 'main:lib/a b.rb' 'feature:lib/steps/a b.rb' 2>&1"
+           (commands.move-preview-command "main" "feature"
+                                          {:kind "D"
+                                           :moved_to "lib/steps/a b.rb"
+                                           :path "lib/a b.rb"}))
+  (faith.= "git diff --no-ext-diff --color=never -U99999 'HEAD:lib/a.rb' -- 'lib/steps/a.rb' 2>&1"
+           (commands.move-preview-command "HEAD" nil
+                                          {:kind "A"
+                                           :moved_from "lib/a.rb"
+                                           :path "lib/steps/a.rb"
+                                           :untracked? true}
+                                          true)))
+
+(fn test-side-path-follows-renames-and-detected-moves []
+  (let [renamed {:kind "R" :old_path "old.rb" :path "new.rb"}
+        from {:kind "D" :moved_to "lib/new.rb" :path "old.rb"}
+        to {:kind "A" :moved_from "old.rb" :path "lib/new.rb"}
+        plain {:kind "M" :path "same.rb"}]
+    (faith.= "old.rb" (commands.side-path renamed :old))
+    (faith.= "new.rb" (commands.side-path renamed :new))
+    (faith.= "old.rb" (commands.side-path from :old))
+    (faith.= "lib/new.rb" (commands.side-path from :new))
+    (faith.= "old.rb" (commands.side-path to :old))
+    (faith.= "lib/new.rb" (commands.side-path to :new))
+    (faith.= "same.rb" (commands.side-path plain :old))
+    (faith.= "same.rb" (commands.side-path plain :new))
+    (faith.= true (commands.move-pair? from))
+    (faith.= true (commands.move-pair? to))
+    (faith.= false (commands.move-pair? plain))))
+
 (fn test-working-commands-diff-against-head []
   (faith.= "git diff --name-status --find-renames --find-copies HEAD 2>&1"
            (commands.diff-command commands.working-revision))
@@ -143,6 +182,9 @@
  : test-show-file-command-quotes-ref-and-path
  : test-preview-command-quotes-revision-and-path
  : test-preview-command-requests-full-context
+ : test-preview-command-includes-both-paths-of-a-rename
+ : test-move-preview-command-diffs-old-blob-against-new-blob-or-file
+ : test-side-path-follows-renames-and-detected-moves
  : test-working-commands-diff-against-head
  : test-working-untracked-preview-uses-no-index
  : test-pr-fetch-commands-quote-refs

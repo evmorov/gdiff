@@ -106,7 +106,7 @@ end
     (faith.= nil other-deleted.moved_to)
     (faith.= nil other-added.moved_from)))
 
-(fn test-diff-entries-annotates-rewritten-move-in-range-mode []
+(fn setup-committed-move []
   (t.init-repo)
   (t.mkdir "lib/acme/v2")
   (t.write-file "lib/acme/v2/progress.rb" old-progress)
@@ -116,7 +116,10 @@ end
   (t.sh "rm lib/acme/v2/progress.rb")
   (t.mkdir "lib/acme/v2/steps")
   (t.write-file "lib/acme/v2/steps/progress.rb" new-progress)
-  (t.commit-all "move progress")
+  (t.commit-all "move progress"))
+
+(fn test-diff-entries-annotates-rewritten-move-in-range-mode []
+  (setup-committed-move)
   (let [(entries err) (git.diff-entries "main...feature")
         deleted (entry-for entries "lib/acme/v2/progress.rb")
         added (entry-for entries "lib/acme/v2/steps/progress.rb")]
@@ -125,6 +128,65 @@ end
     (faith.= "A" added.kind)
     (faith.= "lib/acme/v2/steps/progress.rb" deleted.moved_to)
     (faith.= "lib/acme/v2/progress.rb" added.moved_from)))
+
+(fn assert-move-diff [output]
+  (faith.match "%-%-%- a/lib/acme/v2/progress%.rb" output)
+  (faith.match "%+%+%+ b/lib/acme/v2/steps/progress%.rb" output)
+  (faith.match "\n%-class ProgressTracker" output)
+  (faith.match "\n%+module Steps" output))
+
+(fn test-plain-diff-output-for-committed-move-diffs-old-file-against-new []
+  (setup-committed-move)
+  (let [entries (git.diff-entries "main...feature")
+        deleted (entry-for entries "lib/acme/v2/progress.rb")
+        added (entry-for entries "lib/acme/v2/steps/progress.rb")
+        (deleted-output deleted-ok) (git.plain-diff-output "main...feature"
+                                                           deleted)
+        (added-output added-ok) (git.plain-diff-output "main...feature" added)]
+    (faith.= true deleted-ok)
+    (faith.= true added-ok)
+    (assert-move-diff deleted-output)
+    (faith.= deleted-output added-output)))
+
+(fn test-plain-diff-output-for-untracked-move-diffs-old-file-against-disk []
+  (t.init-repo)
+  (t.mkdir "lib/acme/v2")
+  (t.write-file "lib/acme/v2/progress.rb" old-progress)
+  (t.commit-all "initial")
+  (t.sh "rm lib/acme/v2/progress.rb")
+  (t.mkdir "lib/acme/v2/steps")
+  (t.write-file "lib/acme/v2/steps/progress.rb" new-progress)
+  (let [entries (git.diff-entries git.working-revision)
+        deleted (entry-for entries "lib/acme/v2/progress.rb")
+        added (entry-for entries "lib/acme/v2/steps/progress.rb")
+        (deleted-output deleted-ok) (git.plain-diff-output git.working-revision
+                                                           deleted)
+        (added-output added-ok) (git.plain-diff-output git.working-revision
+                                                       added)]
+    (faith.= true added.untracked?)
+    (faith.= true deleted-ok)
+    (faith.= true added-ok)
+    (assert-move-diff deleted-output)
+    (faith.= deleted-output added-output)))
+
+(fn test-plain-diff-output-for-rename-shows-changes-between-both-paths []
+  (t.init-repo)
+  (t.mkdir "spec")
+  (t.write-file "spec/api_spec.rb" "describe 'api' do\n  it 'works'\nend\n")
+  (t.commit-all "initial")
+  (t.mkdir "spec/v2")
+  (t.sh "git mv spec/api_spec.rb spec/v2/api_spec.rb")
+  (t.write-file "spec/v2/api_spec.rb"
+                "describe 'api' do\n  it 'still works'\nend\n")
+  (let [entries (git.diff-entries git.working-revision)
+        renamed (entry-for entries "spec/v2/api_spec.rb")
+        (output ok) (git.plain-diff-output git.working-revision renamed)]
+    (faith.= "R" renamed.kind)
+    (faith.= true ok)
+    (faith.match "%-%-%- a/spec/api_spec%.rb" output)
+    (faith.match "%+%+%+ b/spec/v2/api_spec%.rb" output)
+    (faith.match "\n%-  it 'works'" output)
+    (faith.= nil (string.find output "+describe" 1 true))))
 
 (fn test-diff-entries-reports-working-tree-changes []
   (setup-changed-repo)
@@ -135,9 +197,9 @@ end
               "deleted.txt" {:kind "D" :reviewed false :status "D"}
               "modified.txt" {:kind "M" :reviewed false :status "M"}
               "spec/acme/api/v2_spec.rb" {:kind "R"
-                                            :old_path "spec/acme/api_spec.rb"
-                                            :reviewed false
-                                            :status "R"}}
+                                          :old_path "spec/acme/api_spec.rb"
+                                          :reviewed false
+                                          :status "R"}}
              (entries-by-path entries))))
 
 (fn test-diff-entries-with-working-marks-unstaged-changes []
@@ -165,9 +227,9 @@ end
                                :unstaged? true
                                :untracked? true}
               "spec/acme/api/v2_spec.rb" {:kind "R"
-                                            :status "R"
-                                            :unstaged? false
-                                            :untracked? false}}
+                                          :status "R"
+                                          :unstaged? false
+                                          :untracked? false}}
              (staging-by-path entries))))
 
 (fn test-diff-entries-with-working-shows-modified-unstaged-file []
@@ -178,9 +240,9 @@ end
   (let [(entries err) (git.diff-entries git.working-revision)]
     (faith.= nil err)
     (faith.= {"acme.rb" {:kind "M"
-                           :status "M"
-                           :unstaged? true
-                           :untracked? false}}
+                         :status "M"
+                         :unstaged? true
+                         :untracked? false}}
              (staging-by-path entries))))
 
 (fn test-diff-entries-with-working-keeps-staged-status []
@@ -651,6 +713,9 @@ end
  : test-plain-diff-output-for-folder-entry-shows-only-that-file
  : test-diff-entries-annotates-untracked-move-in-working-mode
  : test-diff-entries-annotates-rewritten-move-in-range-mode
+ : test-plain-diff-output-for-committed-move-diffs-old-file-against-new
+ : test-plain-diff-output-for-untracked-move-diffs-old-file-against-disk
+ : test-plain-diff-output-for-rename-shows-changes-between-both-paths
  : test-diff-entries-reports-working-tree-changes
  : test-diff-entries-with-working-marks-unstaged-changes
  : test-diff-entries-with-working-shows-modified-unstaged-file

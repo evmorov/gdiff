@@ -24,6 +24,15 @@
 (fn untracked? [entry]
   (= true entry.untracked?))
 
+(fn move-pair? [entry]
+  (if (and entry (or entry.moved_from entry.moved_to))
+      true
+      false))
+
+(fn side-path [entry side]
+  (if (= side :old) (or entry.old_path entry.moved_from entry.path)
+      (or entry.moved_to entry.path)))
+
 (fn diff-ref [revision]
   (if (working? revision) "HEAD" (sys.shell-quote revision)))
 
@@ -121,11 +130,16 @@
           " " (sys.shell-quote (or entry.new_file "/dev/null")))
       (no-index-target revision)))
 
+(fn pathspec [entry]
+  (if (and entry.old_path (not= entry.old_path entry.path))
+      (.. (sys.shell-quote entry.old_path) " " (sys.shell-quote entry.path))
+      (sys.shell-quote entry.path)))
+
 (fn diff-target [revision entry]
   (if (files? revision) (files-entry-target revision entry)
       (and (working? revision) (untracked? entry))
       (.. "--no-index -- /dev/null " (sys.shell-quote entry.path))
-      (.. (diff-ref revision) " -- " (sys.shell-quote entry.path))))
+      (.. (diff-ref revision) " -- " (pathspec entry))))
 
 (local full-context-lines 99999)
 
@@ -141,6 +155,18 @@
       (if (or (files? revision) (and (working? revision) (untracked? entry)))
           " || true"
           "")))
+
+(fn move-side-target [?ref path]
+  (if ?ref
+      (sys.shell-quote (.. ?ref ":" path))
+      (.. "-- " (sys.shell-quote path))))
+
+(fn move-preview-command [old-ref ?new-ref entry ?full-context?]
+  "Diff the two files of a detected move: the old path as a blob at `old-ref`
+against the new path as a blob at `?new-ref`, or on disk when there is none."
+  (.. "git diff --no-ext-diff --color=never " (context-flag ?full-context?)
+      (move-side-target old-ref (side-path entry :old)) " "
+      (move-side-target ?new-ref (side-path entry :new)) " 2>&1"))
 
 {: base-temp-path
  : blame-command
@@ -158,6 +184,8 @@
  : linked-pr-url-command
  : local-branch-command
  : merge-base-command
+ : move-pair?
+ : move-preview-command
  : plain-preview-command
  : pr-info-command
  : preview-command
@@ -165,6 +193,7 @@
  : resolve-commit-command
  : revision-exists-command
  : show-file-command
+ : side-path
  : staged-paths-command
  : untracked-command
  : working-revision

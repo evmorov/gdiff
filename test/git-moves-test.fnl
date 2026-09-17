@@ -154,6 +154,22 @@ end
            (moves.note {:moved_from "lib/progress.rb" :moved_score 0.41}))
   (faith.= "" (moves.note {:kind "D" :path "a.rb"})))
 
+(fn test-title-notes-leave-out-the-partner-path []
+  (faith.= " (moved to, 60%)"
+           (moves.title-note {:moved_score 0.6
+                              :moved_to "lib/steps/progress.rb"}))
+  (faith.= " (moved from, 41%)"
+           (moves.title-note {:moved_from "lib/progress.rb" :moved_score 0.41}))
+  (faith.= "" (moves.title-note {:kind "D" :path "a.rb"}))
+  (faith.= {:old " (moved, old, 60%)" :new " (moved, new, 60%)"}
+           (moves.side-title-notes {:moved_score 0.6
+                                    :moved_to "lib/steps/progress.rb"}))
+  (faith.= {:old " (moved, old, 41%)" :new " (moved, new, 41%)"}
+           (moves.side-title-notes {:moved_from "lib/progress.rb"
+                                    :moved_score 0.41}))
+  (faith.= nil (moves.side-title-notes {:kind "M" :path "a.rb"}))
+  (faith.= nil (moves.side-title-notes nil)))
+
 {: test-annotate-marks-rewritten-move-with-same-name
  : test-annotate-pairs-renamed-file-on-strong-content-match
  : test-annotate-skips-ambiguous-targets-without-name-match
@@ -166,4 +182,5 @@ end
  : test-annotate-skips-entries-without-content
  : test-candidates-requires-both-sides
  : test-candidates-caps-pair-count
- : test-note-formats-move-annotations}
+ : test-note-formats-move-annotations
+ : test-title-notes-leave-out-the-partner-path}

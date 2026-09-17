@@ -65,21 +65,27 @@
         (exit-with-error err)
         (run revision options src-dir pr.url))))
 
+(fn exit-with-usage [message]
+  (io.stderr:write message "\n")
+  (args.usage)
+  (os.exit 1))
+
+(fn resolve-revision [?revision]
+  (if (not ?revision) (git.default-revision)
+      (git.stash? ?revision) (git.stash-revision)
+      (values ?revision nil)))
+
+(fn run-revision [?revision options src-dir]
+  (let [(revision err) (resolve-revision ?revision)]
+    (if err
+        (exit-with-usage err)
+        (run revision options src-dir))))
+
 (fn main [argv src-dir]
   (let [(options revision err pr) (args.parse argv)]
     (if options.help? (args.usage io.stdout)
-        err (do
-              (io.stderr:write err "\n")
-              (args.usage)
-              (os.exit 1))
+        err (exit-with-usage err)
         pr (run-pr pr options src-dir)
-        revision (run revision options src-dir)
-        (let [(revision err) (git.default-revision)]
-          (if err
-              (do
-                (io.stderr:write err "\n")
-                (args.usage)
-                (os.exit 1))
-              (run revision options src-dir))))))
+        (run-revision revision options src-dir))))
 
 {: handle-key : main : new-state : view}

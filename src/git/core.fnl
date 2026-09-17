@@ -29,6 +29,11 @@
       (values "master" nil)
       (values nil "No revision provided, and neither main nor master exists.")))
 
+(fn stash-revision []
+  (if (revision-exists? commands.stash-ref)
+      (values (commands.stash-range) nil)
+      (values nil "No stash found.")))
+
 (fn current-branch []
   (or (read-trimmed (commands.current-branch-command)) "HEAD"))
 
@@ -354,11 +359,13 @@ for three-dot ranges, the revision itself otherwise."
  : pr-revision-from-fetched-info
  : pr-revision-from-info
  : resolve-pr-revision
+ : stash-revision
  : status-role
  :show-file-command commands.show-file-command
  :move-pair? commands.move-pair?
  :side-path commands.side-path
  :working-revision commands.working-revision
+ :stash? commands.stash?
  :files-revision commands.files-revision
  :files? commands.files?
  : plain-diff-output

@@ -27,7 +27,7 @@ That means reading a lot more diffs than before. gdiff is built for that: a diff
 - Toggles for line numbers and line wrapping.
 - Resizable split between the file list and the diff.
 - Header stats: added and deleted lines in total, for code only, for comments only, and outside test files.
-- Diff a revision range, a branch against main or master, the working tree, two files, or two folders.
+- Diff a revision range, a branch against main or master, the working tree, the last stash, two files, or two folders.
 - Review a GitHub pull request by URL. gdiff fetches the PR refs, so the diff matches what GitHub shows even without the branch locally.
 - Flat file list or a file tree with folders you can expand and collapse.
 - Colored status for every file: added, modified, deleted, renamed, copied, untracked.
@@ -74,6 +74,12 @@ Review uncommitted changes in the working tree:
 
 ```sh
 gdiff w
+```
+
+Review the last stash. The diff shows what `git stash pop` would apply, that is the stashed files against the commit the stash was made on:
+
+```sh
+gdiff s
 ```
 
 Review a pull request:

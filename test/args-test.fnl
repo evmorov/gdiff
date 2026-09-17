@@ -13,6 +13,16 @@
     (faith.= nil err)
     (faith.= commands.working-revision revision)))
 
+(fn test-parses-stash-keyword []
+  (let [(_options revision err) (args.parse ["stash"])]
+    (faith.= nil err)
+    (faith.= commands.stash-revision revision)))
+
+(fn test-parses-stash-shorthand []
+  (let [(_options revision err) (args.parse ["s"])]
+    (faith.= nil err)
+    (faith.= commands.stash-revision revision)))
+
 (fn test-parses-editor-and-revision []
   (let [(options revision err) (args.parse ["--editor" "nvim" "main" "HEAD"])]
     (faith.= nil err)
@@ -125,6 +135,8 @@
  : test-parses-help-flag
  : test-parses-help-shorthand
  : test-parses-pr-url
+ : test-parses-stash-keyword
+ : test-parses-stash-shorthand
  : test-parses-two-existing-files-as-file-comparison
  : test-parses-two-existing-folders-as-file-comparison
  : test-parses-pr-url-with-trailing-path

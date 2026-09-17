@@ -19,6 +19,40 @@
              :unstaged? (= true entry.unstaged?)
              :untracked? (= true entry.untracked?)})))
 
+(fn setup-stashed-repo []
+  (t.init-repo)
+  (t.write-file "kept.txt" "same\n")
+  (t.write-file "modified.txt" "before\n")
+  (t.commit-all "initial")
+  (t.write-file "modified.txt" "after\n")
+  (t.write-file "added.txt" "new\n")
+  (t.sh "git add added.txt")
+  (t.sh "git stash push")
+  (t.write-file "kept.txt" "changed after stashing\n")
+  (t.commit-all "later"))
+
+(fn test-stash-revision-without-stash-reports-error []
+  (t.init-repo)
+  (t.write-file "a.txt" "a\n")
+  (t.commit-all "initial")
+  (let [(revision err) (git.stash-revision)]
+    (faith.= nil revision)
+    (faith.= "No stash found." err)))
+
+(fn test-stash-revision-diffs-last-stash-against-its-base []
+  (setup-stashed-repo)
+  (let [(revision err) (git.stash-revision)]
+    (faith.= nil err)
+    (faith.= "stash@{0}^...stash@{0}" revision)
+    (let [(entries entries-err) (git.diff-entries revision)]
+      (faith.= nil entries-err)
+      (faith.= {:added.txt {:kind "A" :reviewed false :status "A"}
+                :modified.txt {:kind "M" :reviewed false :status "M"}}
+               (entries-by-path entries)))
+    (let [(output ok) (git.plain-diff-output revision {:path "modified.txt"})]
+      (faith.is ok)
+      (faith.match "%-before\n%+after" output))))
+
 (fn setup-changed-repo []
   (t.init-repo)
   (t.mkdir "spec/acme/api")
@@ -725,6 +759,8 @@ end
  : test-diff-stats-no-tests-totals-exclude-test-folders
  : test-diff-stats-reports-total-additions-and-deletions
  : test-linked-pr-url-command-quotes-branch
+ : test-stash-revision-diffs-last-stash-against-its-base
+ : test-stash-revision-without-stash-reports-error
  : test-parse-pr-info-reads-gh-output-lines
  : test-pr-revision-fetches-pull-head-for-deleted-branch
  : test-pr-revision-from-fetched-info-avoids-network

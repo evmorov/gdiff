@@ -11,6 +11,7 @@ Examples:
   gdiff                                 Diff against main, or master.
   gdiff main HEAD                       Compare two revisions (main...HEAD).
   gdiff w                               Review working changes (also: working).
+  gdiff s                               Show the last stash (also: stash).
   gdiff old.txt new.txt                 Compare two files.
   gdiff old-dir new-dir                 Compare two folders.
   gdiff https://github.com/o/r/pull/1   Review a PR; fetches it when needed.
@@ -75,6 +76,8 @@ Press ? inside gdiff for keyboard shortcuts.
     1 (let [revision (. positionals 1)]
         (if (or (= revision "working") (= revision "w"))
             (values commands.working-revision nil)
+            (or (= revision "stash") (= revision "s"))
+            (values commands.stash-revision nil)
             (two-dot-range? revision)
             (values revision "Two-dot ranges are not supported; use ...")
             (values revision nil)))

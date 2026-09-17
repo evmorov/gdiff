@@ -5,6 +5,16 @@
 (fn working? [revision]
   (= revision working-revision))
 
+(local stash-revision :stash)
+
+(fn stash? [revision]
+  (= revision stash-revision))
+
+(local stash-ref "stash@{0}")
+
+(fn stash-range []
+  (.. stash-ref "^..." stash-ref))
+
 (local files-prefix "files\31")
 
 (fn files-revision [left right]
@@ -195,6 +205,10 @@ against the new path as a blob at `?new-ref`, or on disk when there is none."
  : show-file-command
  : side-path
  : staged-paths-command
+ : stash-range
+ : stash-ref
+ : stash-revision
+ : stash?
  : untracked-command
  : working-revision
  : working?}

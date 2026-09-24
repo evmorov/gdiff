@@ -50,7 +50,7 @@
   "git -c core.quotePath=false ls-files --others --exclude-standard 2>&1")
 
 (fn staged-paths-command []
-  "git diff --cached --name-only --find-renames --find-copies 2>&1")
+  "git diff --cached --name-only --find-renames 2>&1")
 
 (fn revision-exists-command [revision]
   (.. "git rev-parse --verify --quiet "
@@ -85,21 +85,19 @@
 (fn diff-command [revision]
   (if (files? revision)
       (.. "git diff --name-status " (no-index-target revision) " 2>&1 || true")
-      (.. "git diff --name-status --find-renames --find-copies "
-          (diff-ref revision) " 2>&1")))
+      (.. "git diff --name-status --find-renames " (diff-ref revision) " 2>&1")))
 
 (fn diff-stats-command [revision]
   (if (files? revision)
       (.. "git diff --numstat " (no-index-target revision) " 2>&1 || true")
-      (.. "git diff --numstat --find-renames --find-copies "
-          (diff-ref revision) " 2>&1")))
+      (.. "git diff --numstat --find-renames " (diff-ref revision) " 2>&1")))
 
 (fn diff-patch-command [revision]
   (if (files? revision)
       (.. "git diff --no-ext-diff -U0 " (no-index-target revision)
           " 2>&1 || true")
-      (.. "git diff --no-ext-diff -U0 --find-renames --find-copies "
-          (diff-ref revision) " 2>&1")))
+      (.. "git diff --no-ext-diff -U0 --find-renames " (diff-ref revision)
+          " 2>&1")))
 
 (fn cat-file-batch-command [specs]
   (let [quoted (icollect [_ spec (ipairs specs)]
@@ -157,7 +155,7 @@
   (if ?full-context? (.. "-U" full-context-lines " ") ""))
 
 (fn preview-command [revision entry color ?full-context?]
-  (.. "git diff --no-ext-diff --color=" color " --find-renames --find-copies "
+  (.. "git diff --no-ext-diff --color=" color " --find-renames "
       (context-flag ?full-context?) (diff-target revision entry)))
 
 (fn plain-preview-command [revision entry ?full-context?]

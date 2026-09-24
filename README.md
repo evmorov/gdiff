@@ -30,7 +30,7 @@ That means reading a lot more diffs than before. gdiff is built for that: a diff
 - Diff a revision range, a branch against main or master, the working tree, the last stash, two files, or two folders.
 - Review a GitHub pull request by URL. gdiff fetches the PR refs, so the diff matches what GitHub shows even without the branch locally.
 - Flat file list or a file tree with folders you can expand and collapse.
-- Colored status for every file: added, modified, deleted, renamed, copied, untracked.
+- Colored status for every file: added, modified, deleted, renamed, untracked.
 - Open the file in your editor at the current version, the base version, or the version on disk.
 - GUI editors such as IntelliJ IDEA, VS Code, or Cursor open in the background while gdiff keeps running. Terminal editors take over the screen and return to gdiff when closed.
 - Select lines and copy them, plain or fenced with the file path.

@@ -16,17 +16,17 @@
            (commands.repo-root-command)))
 
 (fn test-preview-command-quotes-revision-and-path []
-  (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies 'main...feature' -- 'src/a b.rb'"
+  (faith.= "git diff --no-ext-diff --color=never --find-renames 'main...feature' -- 'src/a b.rb'"
            (commands.preview-command "main...feature" {:path "src/a b.rb"}
                                      "never")))
 
 (fn test-preview-command-requests-full-context []
-  (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies -U99999 'main...feature' -- 'src/a b.rb'"
+  (faith.= "git diff --no-ext-diff --color=never --find-renames -U99999 'main...feature' -- 'src/a b.rb'"
            (commands.preview-command "main...feature" {:path "src/a b.rb"}
                                      "never" true)))
 
 (fn test-preview-command-includes-both-paths-of-a-rename []
-  (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies HEAD -- 'old/a b.rb' 'new/a b.rb'"
+  (faith.= "git diff --no-ext-diff --color=never --find-renames HEAD -- 'old/a b.rb' 'new/a b.rb'"
            (commands.preview-command commands.working-revision
                                      {:path "new/a b.rb"
                                       :old_path "old/a b.rb"
@@ -65,22 +65,22 @@
     (faith.= false (commands.move-pair? plain))))
 
 (fn test-working-commands-diff-against-head []
-  (faith.= "git diff --name-status --find-renames --find-copies HEAD 2>&1"
+  (faith.= "git diff --name-status --find-renames HEAD 2>&1"
            (commands.diff-command commands.working-revision))
-  (faith.= "git diff --numstat --find-renames --find-copies HEAD 2>&1"
+  (faith.= "git diff --numstat --find-renames HEAD 2>&1"
            (commands.diff-stats-command commands.working-revision))
-  (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies HEAD -- 'src/a b.rb'"
+  (faith.= "git diff --no-ext-diff --color=never --find-renames HEAD -- 'src/a b.rb'"
            (commands.preview-command commands.working-revision
                                      {:path "src/a b.rb" :status "M"} "never")))
 
 (fn test-working-untracked-preview-uses-no-index []
-  (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- /dev/null 'new file.rb'"
+  (faith.= "git diff --no-ext-diff --color=never --find-renames --no-index -- /dev/null 'new file.rb'"
            (commands.preview-command commands.working-revision
                                      {:path "new file.rb"
                                       :status "?"
                                       :untracked? true}
                                      "never"))
-  (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- /dev/null 'new file.rb' 2>&1 || true"
+  (faith.= "git diff --no-ext-diff --color=never --find-renames --no-index -- /dev/null 'new file.rb' 2>&1 || true"
            (commands.plain-preview-command commands.working-revision
                                            {:path "new file.rb"
                                             :status "?"
@@ -92,24 +92,24 @@
              (commands.diff-command revision))
     (faith.= "git diff --numstat --no-index -- 'a 1.txt' 'b/new.txt' 2>&1 || true"
              (commands.diff-stats-command revision))
-    (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- 'a 1.txt' 'b/new.txt' 2>&1 || true"
+    (faith.= "git diff --no-ext-diff --color=never --find-renames --no-index -- 'a 1.txt' 'b/new.txt' 2>&1 || true"
              (commands.plain-preview-command revision
                                              {:path "b/new.txt" :status "M"}))))
 
 (fn test-folder-comparison-previews-diff-one-file-per-entry []
   (let [revision (commands.files-revision "old dir" "new")]
-    (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- 'old dir/sub/mod.txt' 'new/sub/mod.txt' 2>&1 || true"
+    (faith.= "git diff --no-ext-diff --color=never --find-renames --no-index -- 'old dir/sub/mod.txt' 'new/sub/mod.txt' 2>&1 || true"
              (commands.plain-preview-command revision
                                              {:path "sub/mod.txt"
                                               :status "M"
                                               :old_file "old dir/sub/mod.txt"
                                               :new_file "new/sub/mod.txt"}))
-    (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- '/dev/null' 'new/added.txt' 2>&1 || true"
+    (faith.= "git diff --no-ext-diff --color=never --find-renames --no-index -- '/dev/null' 'new/added.txt' 2>&1 || true"
              (commands.plain-preview-command revision
                                              {:path "added.txt"
                                               :status "A"
                                               :new_file "new/added.txt"}))
-    (faith.= "git diff --no-ext-diff --color=never --find-renames --find-copies --no-index -- 'old dir/removed.txt' '/dev/null' 2>&1 || true"
+    (faith.= "git diff --no-ext-diff --color=never --find-renames --no-index -- 'old dir/removed.txt' '/dev/null' 2>&1 || true"
              (commands.plain-preview-command revision
                                              {:path "removed.txt"
                                               :status "D"
@@ -168,7 +168,7 @@
            (commands.untracked-command)))
 
 (fn test-staged-paths-command-lists-cached-names []
-  (faith.= "git diff --cached --name-only --find-renames --find-copies 2>&1"
+  (faith.= "git diff --cached --name-only --find-renames 2>&1"
            (commands.staged-paths-command)))
 
 {: test-basic-git-adapter-commands-are-centralized

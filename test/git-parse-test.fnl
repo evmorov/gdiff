@@ -46,6 +46,29 @@
               :reviewed false
               :status "D"} (. entries 3))))
 
+(fn test-no-index-skips-hidden-folders-but-keeps-hidden-files []
+  (let [text (.. "M\told/.git/HEAD\nD\told/.git/objects/ab\n"
+                 "A\tnew/sub/.cache/x\nM\told/.github/ci.yml\n"
+                 "D\told/.gitignore\nM\told/src/a.txt\n")
+        entries (parse.parse-no-index text "old" "new" true)]
+    (faith.= [".gitignore" "src/a.txt"]
+             (icollect [_ entry (ipairs entries)] entry.path))))
+
+(fn test-no-index-visible-strips-roots-before-checking-hidden-folders []
+  (let [visible? (parse.no-index-visible? "/home/me/.config/old"
+                                          "/home/me/.config/new")]
+    (faith.= true (visible? "/home/me/.config/{old => new}/init.lua"))
+    (faith.= true (visible? "/home/me/.config/old/.gitignore => /dev/null"))
+    (faith.= false (visible? "/home/me/.config/{old => new}/.git/HEAD"))
+    (faith.= false (visible? "/home/me/.config/old/.cache/x => /dev/null"))
+    (faith.= false (visible? "/dev/null => /home/me/.config/new/.idea/w.xml"))
+    (faith.= false (visible? "/home/me/.config/new/.git/HEAD"))
+    (faith.= false (visible? "home/me/.config/old/.git/HEAD"))
+    (faith.= true (visible? "home/me/.config/new/lua/init.lua"))
+    (faith.= false (visible? "/{home/me/.config/old/.cache/x => dev/null}"))
+    (faith.= true (visible? "/{home/me/.config/old/.hidden => dev/null}"))
+    (faith.= false (visible? "/{dev/null => home/me/.config/new/.idea/w.xml}"))))
+
 (fn test-no-index-keeps-single-file-comparison-entry []
   (faith.= {:kind "M"
             :new_file "new.txt"
@@ -80,6 +103,17 @@
     (faith.= 1 stats.deletions)
     (faith.= {:additions 2 :deletions 1} (. stats.files "src/app.fnl"))
     (faith.= nil (. stats.files "image.png"))))
+
+(fn test-numstat-applies-the-keep-predicate-to-totals []
+  (let [keep? (parse.no-index-visible? "old" "new")
+        stats (parse.parse-numstat (.. "1\t1\t{old => new}/.git/HEAD\n"
+                                       "0\t3\told/.cache/ab => /dev/null\n"
+                                       "2\t0\t{old => new}/.github/ci.yml\n"
+                                       "4\t0\t{old => new}/src/a.txt\n")
+                                   keep?)]
+    (faith.= 4 stats.additions)
+    (faith.= 0 stats.deletions)
+    (faith.= nil (. stats.files "{old => new}/.git/HEAD"))))
 
 (fn test-numstat-indexes-braced-rename-target []
   (let [stats (parse.parse-numstat "1\t0\tspec/acme/{api_spec.rb => api/v2_spec.rb}\n")]
@@ -151,9 +185,12 @@
  : test-no-index-folder-to-file-diffs-against-the-file
  : test-no-index-ignores-lines-that-are-not-name-status
  : test-no-index-keeps-single-file-comparison-entry
+ : test-no-index-skips-hidden-folders-but-keeps-hidden-files
+ : test-no-index-visible-strips-roots-before-checking-hidden-folders
  : test-no-index-parses-folder-comparison-lines
  : test-numstat-collects-totals-and-file-stats
  : test-numstat-indexes-braced-rename-target
+ : test-numstat-applies-the-keep-predicate-to-totals
  : test-working-marks-entries-absent-from-staged-set-as-unstaged
  : test-working-keeps-real-kind-for-staged-rename
  : test-path-set-collects-lines}

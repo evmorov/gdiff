@@ -59,19 +59,19 @@
 (fn join-path [dir rel]
   (.. (dir:gsub "/+$" "") "/" rel))
 
+(fn hidden-dir-path? [path]
+  (accumulate [found? false dir (string.gmatch path "([^/]+)/") &until found?]
+    (= "." (dir:sub 1 1))))
+
 (fn no-index-dir-entry [status path left right right-dir?]
-  (case status
-    "A" (let [rel (strip-dir-prefix path right)]
-          (when rel
-            (doto (entry "A" rel)
-              (tset :new_file path))))
-    "D" (let [rel (strip-dir-prefix path left)]
-          (when rel
-            (doto (entry "D" rel)
-              (tset :old_file path))))
-    "M" (let [rel (strip-dir-prefix path left)]
-          (when rel
-            (doto (entry "M" rel)
+  (let [rel (strip-dir-prefix path (if (= status "A") right left))]
+    (when (and rel (not (hidden-dir-path? rel)))
+      (case status
+        "A" (doto (entry "A" rel)
+              (tset :new_file path))
+        "D" (doto (entry "D" rel)
+              (tset :old_file path))
+        "M" (doto (entry "M" rel)
               (tset :old_file path)
               (tset :new_file (if right-dir? (join-path right rel) right)))))))
 
@@ -140,7 +140,7 @@ content may contain newlines and NUL bytes."
               (set pos (if line-end (+ line-end 1) (+ (length output) 1)))))))
     records))
 
-(fn parse-numstat [text]
+(fn parse-numstat [text ?keep?]
   (accumulate [stats {:additions 0 :deletions 0 :files {}} line (string.gmatch (or text
                                                                                    "")
                                                                                "[^\r\n]+")]
@@ -148,18 +148,44 @@ content may contain newlines and NUL bytes."
           additions (tonumber (. parts 1))
           deletions (tonumber (. parts 2))
           path (. parts 3)]
-      (when additions
-        (set stats.additions (+ stats.additions additions)))
-      (when deletions
-        (set stats.deletions (+ stats.deletions deletions)))
-      (when (and path additions deletions)
-        (add-file-stats stats.files path additions deletions))
+      (when (or (not ?keep?) (not path) (?keep? path))
+        (when additions
+          (set stats.additions (+ stats.additions additions)))
+        (when deletions
+          (set stats.deletions (+ stats.deletions deletions)))
+        (when (and path additions deletions)
+          (add-file-stats stats.files path additions deletions)))
       stats)))
+
+(fn rename-source-path [path]
+  (let [(prefix before _after suffix) (path:match "^(.-){(.-) => (.-)}(.*)$")]
+    (if prefix
+        (.. prefix before suffix)
+        (let [source (path:match "^(.-) => .-$")]
+          (and source (trim source))))))
+
+(fn no-index-file-path [path]
+  (let [target (rename-target-path path)]
+    (if (not target) path
+        (= target "/dev/null") (rename-source-path path)
+        target)))
+
+(fn unrooted [path]
+  (path:match "^/*(.*)$"))
+
+(fn no-index-visible? [left right]
+  (fn [path]
+    (let [file (unrooted (no-index-file-path path))
+          rel (or (strip-dir-prefix file (unrooted right))
+                  (strip-dir-prefix file (unrooted left)))]
+      (or (not rel) (not (hidden-dir-path? rel))))))
 
 {: entry
  : entry-from-name-status-line
+ : hidden-dir-path?
  : parse-cat-file-batch
  : parse-name-status
+ : no-index-visible?
  : parse-no-index
  : parse-numstat
  : parse-path-set

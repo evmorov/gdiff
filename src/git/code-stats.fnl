@@ -130,7 +130,7 @@
   (when (not (test-path? path))
     (tset stats no-tests-key (+ (. stats no-tests-key) 1))))
 
-(fn parse [text]
+(fn parse [text ?keep?]
   (var ?path nil)
   (let [stats {:additions 0
                :deletions 0
@@ -140,7 +140,11 @@
                :no_tests_deletions 0}]
     (each [line (string.gmatch (or text "") "[^\r\n]+")]
       (let [?header-path (header-path line)]
-        (if ?header-path (set ?path ?header-path) (header? line) nil
+        (if ?header-path
+            (set ?path (when (or (not ?keep?) (?keep? ?header-path))
+                         ?header-path))
+            (header? line)
+            nil
             (line:match "^%+")
             (case (classify ?path (line:sub 2))
               :code (record stats ?path :additions :no_tests_additions)

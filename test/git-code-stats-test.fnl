@@ -129,6 +129,20 @@
   (faith.= false (code-stats.test-path? "src/testdata/app.rb"))
   (faith.= false (code-stats.test-path? "contest/app.rb")))
 
+(fn test-parse-skips-files-the-keep-predicate-rejects []
+  (let [result (code-stats.parse (patch ["--- a/old/.git/HEAD"
+                                         "+++ b/new/.git/HEAD"
+                                         "@@ -1 +1 @@"
+                                         "-ref: refs/heads/main"
+                                         "+ref: refs/heads/feature"
+                                         "--- a/old/src/app.js"
+                                         "+++ b/new/src/app.js"
+                                         "@@ -1 +1 @@"
+                                         "-const a = 1"
+                                         "+const b = 2"])
+                                 #(not ($:find "/.git/" 1 true)))]
+    (faith.= (stats 1 1) result)))
+
 (fn test-parse-handles-empty-input []
   (faith.= (stats 0 0) (code-stats.parse nil))
   (faith.= (stats 0 0) (code-stats.parse "")))
@@ -140,6 +154,7 @@
  : test-parse-handles-empty-input
  : test-parse-handles-fennel-and-yaml
  : test-parse-skips-comment-lines-per-language
+ : test-parse-skips-files-the-keep-predicate-rejects
  : test-parse-skips-markdown-files-and-blank-lines
  : test-parse-uses-old-path-for-deleted-files
  : test-test-path-matches-folders-not-file-names}

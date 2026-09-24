@@ -95,6 +95,8 @@ gdiff old.txt new.txt
 gdiff old-dir new-dir
 ```
 
+When comparing folders, hidden folders inside them, such as `.git`, are skipped. Hidden files are compared.
+
 Use another editor for one run:
 
 ```sh

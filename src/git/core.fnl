@@ -248,15 +248,20 @@ for three-dot ranges, the revision itself otherwise."
                                             (parse.parse-name-status output))
                             nil)))))
 
-(fn code-diff-stats [revision]
+(fn code-diff-stats [revision ?keep?]
   (let [(output ok) (sys.read-command (commands.diff-patch-command revision))]
-    (when ok (code-stats.parse output))))
+    (when ok (code-stats.parse output ?keep?))))
+
+(fn stats-filter [revision]
+  (when (commands.files? revision)
+    (parse.no-index-visible? (commands.files-paths revision))))
 
 (fn diff-stats [revision]
   (run-result (commands.diff-stats-command revision)
               (fn [output]
-                (let [stats (parse.parse-numstat output)
-                      ?code (code-diff-stats revision)]
+                (let [?keep? (stats-filter revision)
+                      stats (parse.parse-numstat output ?keep?)
+                      ?code (code-diff-stats revision ?keep?)]
                   (when ?code
                     (set stats.code_additions ?code.additions)
                     (set stats.code_deletions ?code.deletions)

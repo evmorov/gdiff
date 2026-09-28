@@ -567,7 +567,11 @@
     (faith.= true state.show_sidebar?)
     (faith.is (app.handle-key state {} "B"))
     (faith.= false state.show_sidebar?)
+    (faith.= :left state.focus)
+    (faith.is (app.handle-key state {} "\t"))
     (faith.= :right state.focus)
+    (faith.is (app.handle-key state {} "\t"))
+    (faith.= :left state.focus)
     (faith.is (app.handle-key state {} "B"))
     (faith.= true state.show_sidebar?)))
 

@@ -374,9 +374,7 @@ some are not cached yet, return a command that loads them and replays `then`."
             (selection.set-file state index))))))
 
 (fn toggle-sidebar [state]
-  (set state.show_sidebar? (not state.show_sidebar?))
-  (when (and (not state.show_sidebar?) (= state.focus :left))
-    (focus-right state state.split_side)))
+  (set state.show_sidebar? (not state.show_sidebar?)))
 
 (fn toggle-help [state]
   (set state.show_help? (not state.show_help?)))

@@ -31,13 +31,22 @@
       (faith.= ["abc↪" "def↪" "ghij"] lines)
       (faith.= [1 1 1] source-map))))
 
+(fn test-content-width-uses-full-width-when-sidebar-is-hidden []
+  (faith.= 5 (viewport.content-width (state) 10 false))
+  (faith.= 4 (viewport.content-width (state) 10 true))
+  (let [hidden (state)]
+    (set hidden.show_sidebar? false)
+    (faith.= 10 (viewport.content-width hidden 10 false))
+    (faith.= 9 (viewport.content-width hidden 10 true))))
+
 (fn test-source-map-maps-wrapped-rows-back-to-source-lines []
   (faith.= [1 1 1 2 2] (viewport.source-map true ["abcdefghij" "short"] 4)))
 
 (fn test-source-map-is-identity-without-wrapping []
   (faith.= [1 2 3] (viewport.source-map false ["a" "b" "c"] 4)))
 
-{: test-lines-for-width-returns-a-matching-source-map
+{: test-content-width-uses-full-width-when-sidebar-is-hidden
+ : test-lines-for-width-returns-a-matching-source-map
  : test-lines-for-width-wraps-without-updating-preview-fields
  : test-source-map-maps-wrapped-rows-back-to-source-lines
  : test-source-map-is-identity-without-wrapping

@@ -45,6 +45,7 @@
                :show_numbers? false
                :show_blame? false
                :hide_reviewed? false
+               :show_sidebar? true
                :hide_comments? false
                :full_context? false
                :split_mode? true

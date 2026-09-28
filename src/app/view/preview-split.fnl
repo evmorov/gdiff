@@ -308,7 +308,7 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
   (let [display (emphasize-rows state.theme rows)
         scroll? (scroll-util.scrolls? (length display)
                                       (math.max 1 (or visible 1)))
-        content (viewport.content-width state.split_ratio cols scroll?)
+        content (viewport.content-width state cols scroll?)
         widths (layout-widths state content rows)
         x-max (scroll-util.max-offset (max-raw-width display) widths.old)]
     {: display :source-map nil : widths :x-max-scroll x-max :wrap? false}))
@@ -316,7 +316,7 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
 (fn wrapped-scrolls? [state emphasized rows visible cols]
   (let [visible (math.max 1 (or visible 1))]
     (or (scroll-util.scrolls? (length rows) visible)
-        (let [wide (viewport.content-width state.split_ratio cols false)
+        (let [wide (viewport.content-width state cols false)
               wide-widths (layout-widths state wide rows)
               (display-wide _) (wrap-rows emphasized wide-widths.old
                                           wide-widths.new wide)]
@@ -325,7 +325,7 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
 (fn prepare-wrapped [state rows visible cols]
   (let [emphasized (emphasize-rows state.theme rows)
         scroll? (wrapped-scrolls? state emphasized rows visible cols)
-        content (viewport.content-width state.split_ratio cols scroll?)
+        content (viewport.content-width state cols scroll?)
         widths (layout-widths state content rows)
         (display source-map) (wrap-rows emphasized widths.old widths.new
                                         content)]
@@ -340,6 +340,7 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
   (let [cache state.split_display_cache]
     (and cache (= cache.rows rows) (= cache.visible visible)
          (= cache.cols cols) (= cache.split-ratio state.split_ratio)
+         (= cache.sidebar? (not= false state.show_sidebar?))
          (= cache.wrap? state.preview_wrap?)
          (= cache.numbers? (and state.show_numbers? true))
          (= cache.blame? (and state.show_blame? true)))))
@@ -365,12 +366,13 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
     (let [layout (if (cached-layout? state rows visible cols)
                      state.split_display_cache.layout
                      (let [computed (compute-layout state rows visible cols)]
-                       (set state.split_display_cache
-                            {: rows
-                             : visible
-                             : cols
-                             :split-ratio state.split_ratio
-                             :wrap? state.preview_wrap?
+                        (set state.split_display_cache
+                             {: rows
+                              : visible
+                              : cols
+                              :split-ratio state.split_ratio
+                              :sidebar? (not= false state.show_sidebar?)
+                              :wrap? state.preview_wrap?
                              :numbers? (and state.show_numbers? true)
                              :blame? (and state.show_blame? true)
                              :layout computed})

@@ -35,9 +35,11 @@
   (prepare state rows cols)
   (let [count (length state.entries)
         visible (body-row-count rows)
-        left (left-view.body state visible)
         right state.last_right_pane
-        body (tui.split left right state.split_ratio)
+        body (if state.show_sidebar?
+                 (tui.split (left-view.body state visible) right
+                            state.split_ratio)
+                 right)
         overlay (when state.show_help? (help-view.modal state))]
     (tui.screen (chrome.header state count) body (chrome.footer state) overlay)))
 

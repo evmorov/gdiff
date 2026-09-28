@@ -562,6 +562,21 @@
     (faith.= false state.hide_reviewed?)
     (faith.= 3 (length (selection.rows state)))))
 
+(fn test-uppercase-b-toggles-the-sidebar []
+  (let [state (state [(entry "M" "a.rb")])]
+    (faith.= true state.show_sidebar?)
+    (faith.is (app.handle-key state {} "B"))
+    (faith.= false state.show_sidebar?)
+    (faith.= :right state.focus)
+    (faith.is (app.handle-key state {} "B"))
+    (faith.= true state.show_sidebar?)))
+
+(fn test-view-omits-the-sidebar-when-hidden []
+  (let [state (state [(entry "M" "a.rb")])]
+    (set state.show_sidebar? false)
+    (let [view (app.view state 10 100)]
+      (faith.= :lines view.body.type))))
+
 (fn test-hide-reviewed-skips-hidden-entries-in-flat-navigation []
   (let [state (flat-state [(entry "M" "a.rb")
                            (entry "M" "b.rb")
@@ -1452,6 +1467,8 @@
  : test-view-reflects-toggled-status-in-footer-right
  : test-view-shows-syntax-off-when-terminal-background-is-unknown
  : test-uppercase-h-hides-reviewed-entries-from-list
+ : test-uppercase-b-toggles-the-sidebar
+ : test-view-omits-the-sidebar-when-hidden
  : test-hide-reviewed-skips-hidden-entries-in-flat-navigation
  : test-hide-reviewed-keeps-cursor-on-unreviewed-selection
  : test-hide-reviewed-settles-cursor-on-next-visible-entry

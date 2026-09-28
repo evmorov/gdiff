@@ -31,10 +31,13 @@
   (rule.horizontal cols ?up-cols ?footer-cols))
 
 (fn inner-divider-cols [body cols]
-  (when (and body (= body.type :split) body.right body.right.dividers)
-    (let [(_ _ divider-col) (split.widths cols body.ratio)]
-      (icollect [_ d (ipairs body.right.dividers)]
-        (+ divider-col d)))))
+  (if (and body (= body.type :split) body.right body.right.dividers)
+      (let [(_ _ divider-col) (split.widths cols body.ratio)]
+        (icollect [_ d (ipairs body.right.dividers)]
+          (+ divider-col d)))
+      (and body (= body.type :lines) body.dividers)
+      (icollect [_ d (ipairs body.dividers)]
+        (when (<= d cols) d))))
 
 (fn divider-up-cols [body cols]
   (let [main (split-divider-col body cols)
@@ -51,6 +54,9 @@
             right-width (if right-scroll? (- right-cols 1) right-cols)]
         (hscroll.thumb line (+ divider-col 1) right-width body.right.x-scroll
                        body.right.x-max-scroll))
+      (and body (= body.type :lines))
+      (hscroll.thumb line 1 cols (or body.x-scroll 0)
+                     (or body.x-max-scroll 0))
       line))
 
 (fn bottom-line [view cols]

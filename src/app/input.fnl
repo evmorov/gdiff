@@ -40,6 +40,7 @@
     "e" :toggle-expand
     "E" :expand-all
     "H" :toggle-hide-reviewed
+    "B" :toggle-sidebar
     "y" :copy-path
     "Y" :copy-full-path
     "v" :toggle-line-selection

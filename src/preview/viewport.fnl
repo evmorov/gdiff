@@ -2,8 +2,11 @@
 (local scroll-util (require :util.scroll))
 (local wrap (require :tui.wrap))
 
-(fn content-width [split-ratio cols scroll?]
-  (let [(_left-cols right-cols) (tui.components.split.widths cols split-ratio)]
+(fn content-width [state cols scroll?]
+  (let [sidebar? (not= false state.show_sidebar?)
+        (_left-cols right-cols) (tui.components.split.widths cols
+                                                              state.split_ratio)
+        right-cols (if sidebar? right-cols cols)]
     (math.max 0 (if scroll? (- right-cols 1) right-cols))))
 
 (fn identity-map [lines]
@@ -66,7 +69,7 @@
                                    (values nil 0))
         text-width (fn [scroll?]
                      (math.max 1
-                               (- (content-width state.split_ratio cols scroll?)
+                               (- (content-width state cols scroll?)
                                   gutter-width)))
         wide-width (text-width false)
         (wide-lines wide-map) (wide-layout state lines visible wide-width)

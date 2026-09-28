@@ -583,6 +583,7 @@ ask for, so their cache keys are ready when the output is imported."
   (let [cache state.preview_display_cache]
     (if (and cache (= cache.lines lines) (= cache.visible visible)
              (= cache.cols cols) (= cache.split-ratio state.split_ratio)
+             (= cache.sidebar? (not= false state.show_sidebar?))
              (= cache.wrap? state.preview_wrap?)
              (= cache.numbers? (and state.show_numbers? true))
              (= cache.blame? (and state.show_blame? true)))
@@ -597,6 +598,7 @@ ask for, so their cache keys are ready when the output is imported."
                 : visible
                 : cols
                 :split-ratio state.split_ratio
+                :sidebar? (not= false state.show_sidebar?)
                 :wrap? state.preview_wrap?
                 :numbers? (and state.show_numbers? true)
                 :blame? (and state.show_blame? true)
@@ -772,8 +774,8 @@ cached yet."
   (if state.preview_wrap?
       (set-horizontal-scroll-limit state [] 0)
       (set-horizontal-scroll-limit state lines
-                                   (viewport.content-width state.split_ratio
-                                                           cols vertical-scroll?))))
+                                   (viewport.content-width state cols
+                                                           vertical-scroll?))))
 
 (fn visible-lines [state entry visible ?opts]
   (let [lines (if (and ?opts ?opts.nonblocking?)

@@ -30,7 +30,8 @@
                         ["H" "Hide reviewed files"]
                         ["`" "Toggle file tree"]
                         ["e" "Expand / collapse folder"]
-                        ["E" "Expand / collapse all nested"]]}
+                        ["E" "Expand / collapse all nested"]
+                        ["B" "Hide / show the file list"]]}
                {:title "Preview"
                 :items [["← / h" "Scroll preview left"]
                         ["→ / l" "Scroll preview right"]

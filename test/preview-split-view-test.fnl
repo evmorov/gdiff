@@ -371,12 +371,44 @@
       (faith.is (context:find "\27[36mctx" 1 true))
       (faith.= nil (context:find (theme.style-for t :line-added) 1 true)))))
 
+(fn test-split-preview-gives-moved-rows-the-change-background []
+  (let [entry {:status "M" :kind "M" :path "a.rb"}
+        rows [{:kind :change
+               :old "moved out"
+               :old-no 3
+               :old-move {:start 19 :stop 19 :first? true}}
+              {:kind :change
+               :new "moved in"
+               :new-no 19
+               :new-move {:start 3 :stop 3 :first? true}}]
+        key (.. (preview-key.for-entry "HEAD" entry false) "\0split")
+        t (theme.new {:r 255 :g 255 :b 255})
+        state {:revision "HEAD"
+               :theme t
+               :split_cache {key rows}
+               :preview_wrap? true
+               :show_numbers? false
+               :split_ratio 0.5
+               :preview_scroll 0
+               :preview_x_scroll 0
+               :full_context? false}]
+    (view.prepare state 12 80 {:entry entry})
+    (let [node (view.body state 12 80)
+          collapsed (table.concat node.lines "\n")]
+      (faith.is (string.find collapsed (theme.style-for t :moved-deleted) 1 true)
+                "moved removed row should carry the deleted background")
+      (faith.is (string.find collapsed (theme.style-for t :moved-added) 1 true)
+                "moved added row should carry the added background")
+      (faith.is (string.find collapsed "38;5;208" 1 true)
+                "moved rows should stay orange"))))
+
 {: test-wrap-rows-keeps-styled-flags-on-visual-rows
  : test-split-preview-tints-highlighted-rows-and-keeps-token-colors
  : test-wrap-rows-keeps-short-rows-as-a-single-visual-row
  : test-split-preview-colors-comment-rows-differently
  : test-split-preview-marks-blank-line-changes-in-whitespace-hunks
  : test-split-preview-colors-moved-rows-orange-with-a-note
+ : test-split-preview-gives-moved-rows-the-change-background
  : test-wrap-rows-splits-long-side-and-pads-shorter
  : test-wrap-rows-wraps-full-width-rows-across-content
  : test-split-preview-gutter-shows-blame-next-to-numbers

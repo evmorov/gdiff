@@ -58,21 +58,30 @@
       blame-palettes.on-dark
       blame-palettes.on-light))
 
+(fn moved-styles [?background-rgb]
+  (let [fg plain-styles.moved
+        deleted (colors.tint-style ?background-rgb red line-tint-amount)
+        added (colors.tint-style ?background-rgb green line-tint-amount)]
+    {:moved-added (.. fg (or added "")) :moved-deleted (.. fg (or deleted ""))}))
+
 (fn derived-styles [background-rgb search-background]
   (merge (blame-styles (blame-palette-for background-rgb))
-         {:search-match (.. search-background "\27[1m")
-          :search-match-end ansi.reset-style
-          :line-added (colors.tint-style background-rgb green line-tint-amount)
-          :line-deleted (colors.tint-style background-rgb red line-tint-amount)
-          :emphasis-tint-added (colors.tint-style background-rgb green
-                                                  emphasis-tint-amount)
-          :emphasis-tint-deleted (colors.tint-style background-rgb red
-                                                    emphasis-tint-amount)}))
+         (merge (moved-styles background-rgb)
+                {:search-match (.. search-background "\27[1m")
+                 :search-match-end ansi.reset-style
+                 :line-added (colors.tint-style background-rgb green
+                                                line-tint-amount)
+                 :line-deleted (colors.tint-style background-rgb red
+                                                  line-tint-amount)
+                 :emphasis-tint-added (colors.tint-style background-rgb green
+                                                         emphasis-tint-amount)
+                 :emphasis-tint-deleted (colors.tint-style background-rgb red
+                                                           emphasis-tint-amount)})))
 
 (fn styles [?background-rgb ?search-background]
   (if ?background-rgb
       (merge base-styles (derived-styles ?background-rgb ?search-background))
-      base-styles))
+      (merge base-styles (moved-styles nil))))
 
 (fn new [?background-rgb]
   (let [search-background (and ?background-rgb

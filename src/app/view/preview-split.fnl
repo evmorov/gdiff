@@ -96,10 +96,10 @@
       (let [value (. row side)]
         (if (and (= row.kind :change) value)
             (if (= side :old)
-                (if row.old-move :moved
+                (if row.old-move :moved-deleted
                     row.old-comment? :comment-deleted
                     :status-deleted)
-                (if row.new-move :moved
+                (if row.new-move :moved-added
                     row.new-comment? :comment-added
                     :status-added))))))
 
@@ -366,13 +366,13 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
     (let [layout (if (cached-layout? state rows visible cols)
                      state.split_display_cache.layout
                      (let [computed (compute-layout state rows visible cols)]
-                        (set state.split_display_cache
-                             {: rows
-                              : visible
-                              : cols
-                              :split-ratio state.split_ratio
-                              :sidebar? (not= false state.show_sidebar?)
-                              :wrap? state.preview_wrap?
+                       (set state.split_display_cache
+                            {: rows
+                             : visible
+                             : cols
+                             :split-ratio state.split_ratio
+                             :sidebar? (not= false state.show_sidebar?)
+                             :wrap? state.preview_wrap?
                              :numbers? (and state.show_numbers? true)
                              :blame? (and state.show_blame? true)
                              :layout computed})

@@ -1009,6 +1009,18 @@
     (faith.match "38;5;208" removed)
     (faith.= nil (removed:find "\27[35m" 1 true))))
 
+(fn test-preview-format-gives-moved-lines-the-change-background []
+  (let [state (tinted-state)
+        lines (preview-format.diff-lines state moved-diff)
+        removed (line-with lines "alpha first")
+        added (line-with lines "alpha first (moved from")]
+    (faith.is (removed:find (theme.style-for state.theme :moved-deleted) 1 true)
+              "moved removed line should carry the deleted background")
+    (faith.is (added:find (theme.style-for state.theme :moved-added) 1 true)
+              "moved added line should carry the added background")
+    (faith.is (removed:find "38;5;208" 1 true)
+              "moved lines should stay orange")))
+
 (fn test-preview-key-marks-highlighted-previews []
   (let [entry {:status "M" :path "a.rb"}
         plain (preview-key.for-entry "HEAD" entry)
@@ -1107,4 +1119,5 @@
  : test-unified-gutters-refresh-when-blame-labels-arrive
  : test-visible-lines-renders-and-caches-real-git-preview
  : test-preview-format-colors-moved-lines-orange-with-a-note
+ : test-preview-format-gives-moved-lines-the-change-background
  : test-preview-format-keeps-numbers-for-moved-lines}

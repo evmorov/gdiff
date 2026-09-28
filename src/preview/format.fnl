@@ -61,8 +61,12 @@
 
 (local side-map highlight.side-map)
 
+(fn moved-role [side]
+  (if (= side :old) :moved-deleted :moved-added))
+
 (fn moved-line [state raw side mark]
-  (tui.color state.theme :moved (.. raw (line-moves.annotation side mark))))
+  (tui.color state.theme (moved-role side)
+             (.. raw (line-moves.annotation side mark))))
 
 (fn change-lines [state removed added ctx]
   (let [out []

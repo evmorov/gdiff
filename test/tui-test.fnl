@@ -302,7 +302,13 @@
     (faith.not= (theme.style-for light :line-added)
                 (theme.style-for light :emphasis-tint-added))
     (faith.not= (theme.style-for light :line-added)
-                (theme.style-for dark :line-added))))
+                (theme.style-for dark :line-added))
+    (faith.match "^\27%[38;5;208m\27%[48;2;"
+                 (theme.style-for light :moved-deleted))
+    (faith.match "^\27%[38;5;208m\27%[48;2;"
+                 (theme.style-for light :moved-added))
+    (faith.= "\27[38;5;208m" (theme.style-for theme.default :moved-deleted))
+    (faith.= "\27[38;5;208m" (theme.style-for theme.default :moved-added))))
 
 (fn test-blame-palette-follows-the-background []
   (let [light (theme.new {:r 255 :g 255 :b 255})

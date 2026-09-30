@@ -13,7 +13,7 @@ That means reading a lot more diffs than before. gdiff is built for that: a diff
 ## Main features
 
 - Vim keys: `j` / `k`, `gg` / `G`, `/` to search, `n` / `N` to jump between matches.
-- Diffs are loaded in the background, so moving between files does not wait for git.
+- Diffs are loaded in the background, so moving between files does not wait for git. A file whose diff is not ready yet shows its name and "Loading preview..." until it arrives.
 - Word-level highlighting shows which part of a line changed, similar to delta.
 - Syntax highlighting when [bat](https://github.com/sharkdp/bat) is installed. Added and deleted lines get a background tint instead of a text color, and the code keeps its syntax colors. Press `S` to switch it off and on. Set `:syntax false` in the config to start with it off and `:bat-theme` to pick a bat theme other than `ansi`.
 - Unified or side-by-side view, toggled with one key. In side-by-side mode a changed line sits next to its old version.

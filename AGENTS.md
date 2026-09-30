@@ -9,11 +9,11 @@ gdiff is a Fennel TUI that runs on the installed `fennel` command. There is no b
 - `src/app/`: the application. `core.fnl` wires arguments, git data, config, review storage, state, update, and view into `tui.run`.
 - `src/app/view/`: gdiff-specific rendering. `left.fnl` is the file list, `preview.fnl` the unified diff, `preview-split.fnl` the side-by-side diff, `chrome.fnl` the header and footer, `help.fnl` the shortcut modal.
 - `src/git/`: git command builders, diff parsing, blame, move detection, code stats, PR resolution, and remote sync status.
-- `src/preview/`: diff-to-rows planning, word-level diff, line moves, folder and asset previews, the preview cache, and background warming workers.
+- `src/preview/`: diff-to-rows planning, word-level diff, line moves, folder and asset previews, the preview cache, background warming workers, and the focus server for the selected file.
 - `src/storage/`: config file and persisted review marks.
 - `src/platform/`: shell, clipboard, browser, editor, and `fennel` subprocess adapters. All process and file I/O should go through here.
 - `src/tui/`: the reusable terminal framework: raw terminal handling, key parsing, render nodes, components, theme, text width and wrapping.
-- `src/util/`: small pure helpers for strings, math, and scrolling.
+- `src/util/`: small pure helpers for strings, math, scrolling, and `lua-data.fnl`, which serializes plain tables as Lua source for the background processes.
 - `src/state/macros.fnlm`, `src/app/macros.fnlm`, `src/tui/macros.fnlm`: the only macro files. See Macros below.
 - `test/`: Faith tests. `test/run.fnl` lists every test module, `test/test-helper.fnl` builds temporary git repositories for tests.
 - `examples/config.fnl`: sample user config, linted and formatted with the rest of the code.
@@ -32,8 +32,8 @@ App code follows a TEA-like loop. Keep new behavior in the matching step.
 Rules that fall out of this:
 
 - Key handling belongs in `input.fnl`, not in view or command code.
-- Anything that shells out, reads or writes files, touches the clipboard, or opens a browser or editor goes through a `platform` function and is triggered from a command. Handlers in `update.fnl` and `actions.fnl` should only change state. The existing exceptions are loading a preview on a cache miss and polling the sync and PR refresh status files in `handle-key`; the PR refresh result is then dispatched as a message. Do not add new I/O to handlers.
-- Planning is separate from doing. `action-plan.fnl`, `selection-plan.fnl`, `search-plan.fnl`, `preview/warm-plan.fnl`, and `git/commands.fnl` build plain data or command strings. The effectful code executes them.
+- Anything that shells out, reads or writes files, touches the clipboard, or opens a browser or editor goes through a `platform` function and is triggered from a command. Handlers in `update.fnl` and `actions.fnl` should only change state. The existing exceptions are polling the sync and PR refresh status files in `handle-key`; the PR refresh result is then dispatched as a message. Background previews are imported by the `poll-background-previews` and `ensure-selected-preview` commands, which `handle-key` runs on each tick and after each key. Do not add new I/O to handlers.
+- Planning is separate from doing. `action-plan.fnl`, `selection-plan.fnl`, `search-plan.fnl`, `preview/warm-plan.fnl`, `preview/focus-plan.fnl`, and `git/commands.fnl` build plain data or command strings. The effectful code executes them.
 - View `body` functions must not mutate state. `view-purity-test.fnl` checks this. Views that need to compute layout do so in a `prepare` function that runs before drawing.
 
 ## Preview Pipeline
@@ -41,8 +41,10 @@ Rules that fall out of this:
 - `preview/core.fnl` owns the preview cache keyed by `preview/key.fnl`. It decides between diff, full-file, folder, and asset previews.
 - `preview/diff-parse.fnl` parses unified diff text into handler callbacks. `preview/format.fnl` renders unified rows, `preview/split.fnl` renders side-by-side rows. Both use `preview/word-diff.fnl` for line alignment and word emphasis, and `preview/line-moves.fnl` for moved-line marks.
 - `preview/highlight.fnl` holds the pure parts of syntax highlighting: which lines a diff needs, mapping bat output back to line numbers, and word emphasis over already styled text. `platform/bat.fnl` builds and runs the bat command. `preview/core.fnl` decides per entry whether to run bat, so cached preview lines and split rows already carry the final styled text. Highlighting is on when bat is installed, the `S` toggle is on (it starts on unless the config sets `:syntax false`), and the terminal background is known, because changed lines are marked with background tints derived from it. The preview cache key carries the highlight state, so toggling swaps between plain and styled previews and starts a new warm run.
-- `preview/warm.fnl` spawns `fennel` subprocesses running `preview/worker.fnl` to fill the cache in the background. They communicate through a temp directory with a manifest and one output file per entry. `preview/workers.fnl` decides how many workers to start.
-- Cursor movement must not wait for warming. Do not add blocking work to the key loop.
+- `preview/warm.fnl` spawns `fennel` subprocesses running `preview/worker.fnl` under `nice` to fill the cache in the background. They communicate through a temp directory with a manifest and one output file per entry. `preview/workers.fnl` decides how many workers to start. The manifest carries `preview.core/background-settings` (revision, labels, context, comments, blame, highlight), and `preview/worker-state.fnl` turns it into the state a worker renders with, so worker keys match `cache-key`. Toggles that change the key restart warming.
+- `preview/focus.fnl` starts one long-lived `fennel` process running `preview/focus-worker.fnl`, which serves `preview/focus-server.fnl`. It computes the selected file on request so the user does not wait for the warm queue or for a worker to boot. The app writes a single request slot (`request.lua`), so a newer request replaces one still waiting, and the server writes numbered responses (`out-N.lua`) that the app imports in order. Entries answer with lines first and blame second. `preview/focus-plan.fnl` holds the pure request and response shapes. Responses carry `state.preview_generation`, which a refresh bumps, so late answers from before a refresh are dropped. The server exits when its directory is removed or the app process is gone.
+- Background output is Lua data written by `util/lua-data.fnl` and read with `platform/core.fnl` `read-data-file`, which loads it in text mode with an empty environment. Do not parse background output with `fennel.eval`; it is far slower and runs in the key loop.
+- Cursor movement must not wait for warming. Do not add blocking work to the key loop. While a background source covers the selected file (`preview.core/background?`), every cache miss returns a placeholder: `nonblocking-lines` returns the file header and "Loading preview...", `line-numbers`, `line-refs`, and split rows return nothing, and blame returns empty labels. The view never imports or computes a preview itself; it only lays out what is cached. Without a background source, previews are still computed in place.
 
 ## Fennel
 

@@ -1,5 +1,4 @@
 (local faith (require :faith))
-(local fennel (require :fennel))
 (local fennel-command (require :platform.fennel))
 (local preview-key (require :preview.key))
 (local preview-warm (require :preview.warm))
@@ -7,8 +6,8 @@
 (local t (require :test-helper))
 
 (fn write-output [dir index lines ?split]
-  (faith.is (sys.write-file (.. dir "/" index ".fnl")
-                            (fennel.view {: lines :split ?split}))))
+  (faith.is (sys.write-data-file (.. dir "/" index ".lua")
+                                 {: lines :split ?split})))
 
 (fn entry [status path ?old-path]
   {: status :kind (status:sub 1 1) : path :old_path ?old-path})
@@ -69,12 +68,12 @@
   (t.reset-workdir)
   (t.mkdir "warm")
   (t.write-file "warm/manifest.fnl" "{}")
-  (faith.is (sys.write-file "warm/1.fnl"
-                            (fennel.view {:lines ["unified"]
-                                          :numbers [false 1]
-                                          :refs [false {:side :new :no 1}]
-                                          :split []
-                                          :blame {"blame-key" {1 "01/01/2024 ann"}}})))
+  (faith.is (sys.write-data-file "warm/1.lua"
+                                 {:lines ["unified"]
+                                  :numbers [false 1]
+                                  :refs [false {:side :new :no 1}]
+                                  :split []
+                                  :blame {"blame-key" {1 "01/01/2024 ann"}}}))
   (let [first (entry "M" "a.rb")
         first-key (preview-key.for-entry "HEAD" first)
         state (warm-state [first])
@@ -115,28 +114,43 @@
         state (warm-state [first second])
         cache {}]
     (write-output "warm" 2 ["second"])
-    (faith.= nil (preview-warm.import-entry state {:lines cache} "HEAD" first))
+    (faith.= nil (preview-warm.import-key state {:lines cache} first-key))
     (faith.= nil (. cache second-key))
-    (faith.is (preview-warm.import-entry state {:lines cache} "HEAD" second))
+    (faith.is (preview-warm.import-key state {:lines cache} second-key))
     (faith.= ["second"] (. cache second-key))
     (faith.= nil (. cache first-key))
     (faith.= 1 state.remaining)))
 
-(fn test-import-entry-uses-highlighted-keys-for-highlighted-runs []
+(fn test-import-key-ignores-keys-the-run-does-not-compute []
   (t.reset-workdir)
   (t.mkdir "warm")
   (let [first (entry "M" "a.rb")
-        key (preview-key.for-entry "HEAD" first nil nil true)
-        state (warm-state [])
+        state (warm-state [first])
         cache {}]
-    (set state.highlight? true)
-    (set state.count 1)
-    (set state.remaining 1)
-    (tset state.index-key 1 key)
-    (tset state.key-index key 1)
-    (write-output "warm" 1 ["styled"])
-    (faith.is (preview-warm.import-entry state {:lines cache} "HEAD" first))
-    (faith.= ["styled"] (. cache key))))
+    (write-output "warm" 1 ["plain"])
+    (faith.= nil
+             (preview-warm.import-key state {:lines cache}
+                                      (preview-key.for-entry "HEAD" first true)))
+    (faith.= 1 state.remaining)))
+
+(fn test-start-writes-settings-and-keys-entries-with-them []
+  (t.reset-workdir)
+  (let [first (entry "M" "a.rb")
+        settings {:revision "HEAD"
+                  :full-context? true
+                  :hide-comments? true
+                  :blame? true
+                  :highlight {:on? true}}
+        state (preview-warm.new-state)
+        key (preview-key.for-entry "HEAD" first true true true)]
+    (preview-warm.start state "/nonexistent-src" [first] settings)
+    (faith.= 1 (. state.key-index key))
+    (faith.= settings state.settings)
+    (faith.= true state.blame?)
+    (faith.= [true {:entries [first] : settings}]
+             [(sys.read-data-file (.. state.dir "/manifest.lua"))])
+    (preview-warm.cleanup state)
+    (faith.= nil state.settings)))
 
 (fn test-missing-entries-skips-cached-previews []
   (let [first (entry "M" "a.rb")
@@ -185,11 +199,17 @@
   (t.write-file "warm/manifest.fnl" "{}")
   (let [state (warm-state [(entry "M" "a.rb")])]
     (set state.dir "warm")
-    (preview-warm.start state "." "HEAD" [])
+    (preview-warm.start state "." [] {:revision "HEAD"})
     (faith.= nil state.dir)
     (faith.= false (sys.write-file "warm/still-there" "x"))))
 
-(fn test-update-imports-ready-previews-in-small-batches []
+(fn step-clock []
+  (var now 0)
+  (fn []
+    (set now (+ now 1))
+    now))
+
+(fn test-update-imports-ready-previews-within-the-time-budget []
   (t.reset-workdir)
   (t.mkdir "warm")
   (let [entries (fcollect [i 1 10]
@@ -198,16 +218,51 @@
         cache {}]
     (for [i 1 10]
       (write-output "warm" i [(.. "file " i)]))
-    (preview-warm.update state {:lines cache})
-    (faith.= 2 state.remaining)
-    (faith.= 9 state.scan-index)
-    (faith.= ["file 1"] (. cache (preview-key.for-entry "HEAD" (. entries 1))))
-    (faith.= ["file 8"] (. cache (preview-key.for-entry "HEAD" (. entries 8))))
-    (faith.= nil (. cache (preview-key.for-entry "HEAD" (. entries 9))))
+    (preview-warm.update state {:lines cache} {:clock (step-clock) :budget 3})
+    (faith.= 7 state.remaining)
+    (faith.= 4 state.scan-index)
+    (faith.= ["file 3"] (. cache (preview-key.for-entry "HEAD" (. entries 3))))
+    (faith.= nil (. cache (preview-key.for-entry "HEAD" (. entries 4))))
     (preview-warm.update state {:lines cache})
     (faith.= nil state.dir)
     (faith.= ["file 10"]
              (. cache (preview-key.for-entry "HEAD" (. entries 10))))))
+
+(fn test-update-imports-one-preview-even-past-the-budget []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (let [entries [(entry "M" "a.rb") (entry "M" "b.rb")]
+        state (warm-state entries)
+        cache {}]
+    (write-output "warm" 1 ["first"])
+    (write-output "warm" 2 ["second"])
+    (preview-warm.update state {:lines cache} {:clock (step-clock) :budget 0})
+    (faith.= 1 state.remaining)
+    (faith.= ["first"] (. cache (preview-key.for-entry "HEAD" (. entries 1))))))
+
+(fn test-update-drops-unreadable-output-and-finishes-the-run []
+  (t.reset-workdir)
+  (t.mkdir "warm")
+  (t.write-file "warm/1.lua" "return {")
+  (write-output "warm" 2 ["second"])
+  (let [entries [(entry "M" "a.rb") (entry "M" "b.rb")]
+        state (warm-state entries)
+        cache {}]
+    (faith.= true (preview-warm.update state {:lines cache}))
+    (faith.= nil (. cache (preview-key.for-entry "HEAD" (. entries 1))))
+    (faith.= ["second"] (. cache (preview-key.for-entry "HEAD" (. entries 2))))
+    (faith.= nil state.dir)))
+
+(fn test-store-output-keeps-values-already-cached []
+  (let [cached ["cached"]
+        caches {:lines {:key cached} :split {} :blame {:b ["old"]}}]
+    (preview-warm.store-output caches :key
+                               {:lines ["new"]
+                                :split [{:kind :context}]
+                                :blame {:b ["new"] :c ["c"]}})
+    (faith.is (= cached (. caches.lines :key)))
+    (faith.= [{:kind :context}] (. caches.split "key\0split"))
+    (faith.= {:b ["old"] :c ["c"]} caches.blame)))
 
 (fn test-worker-command-loads-runtime-and-macro-paths []
   (let [command (preview-warm.worker-command "/app/src" "manifest.fnl" "warm" 1
@@ -215,7 +270,8 @@
     (faith.match "%-%-add%-fennel%-path '/app/src/%?%.fnl'" command)
     (faith.match "%-%-add%-macro%-path '/app/src/%?%.fnlm;/app/src/%?%.fnl'"
                  command)
-    (faith.match "'/app/src/preview/worker%.fnl'" command)))
+    (faith.match "'/app/src/preview/worker%.fnl'" command)
+    (faith.match "^nice %-n 10 fennel " command)))
 
 (fn test-fennel-command-builds-standard-subprocess-environment []
   (let [command (fennel-command.command "/app/src" :preview/worker.fnl
@@ -228,7 +284,8 @@
                  command)))
 
 {: test-fennel-command-builds-standard-subprocess-environment
- : test-import-entry-uses-highlighted-keys-for-highlighted-runs
+ : test-import-key-ignores-keys-the-run-does-not-compute
+ : test-start-writes-settings-and-keys-entries-with-them
  : test-import-entry-checks-only-the-requested-ready-preview
  : test-update-imports-numbers-refs-and-blame-caches
  : test-missing-entries-skips-cached-previews
@@ -236,7 +293,10 @@
  : test-side-priority-entries-warmer-from-edges-to-center
  : test-start-with-no-missing-entries-cleans-existing-warmer
  : test-update-imports-all-previews-and-cleans-temp-dir
- : test-update-imports-ready-previews-in-small-batches
+ : test-store-output-keeps-values-already-cached
+ : test-update-drops-unreadable-output-and-finishes-the-run
+ : test-update-imports-one-preview-even-past-the-budget
+ : test-update-imports-ready-previews-within-the-time-budget
  : test-update-imports-split-rows-into-split-cache
  : test-update-imports-ready-previews-out-of-order
  : test-worker-command-loads-runtime-and-macro-paths}

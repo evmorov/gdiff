@@ -1,3 +1,4 @@
+(local lua-data (require :util.lua-data))
 (local str (require :util.string))
 
 (local trim str.trim)
@@ -65,6 +66,45 @@
 (fn remove-dir [path]
   (os.execute (.. "rm -rf " (shell-quote path) " 2>/dev/null")))
 
+(fn load-data [source name]
+  "Run Lua data `source` in text mode with an empty environment. Returns true
+and the value, or false and an error."
+  (let [setfenv (. _G :setfenv)
+        loadstring (. _G :loadstring)
+        (chunk err) (if setfenv
+                        (let [(chunk err) (loadstring source name)]
+                          (when chunk
+                            (setfenv chunk {}))
+                          (values chunk err))
+                        (load source name "t" {}))]
+    (if chunk
+        (pcall chunk)
+        (values false err))))
+
+(fn read-data-file [path]
+  "Load a file written by `write-data-file`. Returns true and the value, false
+when the file cannot be loaded, or nil when it does not exist."
+  (case (read-file path)
+    source (load-data source path)
+    _ nil))
+
+(fn write-data-file [path value]
+  (let [tmp (.. path ".tmp")]
+    (and (write-file tmp (lua-data.serialize value)) (rename tmp path) true)))
+
+(fn low-priority-command [cmd]
+  (.. "nice -n 10 " cmd))
+
+(fn process-id []
+  (let [(out ok) (read-command "echo $PPID")]
+    (when ok (first-number out))))
+
+(fn process-alive? [pid]
+  (command-succeeds? (.. "kill -0 " (tostring pid) " 2>/dev/null")))
+
+(fn sleep [seconds]
+  (os.execute (.. "sleep " seconds)))
+
 (fn background-shell-command [cmd]
   (.. "( " cmd " ) </dev/null >/dev/null 2>&1 &"))
 
@@ -88,6 +128,12 @@
                                          " 2>/dev/null"))]
     ok))
 
+(fn make-temp-dir []
+  (let [path (temp-path)]
+    (remove-file path)
+    (when (ensure-dir path)
+      path)))
+
 {: background-command
  : background-shell-command
  : command-exists?
@@ -97,13 +143,21 @@
  : ensure-dir
  : file-exists?
  : getenv
+ : load-data
+ : low-priority-command
+ : make-temp-dir
  : os-name
+ : process-alive?
+ : process-id
  : read-command
+ : read-data-file
  : read-file
  : remove-dir
  : remove-file
  : rename
  : shell-quote
+ : sleep
  : temp-path
  : trim
+ : write-data-file
  : write-file}

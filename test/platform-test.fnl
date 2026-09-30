@@ -4,6 +4,27 @@
 (local editor (require :platform.editor))
 (local sys (require :platform.core))
 (local bat (require :platform.bat))
+(local t (require :test-helper))
+
+(fn test-data-file-round-trips-without-leaving-a-temp-file []
+  (t.reset-workdir)
+  (faith.is (sys.write-data-file "data.lua" {:lines ["a"] :no 1}))
+  (faith.= [true {:lines ["a"] :no 1}] [(sys.read-data-file "data.lua")])
+  (faith.= false (sys.file-exists? "data.lua.tmp")))
+
+(fn test-read-data-file-tells-missing-from-unreadable []
+  (t.reset-workdir)
+  (t.write-file "broken.lua" "return {")
+  (faith.= nil (sys.read-data-file "missing.lua"))
+  (faith.= false (sys.read-data-file "broken.lua")))
+
+(fn test-low-priority-command-runs-under-nice []
+  (faith.= "nice -n 10 fennel x.fnl" (sys.low-priority-command "fennel x.fnl")))
+
+(fn test-process-id-names-a-live-process []
+  (let [pid (sys.process-id)]
+    (faith.= :number (type pid))
+    (faith.is (sys.process-alive? pid))))
 
 (fn test-background-shell-command-detaches-from-terminal []
   (faith.= "( printf hi ) </dev/null >/dev/null 2>&1 &"
@@ -81,7 +102,11 @@
     (faith.= nil (command:find "--line-range" 1 true))
     (faith.match " 2>/dev/null$" command)))
 
-{: test-bat-command-highlights-a-file-on-disk
+{: test-data-file-round-trips-without-leaving-a-temp-file
+ : test-low-priority-command-runs-under-nice
+ : test-process-id-names-a-live-process
+ : test-read-data-file-tells-missing-from-unreadable
+ : test-bat-command-highlights-a-file-on-disk
  : test-bat-command-pipes-a-producer-and-takes-a-theme
  : test-background-shell-command-detaches-from-terminal
  : test-browser-command-quotes-url

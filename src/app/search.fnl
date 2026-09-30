@@ -153,13 +153,15 @@ prepared, because display rows are only known then."
 
 (fn sync [state display]
   "Refresh the matches when the prepared preview changed, keeping the cursor
-where it is unless a jump into this file is still pending."
+where it is unless a jump into this file is still pending. The jump waits until
+the file's preview is loaded."
   (when (has-query? state)
     (let [search state.search]
       (when (not= search.matches-source display)
         (set search.matches-source display)
         (rebuild state true))
-      (when search.pending
+      (when (and search.pending
+                 (preview.content-ready? state (selection.selected-entry state)))
         (resolve-pending state)))))
 
 (fn label-query [text query]

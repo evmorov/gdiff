@@ -79,6 +79,8 @@
                               (program.start program.state))
                             (loop program)))]
       (terminal.restore-terminal stty-state)
+      (when program.stop
+        (pcall program.stop program.state))
       (when (not ok)
         (error err)))))
 

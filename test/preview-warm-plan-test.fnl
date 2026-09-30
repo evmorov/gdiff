@@ -50,7 +50,8 @@
 (fn test-index-entries-builds-bidirectional-key-maps []
   (let [first (entry "M" "a.rb")
         second (entry "R" "new.rb" "old.rb")
-        (key-index index-key) (plan.index-entries "HEAD" [first second])
+        (key-index index-key) (plan.index-entries {:revision "HEAD"}
+                                                  [first second])
         first-key (preview-key.for-entry "HEAD" first)
         second-key (preview-key.for-entry "HEAD" second)]
     (faith.= 1 (. key-index first-key))
@@ -60,7 +61,9 @@
 
 (fn test-index-entries-keys-highlighted-previews []
   (let [first (entry "M" "a.rb")
-        (key-index index-key) (plan.index-entries "HEAD" [first] true)
+        (key-index index-key) (plan.index-entries {:revision "HEAD"
+                                                   :highlight {:on? true}}
+                                                  [first])
         key (preview-key.for-entry "HEAD" first nil nil true)]
     (faith.= 1 (. key-index key))
     (faith.= key (. index-key 1))

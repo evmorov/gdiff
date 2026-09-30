@@ -5,7 +5,7 @@
 (fn content-width [state cols scroll?]
   (let [sidebar? (not= false state.show_sidebar?)
         (_left-cols right-cols) (tui.components.split.widths cols
-                                                              state.split_ratio)
+                                                             state.split_ratio)
         right-cols (if sidebar? right-cols cols)]
     (math.max 0 (if scroll? (- right-cols 1) right-cols))))
 

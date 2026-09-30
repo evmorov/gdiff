@@ -18,7 +18,13 @@
                            :query "api"
                            : matches
                            :index 1
-                           :matches-source :display}))))
+                           :matches-source :display}))
+    (faith.= {:line 3 :row 2} (. (plan.finish {:active? true
+                                               :query "api"
+                                               : matches
+                                               :pending {:line 3 :row 2}})
+                                 :pending)
+             "a jump into a file that is still loading survives Enter")))
 
 (fn test-query-edit-helpers []
   (faith.= "ap" (plan.backspace-query "api"))

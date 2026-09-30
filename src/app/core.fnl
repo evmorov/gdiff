@@ -32,7 +32,8 @@
               :view app-view.view
               :update #(app-update.handle-key $1 config $2)
               :coalesce? app-update.coalesce?
-              :start app-update.start})))
+              :start app-update.start
+              :stop app-update.stop})))
 
 (fn exit-with-error [message]
   (io.stderr:write message "\n")

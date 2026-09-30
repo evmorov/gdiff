@@ -1,6 +1,4 @@
-(local fennel (require :fennel))
 (local fennel-command (require :platform.fennel))
-(local preview-key (require :preview.key))
 (local plan (require :preview.warm-plan))
 (local sys (require :platform.core))
 
@@ -9,23 +7,20 @@
 (local missing-entries plan.missing-entries)
 (local side-priority-entries plan.side-priority-entries)
 
-(fn make-dir []
-  (let [path (sys.temp-path)]
-    (sys.remove-file path)
-    (when (sys.ensure-dir path)
-      path)))
-
 (fn manifest-path [dir]
-  (.. dir "/manifest.fnl"))
+  (.. dir "/manifest.lua"))
 
 (local max-checks-per-update 64)
-(local max-imports-per-update 8)
+
+(local import-budget 0.007)
 
 (fn worker-command [src-dir manifest dir start step]
-  (fennel-command.command src-dir :preview/worker.fnl [manifest dir start step]))
+  (sys.low-priority-command (fennel-command.command src-dir :preview/worker.fnl
+                                                    [manifest dir start step])))
 
 (fn new-state []
   {:dir nil
+   :settings nil
    :blame? false
    :count 0
    :remaining 0
@@ -33,58 +28,34 @@
    :scan-index 1
    :imported {}
    :key-index {}
-   :index-key {}
-   :highlight? false})
+   :index-key {}})
 
 (fn cleanup [state]
   (when state.dir
     (sys.remove-dir state.dir))
-  (set-fields state [:dir nil] [:blame? false] [:count 0] [:remaining 0]
-              [:workers 0] [:scan-index 1] [:imported {}] [:key-index {}]
-              [:index-key {}] [:highlight? false]))
+  (set-fields state [:dir nil] [:settings nil] [:blame? false] [:count 0]
+              [:remaining 0] [:workers 0] [:scan-index 1] [:imported {}]
+              [:key-index {}] [:index-key {}]))
 
-(fn write-manifest [path
-                    revision
-                    entries
-                    ?old-label
-                    ?new-label
-                    ?blame?
-                    ?highlight]
-  (sys.write-file path
-                  (fennel.view {: revision
-                                : entries
-                                :old-label ?old-label
-                                :new-label ?new-label
-                                :blame? (and ?blame? true)
-                                :highlight ?highlight})))
+(fn write-manifest [path entries settings]
+  (sys.write-data-file path {: entries : settings}))
 
 (fn start-workers [src-dir manifest dir count]
   (for [i 1 count]
     (sys.background-command (worker-command src-dir manifest dir i count))))
 
-(fn reset-for-run [state dir entries key-index index-key ?blame? ?highlight?]
-  (set-fields state [:dir dir] [:blame? (and ?blame? true)]
-              [:count (length entries)] [:remaining (length entries)]
-              [:workers 0] [:scan-index 1] [:imported {}] [:key-index key-index]
-              [:index-key index-key] [:highlight? (and ?highlight? true)]))
+(fn reset-for-run [state dir entries key-index index-key settings]
+  (set-fields state [:dir dir] [:settings settings]
+              [:blame? (and settings.blame? true)] [:count (length entries)]
+              [:remaining (length entries)] [:workers 0] [:scan-index 1]
+              [:imported {}] [:key-index key-index] [:index-key index-key]))
 
-(fn start-run [state
-               src-dir
-               revision
-               entries
-               dir
-               ?old-label
-               ?new-label
-               ?blame?
-               ?highlight]
+(fn start-run [state src-dir entries dir settings]
   (let [manifest (manifest-path dir)]
-    (when (write-manifest manifest revision entries ?old-label ?new-label
-                          ?blame? ?highlight)
-      (let [highlight? (and ?highlight ?highlight.on? true)
-            (key-index index-key) (plan.index-entries revision entries
-                                                      highlight?)
+    (when (write-manifest manifest entries settings)
+      (let [(key-index index-key) (plan.index-entries settings entries)
             workers (plan.worker-count entries (sys.cpu-count))]
-        (reset-for-run state dir entries key-index index-key ?blame? highlight?)
+        (reset-for-run state dir entries key-index index-key settings)
         (set state.workers workers)
         (if (< 0 workers)
             (do
@@ -92,29 +63,15 @@
               true)
             (cleanup state))))))
 
-(fn start [state
-           src-dir
-           revision
-           entries
-           ?old-label
-           ?new-label
-           ?blame?
-           ?highlight]
-  "Start a background run for `entries`. With `?blame?`, workers also blame
-each entry so the blame gutters fill without blocking. `?highlight` carries the
-syntax highlighting settings and terminal background the workers render with."
+(fn start [state src-dir entries settings]
+  "Start a background run for `entries`, rendered with `settings` from
+`preview.core/background-settings`."
   (cleanup state)
   (when (< 0 (length entries))
-    (let [dir (make-dir)]
+    (let [dir (sys.make-temp-dir)]
       (when dir
-        (when (not (start-run state src-dir revision entries dir ?old-label
-                              ?new-label ?blame? ?highlight))
+        (when (not (start-run state src-dir entries dir settings))
           (cleanup state))))))
-
-(fn read-output [path]
-  (let [(ok result) (fennel-command.load-file path)]
-    (when ok
-      result)))
 
 (fn remaining [state]
   (or state.remaining 0))
@@ -130,68 +87,78 @@ syntax highlighting settings and terminal background the workers render with."
            1
            (+ (or state.scan-index 1) 1))))
 
+;; Keep a value that is already cached, so tables the display and search caches
+;; hold on to stay the same when a second source delivers the same key.
 (fn store-into [?cache key value]
-  (when (and ?cache (not= nil value))
+  (when (and ?cache (not= nil value) (= nil (. ?cache key)))
     (tset ?cache key value)))
 
 (fn store-output [caches key data]
   "Copy one worker output into the app caches. `caches` has `lines` and may
 have `split`, `numbers`, `refs`, and `blame` tables."
-  (tset caches.lines key data.lines)
+  (store-into caches.lines key data.lines)
   (store-into caches.split (.. key "\0split") data.split)
   (store-into caches.numbers key data.numbers)
   (store-into caches.refs key data.refs)
-  (when (and caches.blame data.blame)
+  (when data.blame
     (each [blame-key blame-lines (pairs data.blame)]
-      (tset caches.blame blame-key blame-lines))))
+      (store-into caches.blame blame-key blame-lines))))
 
 (fn import-output [state caches index]
+  "Import the output for `index` when a worker has written it. An output that
+cannot be loaded is dropped, so the run still finishes."
   (let [path (plan.output-path state.dir index)
-        data (read-output path)]
-    (when data
+        (ok data) (sys.read-data-file path)]
+    (when (not= nil ok)
       (let [key (. state.index-key index)]
-        (when key
+        (when (and ok key (= (type data) :table))
           (store-output caches key data)))
       (sys.remove-file path)
       (mark-imported state index)
-      true)))
+      ok)))
 
 (fn finish-if-complete [state]
   (when (and state.dir (<= (remaining state) 0))
     (cleanup state)))
 
-(fn import-entry [state caches revision entry]
-  (when (and state.dir entry)
-    (let [key (preview-key.for-entry revision entry nil nil state.highlight?)
-          index (. state.key-index key)]
+(fn import-key [state caches key]
+  (when (and state.dir key)
+    (let [index (. state.key-index key)]
       (when index
         (let [imported? (import-output state caches index)]
           (finish-if-complete state)
           imported?)))))
 
-(fn update [state caches]
-  "Import finished worker output into the caches. Returns true when at least
-one entry was imported."
-  (var imports 0)
-  (when state.dir
-    (var checks 0)
-    (let [max-checks (math.min state.count max-checks-per-update)]
-      (while (and (< checks max-checks) (< imports max-imports-per-update)
-                  (< 0 (remaining state)))
-        (let [index (or state.scan-index 1)]
-          (when (not (. state.imported index))
-            (when (import-output state caches index)
-              (set imports (+ imports 1))))
-          (advance-scan-index state)
-          (set checks (+ checks 1))))))
-  (finish-if-complete state)
-  (< 0 imports))
+(fn within-budget? [opts started imports]
+  (or (= imports 0) (< (- (opts.clock) started) opts.budget)))
+
+(fn update [state caches ?opts]
+  "Import finished worker output into the caches until the CPU budget in
+`?opts` is spent. Returns true when at least one entry was imported."
+  (let [opts {:clock (or (?. ?opts :clock) os.clock)
+              :budget (or (?. ?opts :budget) import-budget)}
+        started (opts.clock)]
+    (var imports 0)
+    (when state.dir
+      (var checks 0)
+      (let [max-checks (math.min state.count max-checks-per-update)]
+        (while (and (< checks max-checks) (< 0 (remaining state))
+                    (within-budget? opts started imports))
+          (let [index (or state.scan-index 1)]
+            (when (not (. state.imported index))
+              (when (import-output state caches index)
+                (set imports (+ imports 1))))
+            (advance-scan-index state)
+            (set checks (+ checks 1))))))
+    (finish-if-complete state)
+    (< 0 imports)))
 
 {: cleanup
- : import-entry
+ : import-key
  : missing-entries
  : new-state
  : side-priority-entries
  : start
+ : store-output
  : update
  : worker-command}

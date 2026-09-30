@@ -1,35 +1,20 @@
-(local fennel (require :fennel))
-(local fennel-command (require :platform.fennel))
 (local preview (require :preview.core))
 (local plan (require :preview.warm-plan))
 (local sys (require :platform.core))
-(local theme (require :tui.theme))
+(local worker-state (require :preview.worker-state))
 
 (fn read-manifest [path]
-  (let [(ok result) (fennel-command.load-file path)]
+  (let [(ok result) (sys.read-data-file path)]
     (when ok
       result)))
 
-(fn write-output [dir index lines]
-  (let [path (plan.output-path dir index)
-        tmp (.. path ".tmp")]
-    (when (sys.write-file tmp (fennel.view lines))
-      (sys.rename tmp path))))
+(fn write-output [dir index data]
+  (sys.write-data-file (plan.output-path dir index) data))
 
 (fn warm [manifest-path dir start step]
   (let [manifest (read-manifest manifest-path)]
     (when manifest
-      (let [highlight (or manifest.highlight {})
-            state {:revision manifest.revision
-                   :revision_old_label manifest.old-label
-                   :revision_new_label manifest.new-label
-                   :show_blame? (and manifest.blame? true)
-                   :highlight? (and highlight.on? true)
-                   :highlight_available? (and highlight.on? true)
-                   :bat_theme highlight.bat-theme
-                   :theme (theme.new highlight.background)
-                   :preview_cache {}
-                   :split_cache {}}]
+      (let [state (worker-state.from-settings manifest.settings)]
         (var canceled? false)
         (for [i start (length manifest.entries) step]
           (if canceled?

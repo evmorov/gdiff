@@ -52,6 +52,9 @@
 (fn folder-listings-loaded [records then]
   (build :folder-listings-loaded {: records : then}))
 
+(fn previews-imported []
+  (build :previews-imported))
+
 (fn pr-refresh-finished [?info ?error]
   (build :pr-refresh-finished {:info ?info :error ?error}))
 
@@ -68,6 +71,7 @@
  : open-pr-finished
  : open-target-finished
  : pending-key
+ : previews-imported
  : pr-refresh-finished
  : pr-refresh-resolved
  : quit

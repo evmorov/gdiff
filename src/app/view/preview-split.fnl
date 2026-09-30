@@ -387,7 +387,7 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
                              :layout computed})
                        computed))]
       (apply-layout state layout visible)
-      (preview-anchor.restore-split state)
+      (preview-anchor.restore-split state selected.entry)
       (search.sync state state.split_rows))))
 
 (fn blank-divider [state widths]

@@ -1,5 +1,6 @@
 (local faith (require :faith))
 (local runtime (require :tui.runtime))
+(local terminal (require :tui.terminal))
 
 (fn program [keys ?coalescible]
   (let [state {:skip_next_draw? false
@@ -88,7 +89,39 @@
     (faith.= [:full] p.frames)
     (faith.= 2 p.state.tick_count)))
 
+(fn with-fake-terminal [f]
+  (let [saved {:saved-stty terminal.saved-stty
+               :raw-terminal terminal.raw-terminal
+               :restore-terminal terminal.restore-terminal}]
+    (set terminal.saved-stty #"")
+    (set terminal.raw-terminal #(values $1 nil))
+    (set terminal.restore-terminal #nil)
+    (let [(ok err) (pcall f)]
+      (each [k v (pairs saved)]
+        (tset terminal k v))
+      (when (not ok)
+        (error err)))))
+
+(fn test-run-calls-stop-after-a-normal-exit []
+  (with-fake-terminal (fn []
+                        (let [p (program ["q"])
+                              stopped []]
+                          (set p.stop #(table.insert stopped :stopped))
+                          (runtime.run p)
+                          (faith.= [:stopped] stopped)))))
+
+(fn test-run-calls-stop-before-rethrowing-an-error []
+  (with-fake-terminal (fn []
+                        (let [p (program ["j"])
+                              stopped []]
+                          (set p.update #(error "boom"))
+                          (set p.stop #(table.insert stopped :stopped))
+                          (faith.error "boom" #(runtime.run p))
+                          (faith.= [:stopped] stopped)))))
+
 {: test-burst-draws-quick-frames-until-input-settles
+ : test-run-calls-stop-after-a-normal-exit
+ : test-run-calls-stop-before-rethrowing-an-error
  : test-burst-without-further-keys-skips-the-next-frame
  : test-burst-holds-a-key-it-cannot-coalesce
  : test-burst-stops-when-update-quits

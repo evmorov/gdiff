@@ -103,13 +103,14 @@
                                   (math-util.clamp at 1 total)
                                   (+ scroll 1)))))
 
-(fn take-anchor [state]
+(fn take-anchor [state entry]
   (let [anchor state.preview_anchor]
-    (set state.preview_anchor nil)
-    anchor))
+    (when (and anchor (preview.content-ready? state entry))
+      (set state.preview_anchor nil)
+      anchor)))
 
 (fn restore-unified [state entry]
-  (let [anchor (take-anchor state)]
+  (let [anchor (take-anchor state entry)]
     (when anchor
       (let [refs (preview.line-refs state entry)
             total (or state.preview_total 0)]
@@ -119,8 +120,8 @@
             (when at
               (apply-target state at anchor.offset))))))))
 
-(fn restore-split [state]
-  (let [anchor (take-anchor state)]
+(fn restore-split [state entry]
+  (let [anchor (take-anchor state entry)]
     (when anchor
       (let [at (split-target (or state.split_rows []) anchor)]
         (when at

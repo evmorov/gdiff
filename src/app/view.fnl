@@ -28,7 +28,6 @@
   (let [visible (body-row-count rows)
         selected (selection.selected-context state)]
     (when (not (defer-preview? state selected))
-      (preview.prepare-entry state selected.entry)
       (set state.last_right_pane (build-right-pane state visible cols selected)))))
 
 (fn view [state rows cols]

@@ -6,7 +6,6 @@
 (local notice (require :app.notice))
 (local folder-preview (require :preview.folder))
 (local preview (require :preview.core))
-(local preview-warm (require :preview.warm))
 (local search (require :app.search))
 (local selection (require :app.selection))
 (local app-state (require :app.state))
@@ -90,6 +89,12 @@
         (set state.notice (notice.pr-refresh-failed msg.error))
         commands.none)))
 
+(fn handle-previews-imported [state _config _msg]
+  (set state.force_next_draw? true)
+  (when (search.has-query? state)
+    (search.rebuild state true))
+  commands.none)
+
 (fn handle-pr-refresh-resolved [state _config msg]
   (if msg.revision
       (do
@@ -108,6 +113,7 @@
         :open-pr-finished handle-open-pr-finished
         :open-target-finished handle-open-target-finished
         :pending-key handle-pending-key
+        :previews-imported handle-previews-imported
         :pr-refresh-finished handle-pr-refresh-finished
         :pr-refresh-resolved handle-pr-refresh-resolved
         :quit handle-quit
@@ -158,14 +164,10 @@
   (app-state.init revision entries review-store review-scope src-dir
                   ?diff-stats ?pr-url ?highlight))
 
-(fn update-warm-cache [state]
-  (when (preview.prepare-entry state (selection.selected-entry state))
-    (set state.force_next_draw? true))
-  (when (and (preview-warm.update state.preview_warm
-                                  (preview.warm-caches state))
-             (search.has-query? state))
-    (search.rebuild state true)
-    (set state.force_next_draw? true)))
+(fn request-selected-preview [state config]
+  (when (and (not state.quit?)
+             (preview.wanted-request state (selection.selected-context state)))
+    (run-command state config (commands.ensure-selected-preview))))
 
 (fn handle-key [state config raw-key]
   (set state.force_next_draw? false)
@@ -173,18 +175,23 @@
   (case (poll-pr-refresh state)
     msg (dispatch-now state config msg))
   (when (= raw-key :tick)
-    (update-warm-cache state))
+    (run-command state config (commands.poll-background-previews)))
   (dispatch-now state config (input.read-msg state raw-key))
+  (request-selected-preview state config)
   (when (= raw-key :tick)
     (set state.skip_next_draw? true))
   (not state.quit?))
 
 (fn start-command [state]
   (actions.cache-selected-preview state)
-  (commands.batch (commands.warm-preview-cache) (commands.sync-start)))
+  (commands.batch (commands.warm-preview-cache) (commands.focus-start)
+                  (commands.sync-start)))
 
 (fn start [state]
   (run-command state {} (start-command state)))
+
+(fn stop [state]
+  (run-command state {} (commands.warm-cleanup)))
 
 {:cache-selected-preview actions.cache-selected-preview
  :coalesce? input.coalesce?
@@ -195,4 +202,5 @@
  : run-command
  : start
  : start-command
+ : stop
  : update}

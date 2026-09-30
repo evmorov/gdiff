@@ -52,8 +52,26 @@
   (accumulate [count 0 _ _ (pairs t)]
     (+ count 1)))
 
+(fn focus-state [dir]
+  "A focus server state that counts as running in `dir`, without spawning a
+process. The test process stands in for the server."
+  (let [focus ((. (require :preview.focus) :new-state))]
+    (mkdir dir)
+    (set focus.dir dir)
+    (set focus.pid (sys.process-id))
+    (set focus.started-at (os.time))
+    (set focus.checked-at (os.time))
+    focus))
+
+(fn read-data [path]
+  (let [(ok value) (sys.read-data-file path)]
+    (faith.is ok (.. "could not read " path))
+    value))
+
 {: commit-all
  : count-pairs
+ : focus-state
+ : read-data
  : init-repo
  : mkdir
  : reset-workdir

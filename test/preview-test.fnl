@@ -5,7 +5,6 @@
 (local preview-file (require :preview.file))
 (local preview-format (require :preview.format))
 (local preview-key (require :preview.key))
-(local fennel (require :fennel))
 (local sys (require :platform.core))
 (local tui (require :tui.core))
 (local t (require :test-helper))
@@ -241,10 +240,11 @@
         state {:preview_cache {}
                :preview_rows 1
                :preview_scroll 0
-               :preview_warm {:dir "warm"}
+               :preview_warm {:dir "warm"
+                              :key-index {(preview-key.for-entry "HEAD" entry) 1}}
                :revision "HEAD"}
         lines (preview.visible-lines state entry 20 {:nonblocking? true})]
-    (faith.= "Loading preview..." (t.text lines))
+    (faith.match "^missing%.rb\n.*\nLoading preview%.%.%.$" (t.text lines))
     (faith.= 0 (t.count-pairs state.preview_cache))))
 
 (fn test-warm-entry-bundles-unified-lines-and-split-rows []
@@ -258,7 +258,10 @@
 
 (fn test-split-rows-is-nonblocking-while-warming []
   (let [entry {:status "M" :kind "M" :path "missing.rb" :reviewed false}
-        state {:revision "HEAD" :split_cache {} :preview_warm {:dir "warm"}}
+        state {:revision "HEAD"
+               :split_cache {}
+               :preview_warm {:dir "warm"
+                              :key-index {(preview-key.for-entry "HEAD" entry) 1}}}
         old-plain-diff-output git.plain-diff-output]
     (set git.plain-diff-output
          (fn [...]
@@ -285,6 +288,89 @@
       (set git.plain-diff-output old-plain-diff-output)
       (when (not ok)
         (error err)))))
+
+(fn focus-served-state []
+  (t.reset-workdir)
+  (let [entry {:status "M" :kind "M" :path "a.rb" :reviewed false}
+        state (state)]
+    (set state.preview_numbers_cache {})
+    (set state.preview_line_refs_cache {})
+    (set state.preview_blame_cache {})
+    (set state.preview_listing_cache {})
+    (set state.split_cache {})
+    (set state.preview_focus (t.focus-state "focus"))
+    (values state entry)))
+
+(fn without-git-or-blame [f]
+  (let [old-blame-lines git.blame-lines]
+    (set git.blame-lines #(error "this path must not run git blame"))
+    (let [(ok err) (pcall without-git f)]
+      (set git.blame-lines old-blame-lines)
+      (when (not ok)
+        (error err)))))
+
+(fn test-focus-server-makes-every-cache-miss-a-placeholder []
+  (let [(state entry) (focus-served-state)]
+    (set state.show_numbers? true)
+    (set state.show_blame? true)
+    (set state.split_mode? true)
+    (each [_ [context? comments?] (ipairs [[false false]
+                                           [true false]
+                                           [false true]])]
+      (set state.full_context? context?)
+      (set state.hide_comments? comments?)
+      (without-git-or-blame (fn []
+                              (let [(lines gutters) (preview.selection-lines state
+                                                                             entry
+                                                                             nil)]
+                                (faith.match "^a%.rb\n.*\nLoading preview%.%.%.$"
+                                             (t.text lines))
+                                (faith.= nil gutters))
+                              (faith.= [] (preview.split-rows state entry))
+                              (faith.= {}
+                                       (preview.blame-lines state entry :new
+                                                            [1]))
+                              (faith.= nil (preview.line-refs state entry)))))
+    (faith.= 0 (t.count-pairs state.preview_cache))))
+
+(fn test-loading-placeholder-is-reused-between-frames []
+  (let [(state entry) (focus-served-state)]
+    (faith.is (= (preview.nonblocking-lines state entry)
+                 (preview.nonblocking-lines state entry)))))
+
+(fn test-listing-rows-load-in-the-background-when-a-server-runs []
+  (let [(state _) (focus-served-state)
+        row {:type :file :unchanged true :path "notes.txt"}]
+    (set state.view_mode :tree)
+    (t.write-file "notes.txt" "hello\n")
+    (faith.match "Loading preview"
+                 (t.text (preview.selection-lines state nil row)))
+    (faith.= {:id "listing\0notes.txt"
+              :key "listing\0notes.txt"
+              :kind :listing
+              :target {:path "notes.txt"}
+              :generation 0}
+             (preview.wanted-request state {: row}))
+    (set state.preview_focus nil)
+    (faith.match "hello" (t.text (preview.selection-lines state nil row)))
+    (t.write-file "notes.txt" "changed\n")
+    (faith.match "hello" (t.text (preview.selection-lines state nil row))
+                 "the listing preview is cached until refresh")
+    (faith.= nil (preview.wanted-request state {: row}))))
+
+(fn test-wanted-request-names-the-selected-entry-until-it-is-ready []
+  (let [(state entry) (focus-served-state)
+        key (preview-key.for-entry "HEAD" entry)]
+    (set state.preview_generation 4)
+    (faith.= {:id key :key key :kind :entry :target entry :generation 4}
+             (preview.wanted-request state {: entry}))
+    (set state.show_blame? true)
+    (faith.= (.. key "\0blame")
+             (. (preview.wanted-request state {: entry}) :id))
+    (set state.show_blame? false)
+    (tset state.preview_cache key ["cached"])
+    (faith.= nil (preview.wanted-request state {: entry}))
+    (faith.= nil (preview.wanted-request state {:row {:type :folder}}))))
 
 (fn test-selection-lines-skip-gutters-when-none-is-shown []
   (let [(state entry) (cached-entry-state)]
@@ -325,11 +411,11 @@
     (faith.= false (preview.ready? state entry))
     (faith.= false
              (preview.ready? state {:status "A" :kind "A" :path "new.rb"}))
-    (faith.= true (preview.ready? state
-                                  {:status "A"
-                                   :kind "A"
-                                   :path "new.rb"
-                                   :untracked? true}))))
+    (let [untracked {:status "A" :kind "A" :path "new.rb" :untracked? true}]
+      (faith.= false (preview.ready? state untracked))
+      (tset state.preview_cache (preview-key.for-entry "HEAD" untracked)
+            ["new"])
+      (faith.= true (preview.ready? state untracked)))))
 
 (fn test-scroll-info-only-appears-when-preview-overflows []
   (let [entry {:status "M" :kind "M" :path "a.rb" :reviewed false}
@@ -933,7 +1019,7 @@
         key (preview-key.for-entry "HEAD" entry)]
     (faith.= nil err)
     (faith.is (next output.blame) "worker output carries blame labels")
-    (faith.is (sys.write-file "warm/1.fnl" (fennel.view output)))
+    (faith.is (sys.write-data-file "warm/1.lua" output))
     (set app.show_blame? true)
     (set app.split_mode? true)
     (set app.preview_warm.dir "warm")
@@ -1018,8 +1104,7 @@
               "moved removed line should carry the deleted background")
     (faith.is (added:find (theme.style-for state.theme :moved-added) 1 true)
               "moved added line should carry the added background")
-    (faith.is (removed:find "38;5;208" 1 true)
-              "moved lines should stay orange")))
+    (faith.is (removed:find "38;5;208" 1 true) "moved lines should stay orange")))
 
 (fn test-preview-key-marks-highlighted-previews []
   (let [entry {:status "M" :path "a.rb"}
@@ -1049,7 +1134,11 @@
     (set state.theme theme.default)
     (faith.= false (. (preview.warm-highlight state) :on?))))
 
-{: test-preview-format-uses-highlighted-lines-with-line-tints
+{: test-focus-server-makes-every-cache-miss-a-placeholder
+ : test-listing-rows-load-in-the-background-when-a-server-runs
+ : test-loading-placeholder-is-reused-between-frames
+ : test-wanted-request-names-the-selected-entry-until-it-is-ready
+ : test-preview-format-uses-highlighted-lines-with-line-tints
  : test-preview-format-ignores-highlighted-lines-that-do-not-match
  : test-preview-format-keeps-moved-lines-unhighlighted
  : test-warm-highlight-passes-settings-and-background

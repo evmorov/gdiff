@@ -1,6 +1,7 @@
 (local args (require :app.args))
 (local git (require :git.core))
 (local pr-refresh (require :git.pr-refresh))
+(local preview-focus (require :preview.focus))
 (local preview-warm (require :preview.warm))
 (local search (require :app.search))
 (local selection (require :app.selection))
@@ -67,6 +68,10 @@
                :preview_line_refs_cache {}
                :preview_blame_cache {}
                :preview_warm (preview-warm.new-state)
+               :preview_focus (preview-focus.new-state)
+               :preview_generation 0
+               :preview_listing_cache {}
+               :preview_loading nil
                :review_store review-store
                :review_scope review-scope
                :search (search.new-state)

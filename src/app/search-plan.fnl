@@ -9,7 +9,8 @@
    :query (or search.query "")
    :matches (or search.matches [])
    :index (or search.index 0)
-   :matches-source search.matches-source})
+   :matches-source search.matches-source
+   :pending search.pending})
 
 (fn clear []
   (new-state))

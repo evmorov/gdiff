@@ -7,6 +7,7 @@
 (local highlight (require :preview.highlight))
 (local theme (require :tui.theme))
 (local file-preview (require :preview.file))
+(local focus (require :preview.focus))
 (local format (require :preview.format))
 (local folder-preview (require :preview.folder))
 (local gutter (require :preview.gutter))
@@ -153,6 +154,16 @@ return (lines numbers refs)."
     (store-entry-data state (cache-key state entry) lines numbers refs)
     (values lines numbers refs)))
 
+(fn warm-covers-entry? [state entry]
+  (and state.preview_warm state.preview_warm.dir entry
+       (not= nil (. state.preview_warm.key-index (cache-key state entry)))))
+
+(fn focus-available? [state]
+  (focus.available? state.preview_focus))
+
+(fn background? [state entry]
+  (or (warm-covers-entry? state entry) (focus-available? state)))
+
 (fn lines [state entry]
   (if (not entry)
       (format.no-selection state)
@@ -162,8 +173,8 @@ return (lines numbers refs)."
 (fn line-numbers [state entry]
   (when (and entry (not (assets.asset? entry)))
     (let [cached (. (or state.preview_numbers_cache {}) (cache-key state entry))]
-      (if (not= nil cached)
-          cached
+      (if (not= nil cached) cached
+          (background? state entry) nil
           (let [(_ numbers) (load-entry state entry)]
             numbers)))))
 
@@ -171,21 +182,10 @@ return (lines numbers refs)."
   (when (and entry (not (whole-file? entry)) (not (assets.asset? entry)))
     (let [cached (. (or state.preview_line_refs_cache {})
                     (cache-key state entry))]
-      (if (not= nil cached)
-          cached
+      (if (not= nil cached) cached
+          (background? state entry) nil
           (let [(_ _ refs) (load-entry state entry)]
             refs)))))
-
-(fn warming? [state]
-  (and state.preview_warm state.preview_warm.dir))
-
-(fn warm-covers? [state]
-  (and (warming? state) (not state.full_context?) (not state.hide_comments?)
-       true))
-
-(fn warm-covers-entry? [state entry]
-  (and (warm-covers? state)
-       (not= nil (. state.preview_warm.key-index (cache-key state entry)))))
 
 ;; Beyond this many disjoint ranges, blame the whole file instead of building a
 ;; giant `git blame -L ...` command line.
@@ -211,16 +211,21 @@ return (lines numbers refs)."
 (fn cached-blame [state key]
   (. (or state.preview_blame_cache {}) key))
 
+(fn warm-blames-entry? [state entry]
+  (and state.preview_warm state.preview_warm.blame?
+       (warm-covers-entry? state entry)))
+
+(fn blame-background? [state entry]
+  (or (warm-blames-entry? state entry) (focus-available? state)))
+
 (fn request-labels [state entry side request]
-  "Blame labels by line number for one request. While a blame-warming run covers
-this entry, a cache miss returns the shared empty table instead of blocking on
-git; the import fills the cache."
+  "Blame labels by line number for one request. While a background process
+covers this entry, a cache miss returns the shared empty table instead of
+blocking on git; the import fills the cache."
   (if request.empty?
       no-labels
       (let [cached (cached-blame state request.key)]
-        (if cached cached
-            (and state.preview_warm state.preview_warm.blame?
-                 (warm-covers-entry? state entry)) no-labels
+        (if cached cached (blame-background? state entry) no-labels
             (let [lines (git.blame-lines state.revision entry side
                                          request.ranges)]
               (when state.preview_blame_cache
@@ -393,7 +398,7 @@ blame labels, and toggles they were built from are unchanged."
       (let [key (split-key state entry)
             cached (. state.split_cache key)]
         (if cached cached
-            (warm-covers? state) []
+            (background? state entry) []
             (compute-split-rows state entry key)))))
 
 (fn split-blame-needed? [state entry]
@@ -417,13 +422,19 @@ blame labels, and toggles they were built from are unchanged."
       state.show_numbers? (not= nil (. (or state.preview_numbers_cache {}) key))
       true))
 
+(fn content-ready? [state entry]
+  (or (not entry) (assets.asset? entry)
+      (and (not= nil (. state.preview_cache (cache-key state entry)))
+           (or (not (split-blame-needed? state entry))
+               (not= nil (. state.split_cache (split-key state entry))))
+           true)))
+
 (fn ready? [state entry]
-  (or (not entry) (whole-file? entry) (assets.asset? entry)
-      (let [key (cache-key state entry)]
-        (and (not= nil (. state.preview_cache key))
-             (or (not (split-blame-needed? state entry))
-                 (not= nil (. state.split_cache (split-key state entry))))
-             (gutters-ready? state entry key) true))))
+  (or (not entry) (assets.asset? entry)
+      (and (content-ready? state entry)
+           (or (whole-file? entry)
+               (gutters-ready? state entry (cache-key state entry)))
+           true)))
 
 (fn warm-highlight [state]
   "The highlight settings a warm run passes to its workers."
@@ -431,9 +442,19 @@ blame labels, and toggles they were built from are unchanged."
    :bat-theme state.bat_theme
    :background (and state.theme state.theme.background)})
 
+(fn background-settings [state]
+  {:revision state.revision
+   :old-label state.revision_old_label
+   :new-label state.revision_new_label
+   :full-context? (and state.full_context? true)
+   :hide-comments? (and state.hide_comments? true)
+   :blame? (and state.show_blame? true)
+   :highlight (warm-highlight state)})
+
 (fn warm-caches [state]
   "The app caches a warm import fills, keyed the same way the worker output is."
   {:lines state.preview_cache
+   :listing state.preview_listing_cache
    :split state.split_cache
    :numbers state.preview_numbers_cache
    :refs state.preview_line_refs_cache
@@ -443,11 +464,17 @@ blame labels, and toggles they were built from are unchanged."
   (and (blame-candidate? entry)
        (not (blame-ready? state entry (cache-key state entry)))))
 
+(fn split-missing? [state entry]
+  (and (split-blame-needed? state entry) (not (assets.asset? entry))
+       (= nil (. state.split_cache (split-key state entry)))))
+
 (fn warm-missing-entries [state entries]
-  "Entries the background workers should compute: previews not yet cached, plus
-entries whose blame is not cached while blame is shown."
+  "Entries the background workers should compute: previews not yet cached,
+two-sided entries without split rows in split mode, and entries whose blame is
+not cached while blame is shown."
   (icollect [_ entry (ipairs entries)]
     (when (or (= nil (. state.preview_cache (cache-key state entry)))
+              (split-missing? state entry)
               (and state.show_blame? (blame-missing? state entry)))
       entry)))
 
@@ -511,8 +538,15 @@ ask for, so their cache keys are ready when the output is imported."
 (fn split-active? [state]
   (and state.split_mode? state.split_rows (next state.split_rows) true))
 
-(fn loading-lines [state]
-  (format.loading state))
+(fn loading-lines [state key path ?entry]
+  (let [memo state.preview_loading]
+    (if (and memo (= memo.key key) (= memo.theme state.theme))
+        memo.lines
+        (let [out (format.header state path ?entry)]
+          (each [_ line (ipairs (format.loading state))]
+            (table.insert out line))
+          (set state.preview_loading {: key :theme state.theme :lines out})
+          out))))
 
 (fn nonblocking-lines [state entry]
   (if (not entry)
@@ -520,12 +554,31 @@ ask for, so their cache keys are ready when the output is imported."
       (let [key (cache-key state entry)
             cached (. state.preview_cache key)]
         (if cached cached
-            (warm-covers? state) (loading-lines state)
+            (background? state entry) (loading-lines state key entry.path entry)
             (lines state entry)))))
 
+(fn listing-key [state path]
+  (preview-key.for-listing path (highlight-on? state)))
+
+(fn listing-data [state path]
+  {:lines (pick-values 1 (file-lines state {: path}))})
+
+(fn listing-lines [state path]
+  (let [key (listing-key state path)
+        cached (. (or state.preview_listing_cache {}) key)]
+    (if cached
+        cached
+        (focus-available? state)
+        (loading-lines state key path nil)
+        (let [lines (. (listing-data state path) :lines)]
+          (when state.preview_listing_cache
+            (tset state.preview_listing_cache key lines))
+          lines))))
+
 (fn prepare-entry [state entry]
-  (preview-warm.import-entry state.preview_warm (warm-caches state)
-                             state.revision entry))
+  (when entry
+    (preview-warm.import-key state.preview_warm (warm-caches state)
+                             (cache-key state entry))))
 
 (fn listing-row? [state row]
   (and (= state.view_mode :tree) row (= row.type :file) row.unchanged row.path))
@@ -539,9 +592,29 @@ ask for, so their cache keys are ready when the output is imported."
   (if (and (= state.view_mode :tree) selected-row (= selected-row.type :folder))
       (values (folder-preview.lines state selected-row) nil)
       (listing-row? state selected-row)
-      (values (file-lines state {:path selected-row.path}) nil)
+      (values (listing-lines state selected-row.path) nil)
       (values (nonblocking-lines state selected-entry)
               (selection-gutters state selected-entry))))
+
+(fn wanted-request [state context]
+  (let [row context.row
+        entry context.entry
+        generation (or state.preview_generation 0)]
+    (if (listing-row? state row)
+        (let [key (listing-key state row.path)]
+          (when (= nil (. (or state.preview_listing_cache {}) key))
+            {:id key
+             : key
+             :kind :listing
+             :target {:path row.path}
+             : generation}))
+        (and entry (not (ready? state entry)))
+        (let [key (cache-key state entry)]
+          {:id (.. key (if state.show_blame? "\0blame" ""))
+           : key
+           :kind :entry
+           :target entry
+           : generation}))))
 
 (fn row-count [state]
   (or state.preview_rows 1))
@@ -810,6 +883,12 @@ cached yet."
  : blame-lines
  : split-blame-lines
  : cache-split
+ : background?
+ : background-settings
+ : content-ready?
+ : listing-data
+ : wanted-request
+ : warm-blame
  : warm-caches
  : warm-entry
  : warm-highlight

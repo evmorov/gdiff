@@ -31,6 +31,8 @@
             :preview-split-test
             :preview-split-view-test
             :preview-word-diff-test
+            :preview-focus-test
+            :preview-focus-plan-test
             :preview-folder-test
             :preview-highlight-test
             :preview-warm-test
@@ -55,5 +57,6 @@
             :update-test
             :util-math-test
             :util-scroll-test
+            :util-lua-data-test
             :util-string-test
             :view-purity-test])

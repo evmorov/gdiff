@@ -25,6 +25,14 @@
     (faith.= {:type :open-pr} (update.read-msg state "p"))
     (faith.= {:type :open-commit} (update.read-msg state "x"))))
 
+(fn test-context-and-comment-toggles-restart-warming []
+  (let [state (state [(entry "M" "a.rb")])
+        commands (require :app.commands)]
+    (each [_ msg-type (ipairs [:toggle-full-context :toggle-hide-comments])]
+      (let [(_ command) (update.update state {} {:type msg-type})]
+        (faith.= :function (type command))
+        (faith.not= commands.none command msg-type)))))
+
 (fn test-read-msg-keeps-pending-g-in-state []
   (let [state (state [(entry "M" "a.rb")])]
     (faith.= {:type :pending-key :pending-key "g"} (update.read-msg state "g"))
@@ -930,7 +938,8 @@
                              :ok? false})
     (faith.= "File not found: missing.rb" state.notice)))
 
-{: test-f-toggles-full-context-globally-across-navigation
+{: test-context-and-comment-toggles-restart-warming
+ : test-f-toggles-full-context-globally-across-navigation
  : test-uppercase-s-toggles-syntax-highlighting-and-rewarms
  : test-uppercase-s-without-bat-shows-a-notice
  : test-shift-c-toggles-hide-comments-globally-across-navigation

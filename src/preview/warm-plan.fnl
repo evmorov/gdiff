@@ -4,7 +4,7 @@
 (local edge-batch-size 8)
 
 (fn output-path [dir index]
-  (.. dir "/" index ".fnl"))
+  (.. dir "/" index ".lua"))
 
 (fn missing-entries [revision entries cache]
   (let [cache (or cache {})]
@@ -30,11 +30,11 @@
         (set back-count (+ back-count 1))))
     out))
 
-(fn index-entries [revision entries ?highlight?]
+(fn index-entries [settings entries]
   (let [indexes {}
         keys {}]
     (each [i entry (ipairs entries)]
-      (let [entry-key (preview-key.for-entry revision entry nil nil ?highlight?)]
+      (let [entry-key (preview-key.for-settings settings entry)]
         (tset indexes entry-key i)
         (tset keys i entry-key)))
     (values indexes keys)))

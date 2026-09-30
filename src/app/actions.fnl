@@ -75,6 +75,8 @@
     (set state.preview_blame_cache {})
     (set state.split_cache {})
     (set state.folder_preview_cache {})
+    (set state.preview_listing_cache {})
+    (set state.preview_generation (+ (or state.preview_generation 0) 1))
     (line-selection.stop state)
     (preview.reset-scroll state)
     (selection.move state 0)
@@ -271,7 +273,8 @@
     (exit-line-selection state)
     (set state.full_context? (not state.full_context?))
     (preview.reset-scroll state)
-    (set state.preview_anchor anchor)))
+    (set state.preview_anchor anchor)
+    (commands.warm-preview-cache)))
 
 (fn toggle-hide-comments [state]
   (let [entry (selection.selected-entry state)
@@ -279,7 +282,8 @@
     (exit-line-selection state)
     (set state.hide_comments? (not state.hide_comments?))
     (preview.reset-scroll state)
-    (set state.preview_anchor anchor)))
+    (set state.preview_anchor anchor)
+    (commands.warm-preview-cache)))
 
 (fn toggle-highlight [state]
   (if (not state.highlight_available?)

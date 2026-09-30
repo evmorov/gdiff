@@ -7,7 +7,9 @@
 (local messages (require :app.messages))
 (local pr-refresh (require :git.pr-refresh))
 (local preview (require :preview.core))
+(local preview-focus (require :preview.focus))
 (local preview-warm (require :preview.warm))
+(local selection (require :app.selection))
 (local reviews (require :storage.reviews))
 (local sync (require :git.sync))
 (local sys (require :platform.core))
@@ -36,16 +38,46 @@
   []
   [_dispatch get-state]
   (let [state (get-state)]
-    (preview-warm.start state.preview_warm state.src_dir state.revision
+    (preview-warm.start state.preview_warm state.src_dir
                         (preview.warm-missing-entries state
                                                       (preview-warm.side-priority-entries state.entries))
-                        state.revision_old_label state.revision_new_label
-                        state.show_blame? (preview.warm-highlight state))))
+                        (preview.background-settings state))))
 
 (defcommand warm-cleanup
   []
   [_dispatch get-state]
-  (preview-warm.cleanup (. (get-state) :preview_warm)))
+  (let [state (get-state)]
+    (preview-warm.cleanup state.preview_warm)
+    (preview-focus.cleanup state.preview_focus)))
+
+(defcommand focus-start
+  []
+  [_dispatch get-state]
+  (let [state (get-state)]
+    (preview-focus.start state.preview_focus state.src_dir (sys.process-id))))
+
+(defcommand ensure-selected-preview
+  []
+  [dispatch get-state]
+  (let [state (get-state)
+        context (selection.selected-context state)
+        imported? (preview.prepare-entry state context.entry)]
+    (case (preview.wanted-request state context)
+      wanted (preview-focus.request state.preview_focus wanted
+                                    (preview.background-settings state)))
+    (when imported?
+      (dispatch (messages.previews-imported)))))
+
+(defcommand poll-background-previews
+  []
+  [dispatch get-state]
+  (let [state (get-state)
+        caches (preview.warm-caches state)
+        focused? (preview-focus.update state.preview_focus caches
+                                       state.preview_generation)
+        warmed? (preview-warm.update state.preview_warm caches)]
+    (when (or focused? warmed?)
+      (dispatch (messages.previews-imported)))))
 
 (defcommand load-folder-listings
   [paths then]
@@ -165,6 +197,8 @@
 
 {: batch
  : copy-path
+ : ensure-selected-preview
+ : focus-start
  : load-folder-listings
  : none
  : open-base-editor
@@ -174,6 +208,7 @@
  : open-line-commit
  : open-linked-pr
  : persist-reviewed
+ : poll-background-previews
  : pr-refresh-resolve
  : pr-refresh-start
  : refresh

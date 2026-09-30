@@ -2,7 +2,6 @@
 (local browser (require :platform.browser))
 (local editor (require :platform.editor))
 (local faith (require :faith))
-(local fennel (require :fennel))
 (local git (require :git.core))
 (local preview-key (require :preview.key))
 (local reviews (require :storage.reviews))
@@ -1095,6 +1094,102 @@
     (faith.= nil state.preview_warm.dir)
     (faith.= false (sys.write-file "warm/still-there" "x"))))
 
+(fn with-no-git [f]
+  (let [old-diff git.plain-diff-output
+        old-blame git.blame-lines]
+    (set git.plain-diff-output #(error "the key loop must not run git diff"))
+    (set git.blame-lines #(error "the key loop must not run git blame"))
+    (let [(ok err) (pcall f)]
+      (set git.plain-diff-output old-diff)
+      (set git.blame-lines old-blame)
+      (when (not ok)
+        (error err)))))
+
+(fn focus-served-state []
+  (t.reset-workdir)
+  (let [first (entry "M" "a.rb")
+        second (entry "M" "b.rb")
+        state (flat-state [first second])
+        first-key (preview-key.for-entry "HEAD" first)]
+    (tset state.preview_cache first-key ["a.rb"])
+    (tset state.split_cache (.. first-key "\0split") [])
+    (set state.preview_focus (t.focus-state "focus"))
+    (values state second)))
+
+(fn test-j-onto-an-uncached-file-shows-loading-and-asks-the-server []
+  (let [(state second) (focus-served-state)
+        key (preview-key.for-entry "HEAD" second)]
+    (with-no-git (fn []
+                   (faith.is (app.handle-key state {} "j"))
+                   (let [view (app.view state 10 100)]
+                     (faith.match "^b%.rb\n.*\nLoading preview%.%.%.$"
+                                  (t.text view.body.right.lines)))))
+    (faith.= 2 state.selected)
+    (let [request (t.read-data "focus/request.lua")]
+      (faith.= key request.key)
+      (faith.= :entry request.kind)
+      (faith.= "b.rb" request.target.path)
+      (faith.= "HEAD" request.settings.revision))))
+
+(fn test-tick-imports-the-server-response-and-redraws []
+  (let [(state second) (focus-served-state)
+        key (preview-key.for-entry "HEAD" second)]
+    (app.handle-key state {} "j")
+    (faith.is (sys.write-data-file "focus/out-1.lua"
+                                   {: key
+                                    :generation 0
+                                    :kind :entry
+                                    :lines ["b.rb" "served"]
+                                    :split []}))
+    (faith.is (app.handle-key state {} :tick))
+    (faith.= ["b.rb" "served"] (. state.preview_cache key))
+    (faith.is state.force_next_draw?)
+    (with-no-git (fn []
+                   (let [view (app.view state 10 100)]
+                     (faith.match "served" (t.text view.body.right.lines)))))))
+
+(fn test-refresh-drops-responses-computed-before-it []
+  (let [(state second) (focus-served-state)
+        key (preview-key.for-entry "HEAD" second)]
+    (app.handle-key state {} "j")
+    (update.update state {} {:type :refresh-loaded
+                             :entries state.entries
+                             :reviewed {}
+                             :revision "HEAD"})
+    (faith.= 1 state.preview_generation)
+    (faith.is (sys.write-data-file "focus/out-1.lua"
+                                   {: key
+                                    :generation 0
+                                    :kind :entry
+                                    :lines ["stale"]}))
+    (app.handle-key state {} :tick)
+    (faith.not= ["stale"] (. state.preview_cache key))))
+
+(fn test-search-jump-into-a-loading-file-lands-once-it-loads []
+  (let [(state second) (focus-served-state)
+        key (preview-key.for-entry "HEAD" second)]
+    (tset state.preview_cache key ["b.rb" "────" "one" "needle"])
+    (tset state.preview_line_refs_cache key
+          [false false {:side :new :no 1} {:side :new :no 2 :changed? true}])
+    (with-no-git (fn []
+                   (app.handle-key state {} "/")
+                   (app.handle-key state {} "d")
+                   (app.handle-key state {} :enter)
+                   (faith.= 2 state.selected)
+                   (app.view state 10 100)
+                   (faith.is state.search.pending
+                             "the jump waits for the split rows")))
+    (tset state.split_cache (.. key "\0split") [])
+    (app.view state 10 100)
+    (faith.= nil state.search.pending)
+    (faith.= 4 state.preview_cursor)))
+
+(fn test-quit-stops-the-focus-server []
+  (let [(state _) (focus-served-state)]
+    (faith.= false (app.handle-key state {} :quit))
+    (faith.= nil state.preview_focus.dir)
+    (faith.= false (sys.dir-exists? "focus"))))
+
 (fn test-manual-clean-remote-sync-finish-updates-notice []
   (let [state (state [(entry "M" "a.rb")])]
     (set state.sync.running? true)
@@ -1168,7 +1263,7 @@
     (faith.= nil state.sync.warning)
     (faith.= "Remote in sync" state.notice)))
 
-(fn test-view-imports-only-selected-ready-preview-during-cursor-redraw []
+(fn test-key-imports-only-selected-ready-preview []
   (t.reset-workdir)
   (t.mkdir "warm")
   (let [selected (entry "M" "a.rb")
@@ -1176,8 +1271,8 @@
         state (state [selected warmed])
         selected-key (preview-key.for-entry "HEAD" selected)
         warmed-key (preview-key.for-entry "HEAD" warmed)]
-    (faith.is (sys.write-file "warm/1.fnl" (fennel.view {:lines ["selected"]})))
-    (faith.is (sys.write-file "warm/2.fnl" (fennel.view {:lines ["warmed"]})))
+    (faith.is (sys.write-data-file "warm/1.lua" {:lines ["selected"]}))
+    (faith.is (sys.write-data-file "warm/2.lua" {:lines ["warmed"]}))
     (set state.preview_warm
          {:dir "warm"
           :count 2
@@ -1186,10 +1281,11 @@
           :imported {}
           :key-index {selected-key 1 warmed-key 2}
           :index-key {1 selected-key 2 warmed-key}})
-    (let [view (app.view state 10 100)]
-      (faith.= "selected" (t.text view.body.right.lines)))
+    (app.handle-key state {} "k")
     (faith.= ["selected"] (. state.preview_cache selected-key))
     (faith.= nil (. state.preview_cache warmed-key))
+    (let [view (app.view state 10 100)]
+      (faith.= "selected" (t.text view.body.right.lines)))
     (app.handle-key state {} :tick)
     (faith.= ["warmed"] (. state.preview_cache warmed-key))))
 
@@ -1214,7 +1310,7 @@
                              :index-key {1 key}})
     (faith.is (app.handle-key state {} :tick))
     (faith.= false state.force_next_draw?)
-    (faith.is (sys.write-file "warm/1.fnl" (fennel.view {:lines ["warmed"]})))
+    (faith.is (sys.write-data-file "warm/1.lua" {:lines ["warmed"]}))
     (faith.is (app.handle-key state {} :tick))
     (faith.= ["warmed"] (. state.preview_cache key))
     (faith.is state.force_next_draw?)))
@@ -1402,7 +1498,8 @@
                  (table.insert refs {:side :new :no 13})
                  (tset state.preview_cache key lines)
                  (tset state.preview_numbers_cache key false)
-                 (tset state.preview_line_refs_cache key refs)))]
+                 (tset state.preview_line_refs_cache key refs)
+                 (tset state.split_cache (.. key "\0split") [])))]
     (seed (preview-key.for-entry "HEAD" selected) 5)
     (seed (preview-key.for-entry "HEAD" selected true) 1)
     state))
@@ -1422,7 +1519,12 @@
     (app.view state 10 100)
     (faith.= 8 state.preview_scroll)))
 
-{: test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing
+{: test-j-onto-an-uncached-file-shows-loading-and-asks-the-server
+ : test-quit-stops-the-focus-server
+ : test-refresh-drops-responses-computed-before-it
+ : test-search-jump-into-a-loading-file-lands-once-it-loads
+ : test-tick-imports-the-server-response-and-redraws
+ : test-uppercase-a-toggles-all-reviewed-and-lowercase-a-does-nothing
  : test-ctrl-e-and-ctrl-y-scroll-preview-one-line
  : test-ctrl-e-and-ctrl-y-pull-the-cursor-into-view-when-preview-focused
  : test-ctrl-d-and-ctrl-u-pull-the-cursor-into-view-when-preview-focused
@@ -1508,5 +1610,5 @@
  : test-view-passes-preview-horizontal-scroll-when-content-overflows
  : test-view-uses-whole-preview-for-horizontal-scroll-limit
  : test-view-wraps-preview-lines-when-enabled
- : test-view-imports-only-selected-ready-preview-during-cursor-redraw
+ : test-key-imports-only-selected-ready-preview
  : test-view-renders-renames-with-short-status}

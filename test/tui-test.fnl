@@ -246,6 +246,21 @@
       (faith.is (row:find "\27[48;2;" 1 true))
       (faith.is (row:find "\27[0m\27[1m\27[48;2;" 1 true)))))
 
+(fn test-inactive-row-uses-lighter-background-without-bold []
+  (let [t (theme.new {:r 16 :g 24 :b 32})
+        row (theme.inactive-row t "a.rb" 6)]
+    (faith.= "a.rb  " (ansi.strip-ansi row))
+    (faith.= (colors.background-style {:r 16 :g 24 :b 32} 0.04) t.inactive-row)
+    (faith.not= t.selected-row t.inactive-row)
+    (when (row:find ansi.esc 1 true)
+      (faith.is (row:find t.inactive-row 1 true))
+      (faith.= nil (row:find "\27[1m" 1 true)))))
+
+(fn test-inactive-row-is-plain-without-background []
+  (let [t (theme.new nil)]
+    (faith.= nil t.inactive-row)
+    (faith.= "a.rb  " (theme.inactive-row t "a.rb" 6))))
+
 (fn test-selected-row-keeps-the-search-match-background []
   (let [t (theme.new {:r 16 :g 24 :b 32})
         search-bg t.search-background
@@ -378,6 +393,8 @@
  : test-search-match-does-not-guess-background
  : test-search-match-uses-derived-background
  : test-selected-row-does-not-guess-without-background
+ : test-inactive-row-is-plain-without-background
+ : test-inactive-row-uses-lighter-background-without-bold
  : test-selected-row-keeps-the-search-match-background
  : test-selected-row-uses-derived-background
  : test-truncate-preserves-whole-utf8-glyphs

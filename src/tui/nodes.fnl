@@ -1,8 +1,9 @@
 (import-macros {: defnode} :tui.macros)
 
-(defnode row [text ?selected?] :row
+(defnode row [text ?selected? ?inactive?] :row
   [:text text]
-  [:selected? ?selected?])
+  [:selected? ?selected?]
+  [:inactive? ?inactive?])
 
 (defnode list [rows ?scroll ?x-scroll ?x-max-scroll] :list
   [:rows rows]

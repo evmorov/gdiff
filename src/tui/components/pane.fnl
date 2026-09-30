@@ -29,7 +29,7 @@
 (fn row-text [ctx row width x-scroll]
   (if (and row (> width 0))
       (row-view.render ctx (window-text row.text width x-scroll) row.selected?
-                       width)
+                       width row.inactive?)
       (blank width)))
 
 {: blank

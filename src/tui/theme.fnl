@@ -92,7 +92,8 @@
      :styles (styles ?background-rgb search-background)
      :selected-row (.. "\27[1m" (or (colors.background-style ?background-rgb
                                                              0.08)
-                                    ""))}))
+                                    ""))
+     :inactive-row (colors.background-style ?background-rgb 0.04)}))
 
 (local default-theme (new nil))
 
@@ -129,11 +130,17 @@ match background, which must stay visible on the selected row."
                                     (pick-values 1 (?keep:gsub "%%" "%%%%"))))
         stripped)))
 
-(fn selected-row [theme line width]
+(fn block-row [theme style-key line width]
   (let [theme (ensure theme)
         line (ansi.pad-right (strip-backgrounds line theme.search-background)
                              width)]
-    (ansi.apply-block-style theme.selected-row line)))
+    (ansi.apply-block-style (. theme style-key) line)))
+
+(fn selected-row [theme line width]
+  (block-row theme :selected-row line width))
+
+(fn inactive-row [theme line width]
+  (block-row theme :inactive-row line width))
 
 (fn highlight-matches [theme text query]
   (ansi.highlight-matches text query (style-for theme :search-match)
@@ -142,6 +149,7 @@ match background, which must stay visible on the selected row."
 {: color
  :default default-theme
  : highlight-matches
+ : inactive-row
  : line-tints?
  : new
  : selected-row

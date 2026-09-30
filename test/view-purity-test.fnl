@@ -34,16 +34,18 @@
   (set s.tree_selected_row (selection.selected-row-index s))
   (. (. (left-view.body s 6) :rows) 1))
 
-(fn test-files-selection-has-background-only-when-pane-focused []
+(fn test-files-selection-dims-background-when-pane-unfocused []
   (let [s (state [(entry "M" "a.rb")])]
     (set s.focus :left)
     (let [row (selected-row s)]
       (faith.is row.selected?)
+      (faith.= false row.inactive?)
       (faith.is (row.text:find "> " 1 true)))
     (set s.focus :right)
     (let [row (selected-row s)]
       (faith.= false row.selected?)
+      (faith.is row.inactive?)
       (faith.is (row.text:find "> " 1 true)))))
 
-{: test-files-selection-has-background-only-when-pane-focused
+{: test-files-selection-dims-background-when-pane-unfocused
  : test-preview-body-does-not-mutate-scroll-state}

@@ -7,7 +7,7 @@
 
 (fn render-cell [ctx row content-width x-scroll]
   (row-view.draw ctx (ansi.crop row.text x-scroll content-width) row.selected?
-                 content-width))
+                 content-width nil row.inactive?))
 
 (fn draw [ctx node ?width]
   (column.draw ctx node (rows node) render-cell ?width))

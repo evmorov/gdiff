@@ -69,8 +69,9 @@
 
 (fn display-row [state descriptor row-index]
   (let [selected? (selection.selected-row? state descriptor row-index)
-        focused-selection? (and selected? (= state.focus :left))]
-    (tui.row (row-text state descriptor selected?) focused-selection?)))
+        focused? (= state.focus :left)]
+    (tui.row (row-text state descriptor selected?) (and selected? focused?)
+             (and selected? (not focused?)))))
 
 (fn visible-rows [state rows first-row last-row]
   (fcollect [i first-row last-row]

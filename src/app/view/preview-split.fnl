@@ -359,10 +359,19 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
         (set state.preview_x_scroll
              (math.min (or state.preview_x_scroll 0) layout.x-max-scroll)))))
 
+(fn header-rows [rows]
+  (if (= :filename (?. rows 1 :kind)) 2 0))
+
+(fn pinned-header [state]
+  (let [rows (or state.split_logical_rows [])]
+    (fcollect [i 1 state.preview_pinned_rows]
+      (display-row state.theme (. rows i)))))
+
 (fn prepare [state visible cols ?selected]
   (let [selected (or ?selected (selection.selected-context state))
         rows (attach-blame state selected.entry (entry-rows state selected))]
     (set state.split_logical_rows rows)
+    (preview.set-pinned-rows state (header-rows rows) visible)
     (let [layout (if (cached-layout? state rows visible cols)
                      state.split_display_cache.layout
                      (let [computed (compute-layout state rows visible cols)]
@@ -395,9 +404,11 @@ rows and both blame tables are unchanged, so the layout cache below keeps hittin
         x-scroll (or state.preview_x_scroll 0)
         offset (or state.preview_scroll 0)
         visible-rows (preview.visible-display-lines state rows visible)
+        pinned (if (preview.header-pinned? state) (pinned-header state) [])
         matched (search.matched-lines state)
         lines (icollect [i row (ipairs visible-rows)]
-                (compose-row state row (+ offset i) widths x-scroll matched))]
+                (compose-row state (or (. pinned i) row) (+ offset i) widths
+                             x-scroll matched))]
     (for [_ (+ (length lines) 1) (math.max 1 (or visible 1))]
       (table.insert lines (blank-divider state widths)))
     (tui.lines lines (preview.scroll-info state) 0 0 nil [(+ old-gc old-w 1)])))

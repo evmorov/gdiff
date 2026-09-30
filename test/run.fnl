@@ -27,6 +27,7 @@
             :preview-test
             :preview-blame-colors-test
             :preview-line-moves-test
+            :preview-pinned-header-test
             :preview-split-test
             :preview-split-view-test
             :preview-word-diff-test

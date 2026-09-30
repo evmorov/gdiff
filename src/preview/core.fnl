@@ -614,12 +614,27 @@ ask for, so their cache keys are ready when the output is imported."
               [:preview_display_cache nil] [:split_display_cache nil]
               [:preview_anchor nil]))
 
+(fn pinned-rows [state]
+  (or state.preview_pinned_rows 0))
+
+(fn covered-rows [state scroll]
+  (if (> (or scroll 0) 0) (pinned-rows state) 0))
+
+(fn header-pinned? [state]
+  (< 0 (covered-rows state state.preview_scroll)))
+
+(fn set-pinned-rows [state header-rows visible]
+  (set state.preview_pinned_rows
+       (if (< (+ header-rows 1) (visible-count visible)) header-rows 0)))
+
 (fn keep-cursor-visible [state]
   (let [visible (row-count state)
         cursor (or state.preview_cursor 1)
         scroll (or state.preview_scroll 0)
-        scroll (if (< cursor (+ scroll 1)) (- cursor 1)
-                   (> cursor (+ scroll visible)) (- cursor visible)
+        scroll (if (<= cursor (+ scroll (covered-rows state scroll)))
+                   (- cursor 1 (pinned-rows state))
+                   (> cursor (+ scroll visible))
+                   (- cursor visible)
                    scroll)]
     (set state.preview_scroll (math-util.clamp scroll 0 (max-scroll state nil)))))
 
@@ -632,9 +647,10 @@ ask for, so their cache keys are ready when the output is imported."
     (not (= before cursor))))
 
 (fn focus-cursor [state]
-  (set state.preview_cursor
-       (math-util.clamp (+ (or state.preview_scroll 0) 1) 1
-                        (math.max 1 (or state.preview_total 0)))))
+  (let [scroll (or state.preview_scroll 0)]
+    (set state.preview_cursor
+         (math-util.clamp (+ scroll (covered-rows state scroll) 1) 1
+                          (math.max 1 (or state.preview_total 0))))))
 
 (fn restore-cursor [state cursor scroll]
   (set state.preview_cursor
@@ -652,7 +668,8 @@ ask for, so their cache keys are ready when the output is imported."
   (let [visible (row-count state)
         cursor (or state.preview_cursor 1)
         scroll (- cursor 1 (math.floor (/ (- visible 1) 2)))]
-    (set state.preview_scroll (math-util.clamp scroll 0 (max-scroll state nil)))))
+    (set state.preview_scroll (math-util.clamp scroll 0 (max-scroll state nil)))
+    (keep-cursor-visible state)))
 
 (fn cursor-jump [state line]
   "Put the cursor on a line and scroll so it sits mid-screen when possible."
@@ -733,7 +750,7 @@ cached yet."
   (let [before (or state.preview_cursor 1)
         scroll (or state.preview_scroll 0)
         last (math.max 1 (or state.preview_total 0))
-        cursor (math-util.clamp before (+ scroll 1)
+        cursor (math-util.clamp before (+ scroll (covered-rows state scroll) 1)
                                 (+ scroll (row-count state)))
         cursor (math-util.clamp cursor 1 last)]
     (set state.preview_cursor cursor)
@@ -818,6 +835,8 @@ cached yet."
  : visible-display-gutters
  : focus-cursor
  : follow-scroll
+ : header-pinned?
+ : set-pinned-rows
  : restore-cursor
  : restore-scroll
  : move-cursor

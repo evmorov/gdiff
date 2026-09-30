@@ -1303,7 +1303,8 @@
     (faith.= 6 state.preview_rows)
     (app.handle-key state {} "\5")
     (faith.= 1 state.preview_scroll)
-    (faith.= 2 state.preview_cursor)
+    ;; The pinned header covers the two rows above the cursor.
+    (faith.= 4 state.preview_cursor)
     (set state.preview_cursor 5)
     (app.handle-key state {} "\5")
     (faith.= 2 state.preview_scroll)
@@ -1326,7 +1327,7 @@
     ;; The view shows 6 rows, so a page step is 3 rows.
     (app.handle-key state {} "\4")
     (faith.= 3 state.preview_scroll)
-    (faith.= 4 state.preview_cursor)
+    (faith.= 6 state.preview_cursor)
     (set state.preview_cursor 9)
     (app.handle-key state {} "\4")
     (faith.= 6 state.preview_scroll)

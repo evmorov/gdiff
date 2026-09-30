@@ -1,3 +1,4 @@
+(local ansi (require :tui.ansi))
 (local moves (require :git.moves))
 (local symbols (require :tui.symbols))
 (local tui (require :tui.core))
@@ -17,6 +18,16 @@
   (let [text (.. path (move-note state ?entry))
         divider (string.rep symbols.line.horizontal (tui.visible-length text))]
     [text (tui.color state.theme :muted divider)]))
+
+(fn header-rows [lines]
+  (let [title (. lines 1)
+        rule (. lines 2)
+        width (and title (tui.visible-length title))]
+    (if (and rule (< 0 width)
+             (= (ansi.strip-ansi rule)
+                (string.rep symbols.line.horizontal width)))
+        2
+        0)))
 
 (fn line-color [line]
   (let [first (line:sub 1 1)]
@@ -195,6 +206,7 @@
  : diff-lines
  : empty-preview
  : header
+ : header-rows
  : line-color
  : loading
  : no-selection

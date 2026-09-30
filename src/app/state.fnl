@@ -38,6 +38,7 @@
                :preview_x_scroll 0
                :preview_x_max_scroll 0
                :preview_rows 1
+               :preview_pinned_rows 0
                :preview_total 0
                :preview_selection_anchor nil
                :preview_anchor nil

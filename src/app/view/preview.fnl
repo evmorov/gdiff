@@ -1,4 +1,5 @@
 (local preview (require :preview.core))
+(local format (require :preview.format))
 (local preview-anchor (require :preview.anchor))
 (local search (require :app.search))
 (local selection (require :app.selection))
@@ -58,19 +59,37 @@
   (let [selected (or ?selected (selection.selected-context state))
         (raw numbers) (raw-lines state selected.entry selected.row)
         display (lines-for-width state raw numbers visible cols)]
+    (preview.set-pinned-rows state (format.header-rows raw) visible)
     (set-scroll state display visible)
     (preview-anchor.restore-unified state selected.entry)
     (search.sync state display)
     (update-horizontal-scroll state raw cols)))
 
+(fn pin-rows [items pinned]
+  (icollect [i item (ipairs items)]
+    (or (. pinned i) item)))
+
+(fn pinned-header [state]
+  (let [source (or (preview.display-source state) [])]
+    (fcollect [i 1 state.preview_pinned_rows]
+      (. source i))))
+
+(fn pinned-gutters [state gutters]
+  (fcollect [i 1 state.preview_pinned_rows]
+    (. gutters i)))
+
 (fn body [state visible]
   (let [display (preview.display-lines state)
         gutters (preview.display-gutters state)
         visible-lines (visible-lines state display visible)
-        visible-gutters (preview.visible-display-gutters state gutters visible)]
-    (tui.lines (search-highlight state visible-lines)
+        visible-gutters (preview.visible-display-gutters state gutters visible)
+        pinned? (preview.header-pinned? state)
+        lines (search-highlight state visible-lines)]
+    (tui.lines (if pinned? (pin-rows lines (pinned-header state)) lines)
                (preview.scroll-info state) state.preview_x_scroll
                state.preview_x_max_scroll (cursor-highlight state visible-lines)
-               nil visible-gutters)))
+               nil (if (and pinned? visible-gutters)
+                      (pin-rows visible-gutters (pinned-gutters state gutters))
+                      visible-gutters))))
 
 {: body : prepare}

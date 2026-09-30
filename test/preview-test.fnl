@@ -110,7 +110,7 @@
                             "@@ -1,1 +0,0 @@"
                             "-old code"] "\n")
         lines (preview-format.diff-lines state diff entry)]
-    (faith.= (.. "progress.rb"
+    (faith.= (.. "lib/progress.rb"
                  (tui.color state.theme :status-renamed " (moved to, 60%)"))
              (. lines 1))))
 
@@ -154,8 +154,8 @@
         state (moved-pair-state)
         deleted-text (t.text (preview.lines state deleted))
         added-text (t.text (preview.lines state added))]
-    (faith.match "^progress%.rb %(moved to, %d+%%%)\n" deleted-text)
-    (faith.match "^progress%.rb %(moved from, %d+%%%)\n" added-text)
+    (faith.match "^lib/progress%.rb %(moved to, %d+%%%)\n" deleted-text)
+    (faith.match "^lib/steps/progress%.rb %(moved from, %d+%%%)\n" added-text)
     (each [_ text (ipairs [deleted-text added-text])]
       (faith.match "\n@@ %-1,6 %+1,6 @@\n" text
                    "both sides must come from a file, not /dev/null")

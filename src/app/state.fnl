@@ -78,6 +78,8 @@
                :sync (sync.new-state revision)
                :pr_refresh (pr-refresh.new-state (and ?pr-url
                                                       (args.pr-from-arg ?pr-url)))
+               :refreshed_at nil
+               :now nil
                :show_sync_notice? false
                :show_help? false
                :skip_next_draw? false

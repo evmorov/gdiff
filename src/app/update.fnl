@@ -171,6 +171,7 @@
 
 (fn handle-key [state config raw-key]
   (set state.force_next_draw? false)
+  (set state.now (os.time))
   (update-remote-sync state)
   (case (poll-pr-refresh state)
     msg (dispatch-now state config msg))

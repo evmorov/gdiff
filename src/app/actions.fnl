@@ -383,14 +383,25 @@ some are not cached yet, return a command that loads them and replays `then`."
 (fn toggle-help [state]
   (set state.show_help? (not state.show_help?)))
 
+(local refresh-cooldown-seconds 5)
+
+(fn refresh-blocked? [state]
+  (or state.sync.running? state.pr_refresh.running?
+      (and state.now state.refreshed_at
+           (< (- state.now state.refreshed_at) refresh-cooldown-seconds))))
+
 (fn refresh-and-sync [state]
-  (when (< 0 (length state.sync.targets))
-    (set state.show_sync_notice? true)
-    (set state.notice (notice.syncing-remote)))
-  (when state.pr_refresh.pr
-    (set state.notice (notice.refreshing-pr)))
-  (commands.batch (commands.sync-start) (commands.pr-refresh-start)
-                  (commands.refresh)))
+  (if (refresh-blocked? state)
+      (set state.skip_next_draw? true)
+      (do
+        (set state.refreshed_at state.now)
+        (when (< 0 (length state.sync.targets))
+          (set state.show_sync_notice? true)
+          (set state.notice (notice.syncing-remote)))
+        (when state.pr_refresh.pr
+          (set state.notice (notice.refreshing-pr)))
+        (commands.batch (commands.sync-start) (commands.pr-refresh-start)
+                        (commands.refresh)))))
 
 (local handlers {:up #(navigate $1 -1)
                  :down #(navigate $1 1)

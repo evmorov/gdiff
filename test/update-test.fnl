@@ -123,6 +123,34 @@
       (faith.= nil state.notice)
       (faith.= false state.show_sync_notice?))))
 
+(fn test-r-is-ignored-while-sync-or-pr-refresh-runs []
+  (let [commands (require :app.commands)
+        state (state [(entry "M" "a.rb")])]
+    (set state.sync.running? true)
+    (let [(_ command) (update.update state {} (update.read-msg state "r"))]
+      (faith.= commands.none command)
+      (faith.= nil state.notice)
+      (faith.= true state.skip_next_draw?))
+    (set state.sync.running? false)
+    (set state.pr_refresh.running? true)
+    (let [(_ command) (update.update state {} (update.read-msg state "r"))]
+      (faith.= commands.none command))))
+
+(fn test-r-is-ignored-within-five-seconds-of-the-last-refresh []
+  (let [commands (require :app.commands)
+        state (state [(entry "M" "a.rb")])]
+    (set state.sync.targets [])
+    (set state.now 100)
+    (let [(_ command) (update.update state {} (update.read-msg state "r"))]
+      (faith.not= commands.none command))
+    (set state.now 104)
+    (let [(_ command) (update.update state {} (update.read-msg state "r"))]
+      (faith.= commands.none command))
+    (set state.now 105)
+    (let [(_ command) (update.update state {} (update.read-msg state "r"))]
+      (faith.not= commands.none command))
+    (faith.= 105 state.refreshed_at)))
+
 (fn refresh-loaded-msg [entries]
   {:type :refresh-loaded : entries :reviewed {}})
 
@@ -1001,6 +1029,8 @@
  : test-split-ratio-is-clamped
  : test-uppercase-r-does-not-attach-to-startup-sync
  : test-uppercase-r-does-not-start-sync
+ : test-r-is-ignored-while-sync-or-pr-refresh-runs
+ : test-r-is-ignored-within-five-seconds-of-the-last-refresh
  : test-unknown-key-clears-pending-g
  : test-b-toggles-blame-and-resets-preview-layout
  : test-pr-refresh-finished-with-error-sets-notice-without-command
